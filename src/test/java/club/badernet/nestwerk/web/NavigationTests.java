@@ -51,4 +51,13 @@ class NavigationTests {
                 .andExpect(status().isOk())
                 .andExpect(content().string(not(containsString("/admin/"))));
     }
+
+    @Test
+    @WithMockUser(authorities = "MEMBER_MANAGE")
+    void homeShowsAreaForEachPermittedSection() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("class=\"area\" href=\"/admin/members\"")))
+                .andExpect(content().string(not(containsString("href=\"/admin/users\""))));
+    }
 }

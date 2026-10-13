@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Fehler')}"></head>
+<body>
+<th:block sec:authorize="isAuthenticated()">
+    <header th:replace="~{fragments/layout :: nav(active='')}"></header>
+</th:block>
+<main class="error-page" th:switch="${status}">
+    <svg th:replace="~{fragments/layout :: nestmark}"></svg>
+    <div th:case="403">
+        <h1>Kein Zugriff</h1>
+        <p>Für diesen Bereich fehlen dir die nötigen Rechte. Wende dich an einen Administrator, wenn du sie brauchst.</p>
+    </div>
+    <div th:case="404">
+        <h1>Seite nicht gefunden</h1>
+        <p>Diese Adresse gibt es in Nestwerk nicht (mehr).</p>
+    </div>
+    <div th:case="*">
+        <h1>Etwas ist schiefgelaufen</h1>
+        <p>Die Anfrage konnte nicht verarbeitet werden. Versuche es in einem Moment erneut.</p>
+    </div>
+    <p><a class="button" th:href="@{/}">Zur Startseite</a></p>
+</main>
+</body>
+</html>

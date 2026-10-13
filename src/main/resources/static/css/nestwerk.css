@@ -370,7 +370,7 @@ html:not([data-theme-mode]) .theme-icon-system { display: block !important; }
 .field .hint { color: var(--ink-soft); font-size: var(--step--1); font-weight: 400; }
 
 .input,
-.field input,
+.field input:not([type="checkbox"]):not([type="radio"]),
 .field select {
     width: 100%;
     min-height: 2.9rem;
@@ -382,7 +382,7 @@ html:not([data-theme-mode]) .theme-icon-system { display: block !important; }
     font: inherit;
     transition: border-color 0.15s, box-shadow 0.15s;
 }
-.input:hover, .field input:hover, .field select:hover { border-color: var(--ink-soft); }
+.input:hover, .field input:not([type="checkbox"]):hover, .field select:hover { border-color: var(--ink-soft); }
 .input:focus-visible, .field input:focus-visible, .field select:focus-visible {
     outline: none;
     border-color: var(--moss);
@@ -593,6 +593,12 @@ fieldset.field legend { padding: 0; margin-bottom: 0.35rem; font-weight: 600; }
     max-width: 34rem;
     color: var(--ink-soft);
 }
+
+.error-page { max-width: 36rem; padding-top: clamp(3rem, 10vw, 6rem); }
+.error-page .nestmark { width: 4.5rem; height: 4.5rem; color: var(--moss); margin-bottom: 1.5rem; }
+.error-page h1 { margin-bottom: 0.75rem; }
+.error-page p { color: var(--ink-soft); }
+.error-page > p { margin-top: 2rem; }
 
 /* --- Tabelle ------------------------------------------------------------- */
 
