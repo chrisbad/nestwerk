@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Familienmitglieder')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='members')}"></header>
+<main>
+    <div class="page-head">
+        <div>
+            <h1>Familienmitglieder</h1>
+            <p>Wer zur Familie gehört. Termine und Aufgaben werden Mitgliedern zugewiesen.</p>
+        </div>
+        <div class="page-actions">
+            <button type="button" class="button" data-open-dialog="create-member">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                Mitglied anlegen
+            </button>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <ul class="members" th:unless="${#lists.isEmpty(members)}">
+        <li th:each="m : ${members}">
+            <button type="button" class="member" th:attr="data-open-dialog='edit-member-' + ${m.id}">
+                <span class="avatar avatar-large" th:style="|background-color: ${m.color}|"
+                      th:text="${#strings.toUpperCase(#strings.substring(m.name, 0, 1))}">A</span>
+                <span class="member-text">
+                    <strong th:text="${m.name}">Name</strong>
+                    <span class="muted" th:if="${m.userId == null}">Ohne Benutzerkonto</span>
+                    <span class="muted" th:each="u : ${users}" th:if="${m.userId == u.id}"
+                          th:text="'Konto: ' + ${u.username}">Konto</span>
+                </span>
+            </button>
+        </li>
+    </ul>
+    <div class="sheet sheet-empty" th:if="${#lists.isEmpty(members)}">
+        Noch keine Mitglieder. Lege die Familie über „Mitglied anlegen“ an.
+    </div>
+</main>
+
+<dialog th:each="m : ${members}" th:id="'edit-member-' + ${m.id}" class="dialog"
+        th:attr="aria-labelledby='edit-member-title-' + ${m.id}">
+    <form th:action="@{/admin/members/{id}(id=${m.id})}" method="post">
+        <div class="dialog-head">
+            <h2 th:id="'edit-member-title-' + ${m.id}">Mitglied bearbeiten</h2>
+            <button type="button" class="icon-button" data-close-dialog>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span class="visually-hidden">Schließen</span>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <div class="field-row field-row-color">
+                <div class="field">
+                    <label th:for="'m-name-' + ${m.id}">Name</label>
+                    <input th:id="'m-name-' + ${m.id}" type="text" name="name" maxlength="100" th:value="${m.name}" required>
+                </div>
+                <div class="field">
+                    <label th:for="'m-color-' + ${m.id}">Farbe</label>
+                    <input th:id="'m-color-' + ${m.id}" class="color-input" type="color" name="color" th:value="${m.color}">
+                </div>
+            </div>
+            <div class="field">
+                <label th:for="'m-user-' + ${m.id}">Benutzerkonto <span class="hint">optional</span></label>
+                <select th:id="'m-user-' + ${m.id}" name="userId">
+                    <option value="">Kein Konto</option>
+                    <option th:each="u : ${users}" th:value="${u.id}" th:text="${u.username}"
+                            th:selected="${m.userId != null and m.userId == u.id}">konto</option>
+                </select>
+            </div>
+        </div>
+        <div class="dialog-foot">
+            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+            <button type="submit" class="button">Speichern</button>
+        </div>
+    </form>
+    <form class="dialog-section dialog-section-last" th:action="@{/admin/members/{id}/delete(id=${m.id})}" method="post"
+          th:attr="data-confirm=|„${m.name}“ löschen?|">
+        <p class="muted">Zugewiesene Termine bleiben erhalten.</p>
+        <button type="submit" class="button button-danger">Mitglied löschen</button>
+    </form>
+</dialog>
+
+<dialog id="create-member" class="dialog" aria-labelledby="create-member-title">
+    <form th:action="@{/admin/members}" method="post">
+        <div class="dialog-head">
+            <h2 id="create-member-title">Mitglied anlegen</h2>
+            <button type="button" class="icon-button" data-close-dialog>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span class="visually-hidden">Schließen</span>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <div class="field-row field-row-color">
+                <div class="field">
+                    <label for="new-member-name">Name</label>
+                    <input id="new-member-name" type="text" name="name" maxlength="100" required>
+                </div>
+                <div class="field">
+                    <label for="new-member-color">Farbe</label>
+                    <input id="new-member-color" class="color-input" type="color" name="color" value="#5b8c6a">
+                </div>
+            </div>
+            <div class="field">
+                <label for="new-member-user">Benutzerkonto <span class="hint">optional</span></label>
+                <select id="new-member-user" name="userId">
+                    <option value="">Kein Konto</option>
+                    <option th:each="u : ${users}" th:value="${u.id}" th:text="${u.username}">konto</option>
+                </select>
+            </div>
+        </div>
+        <div class="dialog-foot">
+            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+            <button type="submit" class="button">Mitglied anlegen</button>
+        </div>
+    </form>
+</dialog>
+
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

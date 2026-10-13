@@ -699,6 +699,47 @@ fieldset.field legend { padding: 0; margin-bottom: 0.35rem; font-weight: 600; }
 :root[data-theme="dark"] .button-danger { color: #1d1210; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .button-danger { color: #1d1210; } }
 
+/* --- Familienmitglieder ------------------------------------------------- */
+
+.members {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.75rem;
+}
+.member {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    background: var(--surface);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s;
+}
+.member:hover { border-color: var(--moss); }
+.member-text { display: grid; min-width: 0; }
+.member-text strong { font-family: var(--font-display); font-size: var(--step-1); font-weight: 650; overflow-wrap: anywhere; }
+.member-text .muted { font-size: var(--step--1); }
+.avatar-large { width: 3rem; height: 3rem; font-size: 1.25rem; color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / 0.35); }
+
+.field-row-color { grid-template-columns: 1fr auto; }
+.color-input {
+    width: 4.5rem !important;
+    padding: 0.3rem !important;
+    cursor: pointer;
+}
+.color-input::-webkit-color-swatch-wrapper { padding: 0; }
+.color-input::-webkit-color-swatch { border: 0; border-radius: 6px; }
+.color-input::-moz-color-swatch { border: 0; border-radius: 6px; }
+
 /* --- Dialog -------------------------------------------------------------- */
 
 .dialog {
