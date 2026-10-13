@@ -2,6 +2,7 @@ package club.badernet.nestwerk.user;
 
 import club.badernet.nestwerk.role.Role;
 import club.badernet.nestwerk.role.RoleRepository;
+import club.badernet.nestwerk.security.PermissionCatalog;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -93,6 +95,31 @@ public class UserService implements UserDetailsService {
     public void resetPassword(Long userId, String rawPassword) {
         requireValidPassword(rawPassword);
         load(userId).setPasswordHash(passwordEncoder.encode(rawPassword));
+    }
+
+    /**
+     * Verhindert Rechteausweitung durch Benutzerverwalter ohne Administratorrechte: Sie dürfen nur
+     * Rollen vergeben, deren Rechte sie selbst besitzen, und Administratoren nicht verändern.
+     *
+     * @param actorPermissions Rechte des handelnden Benutzers
+     * @param targetUserId     betroffener Benutzer oder {@code null} beim Anlegen
+     * @param roleIds          zu vergebende Rollen oder {@code null}, wenn keine vergeben werden
+     */
+    @Transactional(readOnly = true)
+    public void requireMayManage(Collection<String> actorPermissions, Long targetUserId, Set<Long> roleIds) {
+        boolean actorIsAdministrator = actorPermissions.containsAll(PermissionCatalog.names());
+        if (actorIsAdministrator) {
+            return;
+        }
+        if (targetUserId != null && load(targetUserId).isAdministrator()) {
+            throw new IllegalArgumentException("Administratoren können nur von Administratoren geändert werden.");
+        }
+        for (Role role : resolveRoles(roleIds)) {
+            if (role.isAllPermissions() || !actorPermissions.containsAll(role.effectivePermissionNames())) {
+                throw new IllegalArgumentException(
+                        "Die Rolle „" + role.getName() + "“ enthält Rechte, die du selbst nicht hast.");
+            }
+        }
     }
 
     private User load(Long userId) {

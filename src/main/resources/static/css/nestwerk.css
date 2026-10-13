@@ -710,6 +710,15 @@ fieldset.field legend { padding: 0; margin-bottom: 0.35rem; font-weight: 600; }
     color: var(--ink);
     box-shadow: var(--shadow-float);
 }
+.dialog-section { padding: 1.25rem 1.5rem; border-top: 1px solid var(--line); }
+.dialog-head + .dialog-section { border-top: 0; }
+.dialog-section .form-actions { margin-top: 1rem; }
+.dialog-section-last { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.dialog-head h2 .person { font-size: var(--step-1); }
+
+.button-small { min-height: 2.25rem; padding: 0.35rem 0.9rem; font-size: var(--step--1); }
+.cell-actions { text-align: right; width: 1%; white-space: nowrap; }
+
 .dialog-small { width: min(24rem, calc(100% - 2rem)); }
 .dialog-small .dialog-body { padding-top: 1.5rem; }
 .dialog-small h2 { font-size: var(--step-1); margin-bottom: 0.4rem; }
