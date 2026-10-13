@@ -416,6 +416,33 @@ html:not([data-theme-mode]) .theme-icon-system { display: block !important; }
 .password.is-visible .icon-button .eye-open { display: none; }
 .password.is-visible .icon-button .eye-closed { display: block; }
 
+fieldset.field { margin: 0; padding: 0; border: 0; min-width: 0; }
+fieldset.field + .field, .field + fieldset.field { margin-top: 1rem; }
+fieldset.field legend { padding: 0; margin-bottom: 0.35rem; font-weight: 600; }
+
+.choices { display: flex !important; flex-wrap: wrap; gap: 0.5rem; }
+.choices legend { width: 100%; }
+
+.choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.5rem;
+    padding: 0.4rem 0.9rem 0.4rem 0.7rem;
+    border: 1.5px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+}
+.choice:hover { border-color: var(--ink-soft); }
+.choice input { width: 1.05rem; height: 1.05rem; margin: 0; accent-color: var(--moss); }
+.choice:has(input:checked) { border-color: var(--moss); background: var(--sage); }
+.choice:has(input:focus-visible) { outline: 3px solid var(--honey); outline-offset: 2px; }
+
+.badges { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
+.muted { color: var(--ink-soft); }
+
 /* --- Meldungen ----------------------------------------------------------- */
 
 .notice {

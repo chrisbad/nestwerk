@@ -19,7 +19,7 @@ class AdminInitializerTest {
 
         new AdminInitializer(userService, "admin", "secret-pw").run(new DefaultApplicationArguments());
 
-        verify(userService).create("admin", "secret-pw", Role.ADMIN);
+        verify(userService).createAdministrator("admin", "secret-pw");
     }
 
     @Test
@@ -28,7 +28,7 @@ class AdminInitializerTest {
 
         new AdminInitializer(userService, "admin", "").run(new DefaultApplicationArguments());
 
-        verify(userService, never()).create("admin", "", Role.ADMIN);
+        verify(userService, never()).createAdministrator("admin", "");
     }
 
     @Test

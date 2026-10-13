@@ -37,14 +37,14 @@ class SecurityAccessTests {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
-    void userCannotAccessAdminArea() throws Exception {
+    @WithMockUser(authorities = "MEMBER_MANAGE")
+    void userWithoutUserManageCannotAccessUserAdmin() throws Exception {
         mockMvc.perform(get("/admin/users")).andExpect(status().isForbidden());
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
-    void adminCanAccessAdminArea() throws Exception {
+    @WithMockUser(authorities = "USER_MANAGE")
+    void userWithUserManageCanAccessUserAdmin() throws Exception {
         mockMvc.perform(get("/admin/users")).andExpect(status().isOk());
     }
 
@@ -55,7 +55,7 @@ class SecurityAccessTests {
     }
 
     @Test
-    @WithMockUser(roles = "USER")
+    @WithMockUser
     void userSeesLayoutWithoutAdminLinks() throws Exception {
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
@@ -64,7 +64,7 @@ class SecurityAccessTests {
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
+    @WithMockUser(authorities = "USER_MANAGE")
     void adminSeesUserManagementLink() throws Exception {
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())

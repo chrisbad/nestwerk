@@ -10,7 +10,7 @@
         <h1><span data-greeting>Hallo</span>, <span sec:authentication="name">benutzer</span>.</h1>
     </section>
 
-    <ul class="areas" sec:authorize="hasRole('ADMIN')">
+    <ul class="areas" sec:authorize="hasAuthority('USER_MANAGE')">
         <li>
             <a class="area" th:href="@{/admin/users}">
                 <span class="area-icon">
@@ -24,7 +24,7 @@
             </a>
         </li>
     </ul>
-    <p class="empty-home" sec:authorize="!hasRole('ADMIN')">
+    <p class="empty-home" sec:authorize="!hasAuthority('USER_MANAGE')">
         Hier erscheinen Kalender und weitere Bereiche, sobald sie eingerichtet sind.
     </p>
 </main>

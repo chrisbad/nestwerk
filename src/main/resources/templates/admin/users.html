@@ -29,7 +29,7 @@
         <div class="sheet">
             <table class="table" id="users-table" th:unless="${#lists.isEmpty(users)}">
                 <thead>
-                <tr><th scope="col">Name</th><th scope="col">Rolle</th><th scope="col">Status</th></tr>
+                <tr><th scope="col">Name</th><th scope="col">Rollen</th><th scope="col">Status</th></tr>
                 </thead>
                 <tbody>
                 <tr th:each="user : ${users}" th:classappend="${user.username == created} ? 'is-new'">
@@ -40,9 +40,12 @@
                             <span th:text="${user.username}">admin</span>
                         </span>
                     </td>
-                    <td th:switch="${user.role.name()}">
-                        <span th:case="'ADMIN'" class="badge badge-admin">Administrator</span>
-                        <span th:case="*" class="badge">Benutzer</span>
+                    <td>
+                        <span class="badges">
+                            <span th:each="r : ${user.roles}" class="badge"
+                                  th:classappend="${r.allPermissions} ? 'badge-admin'" th:text="${r.name}">Rolle</span>
+                            <span th:if="${#sets.isEmpty(user.roles)}" class="muted">Keine Rolle</span>
+                        </span>
                     </td>
                     <td>
                         <span class="status" th:if="${user.enabled}">Aktiv</span>
@@ -84,14 +87,13 @@
                     <button th:replace="~{fragments/layout :: passwordToggle}"></button>
                 </div>
             </div>
-            <div class="field">
-                <label for="new-role">Rolle</label>
-                <select id="new-role" name="role">
-                    <option th:each="r : ${roles}" th:value="${r}"
-                            th:text="${r.name() == 'ADMIN'} ? 'Administrator' : 'Benutzer'"
-                            th:selected="${r.name() == 'USER'}">Benutzer</option>
-                </select>
-            </div>
+            <fieldset class="field choices">
+                <legend>Rollen</legend>
+                <label class="choice" th:each="r : ${roles}">
+                    <input type="checkbox" name="roleIds" th:value="${r.id}" th:checked="${r.name == 'Benutzer'}">
+                    <span th:text="${r.name}">Rolle</span>
+                </label>
+            </fieldset>
         </div>
         <div class="dialog-foot">
             <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>

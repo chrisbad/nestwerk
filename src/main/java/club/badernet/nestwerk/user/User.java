@@ -1,15 +1,22 @@
 package club.badernet.nestwerk.user;
 
+import club.badernet.nestwerk.role.Role;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -25,9 +32,11 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private Role role;
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "user_roles",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "role_id"))
+    private Set<Role> roles = new HashSet<>();
 
     @Column(nullable = false)
     private boolean enabled = true;
@@ -38,10 +47,9 @@ public class User {
     protected User() {
     }
 
-    public User(String username, String passwordHash, Role role) {
+    public User(String username, String passwordHash) {
         this.username = username;
         this.passwordHash = passwordHash;
-        this.role = role;
     }
 
     public Long getId() {
@@ -56,12 +64,39 @@ public class User {
         return passwordHash;
     }
 
-    public Role getRole() {
-        return role;
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    public Set<Role> getRoles() {
+        return Set.copyOf(roles);
+    }
+
+    public void setRoles(Collection<Role> newRoles) {
+        roles.clear();
+        roles.addAll(newRoles);
+    }
+
+    public boolean hasRoleId(Long roleId) {
+        return roles.stream().anyMatch(r -> r.getId().equals(roleId));
+    }
+
+    public boolean isAdministrator() {
+        return roles.stream().anyMatch(Role::isAllPermissions);
+    }
+
+    public Set<String> permissionNames() {
+        Set<String> names = new LinkedHashSet<>();
+        roles.forEach(r -> names.addAll(r.effectivePermissionNames()));
+        return names;
     }
 
     public boolean isEnabled() {
         return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 
     public OffsetDateTime getCreatedAt() {

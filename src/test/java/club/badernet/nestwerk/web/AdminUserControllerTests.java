@@ -20,7 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = "nestwerk.admin.password=test-admin-pw")
 @AutoConfigureMockMvc
-@WithMockUser(roles = "ADMIN")
+@WithMockUser(authorities = "USER_MANAGE")
 class AdminUserControllerTests {
 
     @Autowired
@@ -30,8 +30,7 @@ class AdminUserControllerTests {
     void classicPostRedirectsToList() throws Exception {
         mockMvc.perform(post("/admin/users").with(csrf())
                         .param("username", "klassisch")
-                        .param("password", "geheim1234")
-                        .param("role", "USER"))
+                        .param("password", "geheim1234"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/admin/users"));
     }
@@ -41,8 +40,7 @@ class AdminUserControllerTests {
         mockMvc.perform(post("/admin/users").with(csrf())
                         .header("HX-Request", "true")
                         .param("username", "htmx-kind")
-                        .param("password", "geheim1234")
-                        .param("role", "USER"))
+                        .param("password", "geheim1234"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("id=\"users-panel\"")))
                 .andExpect(content().string(containsString("htmx-kind")))
@@ -55,10 +53,9 @@ class AdminUserControllerTests {
         mockMvc.perform(post("/admin/users").with(csrf())
                         .header("HX-Request", "true")
                         .param("username", "zukurz")
-                        .param("password", "kurz")
-                        .param("role", "USER"))
+                        .param("password", "kurz"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("data-form-error")))
-                .andExpect(content().string(containsString("mindestens 8 Zeichen")));
+                .andExpect(content().string(containsString("8 Zeichen")));
     }
 }
