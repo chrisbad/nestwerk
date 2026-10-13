@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Kalender')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='calendar')}"></header>
+<main class="cal-main" id="calendar">
+    <div th:replace="~{calendar/fragments :: toolbar(
+            ${#temporals.format(month.atDay(1), 'MMMM yyyy')}, 'month', ${month.atDay(1)},
+            @{/calendar/month(date=${prev})}, @{/calendar/month(date=${today})}, @{/calendar/month(date=${next})})}"></div>
+    <ul th:replace="~{calendar/fragments :: legend}"></ul>
+
+    <div class="month" role="grid" th:attr="aria-label=${#temporals.format(month.atDay(1), 'MMMM yyyy')}">
+        <div class="month-head" role="row">
+            <span role="columnheader">Mo</span><span role="columnheader">Di</span><span role="columnheader">Mi</span>
+            <span role="columnheader">Do</span><span role="columnheader">Fr</span><span role="columnheader">Sa</span>
+            <span role="columnheader">So</span>
+        </div>
+        <div class="month-week" role="row" th:each="week : ${weeks}">
+            <div class="day" role="gridcell" th:each="cell : ${week}"
+                 th:classappend="${(cell.inMonth ? '' : 'day-outside ') + (cell.today ? 'day-today' : '')}">
+                <a class="day-num" th:href="@{/calendar/week(date=${cell.date})}"
+                   th:attr="aria-label=${#temporals.format(cell.date, 'EEEE, d. MMMM')}"
+                   th:text="${cell.date.dayOfMonth}">1</a>
+                <div class="day-events">
+                    <th:block th:each="o : ${cell.occurrences}"><a th:replace="~{calendar/fragments :: occurrence(${o})}"></a></th:block>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

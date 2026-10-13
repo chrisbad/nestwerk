@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+
+<!-- Kopfzeile: Titel, Blättern, Ansichtswahl, Termin anlegen -->
+<div th:fragment="toolbar(title, view, date, prevUrl, todayUrl, nextUrl)" class="cal-toolbar">
+    <div class="cal-title">
+        <h1 th:text="${title}">Oktober 2026</h1>
+        <div class="cal-step" hx-boost="true" hx-target="#calendar" hx-select="#calendar" hx-swap="outerHTML">
+            <a class="icon-button" th:href="${prevUrl}" title="Zurück">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+                <span class="visually-hidden">Zurück</span>
+            </a>
+            <a class="button button-ghost button-small" th:href="${todayUrl}">Heute</a>
+            <a class="icon-button" th:href="${nextUrl}" title="Weiter">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+                <span class="visually-hidden">Weiter</span>
+            </a>
+        </div>
+    </div>
+    <div class="cal-actions">
+        <nav class="segmented" aria-label="Ansicht" hx-boost="true" hx-target="#calendar" hx-select="#calendar" hx-swap="outerHTML">
+            <a th:href="@{/calendar/month(date=${date})}" th:aria-current="${view == 'month'} ? 'page'">Monat</a>
+            <a th:href="@{/calendar/week(date=${date})}" th:aria-current="${view == 'week'} ? 'page'">Woche</a>
+            <a th:href="@{/calendar/agenda(from=${date})}" th:aria-current="${view == 'agenda'} ? 'page'">Agenda</a>
+        </nav>
+        <a class="button" th:href="@{/calendar/events/new(date=${date})}"
+           sec:authorize="hasAuthority('CALENDAR_EVENT_CREATE')">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Termin
+        </a>
+    </div>
+</div>
+
+<!-- Legende der Familienmitglieder -->
+<ul th:fragment="legend" class="cal-legend" th:unless="${#maps.isEmpty(memberById)}">
+    <li th:each="entry : ${memberById}">
+        <span class="swatch" th:style="|background-color: ${entry.value.color}|"></span>
+        <span th:text="${entry.value.name}">Name</span>
+    </li>
+</ul>
+
+<!-- Ein Vorkommen als Eintrag; Farbe vom ersten zugewiesenen Mitglied -->
+<a th:fragment="occurrence(o)" class="occ"
+   th:classappend="${o.allDay} ? 'occ-allday'"
+   th:with="firstMember=${#sets.isEmpty(o.memberIds) ? null : memberById[o.memberIds.iterator().next()]}"
+   th:style="${firstMember != null} ? |--occ-color: ${firstMember.color}|"
+   th:href="@{/calendar/events/{id}(id=${o.eventId}, occurrence=${o.recurring} ? ${o.recurrenceId} : null)}">
+    <span class="occ-time" th:unless="${o.allDay}" th:text="${#temporals.format(o.start, 'HH:mm')}">10:00</span>
+    <span class="occ-title">
+        <svg th:if="${o.privateEvent}" class="occ-lock" viewBox="0 0 24 24" aria-label="Privat" role="img">
+            <rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+        </svg>
+        <span th:text="${o.title}">Titel</span>
+    </span>
+    <span class="occ-members" th:if="${#sets.size(o.memberIds) > 1}">
+        <span th:each="mid : ${o.memberIds}" class="dot"
+              th:if="${memberById[mid] != null}"
+              th:style="|background-color: ${memberById[mid].color}|"
+              th:title="${memberById[mid].name}"></span>
+    </span>
+</a>
+
+</body>
+</html>

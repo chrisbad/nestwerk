@@ -48,6 +48,8 @@
 
         <nav id="main-nav" class="nav-links" aria-label="Hauptnavigation">
             <a th:href="@{/}" th:aria-current="${active == 'home'} ? 'page'">Start</a>
+            <a th:href="@{/calendar}" sec:authorize="hasAuthority('CALENDAR_VIEW')"
+               th:aria-current="${active == 'calendar'} ? 'page'">Kalender</a>
             <a th:href="@{/admin/users}" sec:authorize="hasAuthority('USER_MANAGE')"
                th:aria-current="${active == 'users'} ? 'page'">Benutzer</a>
             <a th:href="@{/admin/roles}" sec:authorize="hasAuthority('ACCESS_ROLE_MANAGE')"

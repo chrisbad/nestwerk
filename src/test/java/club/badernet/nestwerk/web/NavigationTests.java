@@ -60,4 +60,13 @@ class NavigationTests {
                 .andExpect(content().string(containsString("class=\"area\" href=\"/admin/members\"")))
                 .andExpect(content().string(not(containsString("href=\"/admin/users\""))));
     }
+
+    @Test
+    @WithMockUser(authorities = "CALENDAR_VIEW")
+    void calendarIsReachableFromNavigationAndHome() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("<h2>Kalender</h2>")))
+                .andExpect(content().string(containsString("href=\"/calendar\"")));
+    }
 }

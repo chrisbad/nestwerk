@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Kalender')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='calendar')}"></header>
+<main class="cal-main" id="calendar">
+    <div th:replace="~{calendar/fragments :: toolbar('Agenda', 'agenda', ${from},
+            @{/calendar/agenda(from=${prev})}, @{/calendar/agenda(from=${today})}, @{/calendar/agenda(from=${next})})}"></div>
+    <ul th:replace="~{calendar/fragments :: legend}"></ul>
+
+    <p class="cal-range" th:text="|${#temporals.format(from, 'd. MMMM')} bis ${#temporals.format(next.minusDays(1), 'd. MMMM yyyy')}|">Zeitraum</p>
+
+    <div class="sheet sheet-empty" th:if="${agenda.isEmpty()}">
+        In diesem Zeitraum stehen keine Termine an.
+    </div>
+    <ol class="agenda" th:unless="${agenda.isEmpty()}">
+        <li class="agenda-day" th:each="entry : ${agenda}" th:classappend="${entry.key == today} ? 'day-today'">
+            <div class="agenda-date">
+                <span class="day-num" th:text="${entry.key.dayOfMonth}">12</span>
+                <span class="agenda-weekday" th:text="${#temporals.format(entry.key, 'EEE, MMM')}">Mo., Okt.</span>
+            </div>
+            <div class="day-events">
+                <th:block th:each="o : ${entry.value}"><a th:replace="~{calendar/fragments :: occurrence(${o})}"></a></th:block>
+            </div>
+        </li>
+    </ol>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

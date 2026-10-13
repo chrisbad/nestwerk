@@ -10,7 +10,18 @@
         <h1><span data-greeting>Hallo</span>, <span sec:authentication="name">benutzer</span>.</h1>
     </section>
 
-    <ul class="areas" sec:authorize="hasAnyAuthority('USER_MANAGE', 'ACCESS_ROLE_MANAGE', 'MEMBER_MANAGE')">
+    <ul class="areas" sec:authorize="hasAnyAuthority('CALENDAR_VIEW', 'USER_MANAGE', 'ACCESS_ROLE_MANAGE', 'MEMBER_MANAGE')">
+        <li sec:authorize="hasAuthority('CALENDAR_VIEW')">
+            <a class="area area-feature" th:href="@{/calendar}">
+                <span class="area-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>
+                    </svg>
+                </span>
+                <h2>Kalender</h2>
+                <p>Termine der ganzen Familie</p>
+            </a>
+        </li>
         <li sec:authorize="hasAuthority('MEMBER_MANAGE')">
             <a class="area" th:href="@{/admin/members}">
                 <span class="area-icon">
@@ -46,8 +57,8 @@
             </a>
         </li>
     </ul>
-    <p class="empty-home" sec:authorize="!hasAnyAuthority('USER_MANAGE', 'ACCESS_ROLE_MANAGE', 'MEMBER_MANAGE')">
-        Hier erscheinen Kalender und weitere Bereiche, sobald sie eingerichtet sind.
+    <p class="empty-home" sec:authorize="!hasAnyAuthority('CALENDAR_VIEW', 'USER_MANAGE', 'ACCESS_ROLE_MANAGE', 'MEMBER_MANAGE')">
+        Für dein Konto sind noch keine Bereiche freigegeben. Ein Administrator kann dir eine Rolle zuweisen.
     </p>
 </main>
 <div th:replace="~{fragments/layout :: toasts}"></div>
