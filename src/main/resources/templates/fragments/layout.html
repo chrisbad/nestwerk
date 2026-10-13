@@ -50,6 +50,10 @@
             <a th:href="@{/}" th:aria-current="${active == 'home'} ? 'page'">Start</a>
             <a th:href="@{/admin/users}" sec:authorize="hasAuthority('USER_MANAGE')"
                th:aria-current="${active == 'users'} ? 'page'">Benutzer</a>
+            <a th:href="@{/admin/roles}" sec:authorize="hasAuthority('ACCESS_ROLE_MANAGE')"
+               th:aria-current="${active == 'roles'} ? 'page'">Rollen</a>
+            <a th:href="@{/admin/members}" sec:authorize="hasAuthority('MEMBER_MANAGE')"
+               th:aria-current="${active == 'members'} ? 'page'">Mitglieder</a>
         </nav>
 
         <div class="nav-tools">
