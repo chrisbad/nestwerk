@@ -661,6 +661,44 @@ fieldset.field legend { padding: 0; margin-bottom: 0.35rem; font-weight: 600; }
     .table td:first-child { grid-column: 1 / -1; }
 }
 
+/* --- Rollen und Formular-Layouts ---------------------------------------- */
+
+.stack { display: grid; gap: 0.75rem; }
+
+.role { border-radius: var(--radius-panel); }
+.role-summary {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    list-style: none;
+}
+.role-summary::-webkit-details-marker { display: none; }
+.role-summary:hover { background: color-mix(in srgb, var(--sage) 40%, transparent); }
+.role-title { display: grid; flex: 1; min-width: 0; }
+.role-title strong { font-family: var(--font-display); font-size: var(--step-1); font-weight: 650; }
+.role-title .muted { font-size: var(--step--1); }
+.chevron {
+    width: 1.25rem; height: 1.25rem; flex: none;
+    fill: none; stroke: var(--ink-soft); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    transition: transform 0.2s var(--ease);
+}
+.role[open] .chevron { transform: rotate(180deg); }
+.role-body { padding: 0.25rem 1.25rem 1.25rem; border-top: 1px solid var(--line); }
+.role-body > * { margin-top: 1rem; }
+
+.field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
+.field-row .field + .field { margin-top: 0; }
+.form-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem; }
+
+.danger-zone { display: flex; justify-content: flex-end; padding-top: 1rem; border-top: 1px dashed var(--line); }
+
+.button-danger { background: var(--brick); color: #fff; }
+.button-danger:hover { background: color-mix(in srgb, var(--brick) 85%, black); }
+:root[data-theme="dark"] .button-danger { color: #1d1210; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .button-danger { color: #1d1210; } }
+
 /* --- Dialog -------------------------------------------------------------- */
 
 .dialog {
@@ -672,6 +710,9 @@ fieldset.field legend { padding: 0; margin-bottom: 0.35rem; font-weight: 600; }
     color: var(--ink);
     box-shadow: var(--shadow-float);
 }
+.dialog-small { width: min(24rem, calc(100% - 2rem)); }
+.dialog-small .dialog-body { padding-top: 1.5rem; }
+.dialog-small h2 { font-size: var(--step-1); margin-bottom: 0.4rem; }
 .dialog[open] { animation: pop 0.2s var(--ease); }
 .dialog::backdrop { background: rgb(22 29 24 / 0.45); backdrop-filter: blur(3px); }
 

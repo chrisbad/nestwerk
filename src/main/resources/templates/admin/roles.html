@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Rollen')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='roles')}"></header>
+<main>
+    <div class="page-head">
+        <div>
+            <h1>Rollen und Rechte</h1>
+            <p>Was die Mitglieder einer Rolle in Nestwerk tun dürfen.</p>
+        </div>
+        <div class="page-actions">
+            <button type="button" class="button" data-open-dialog="create-role">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                Rolle anlegen
+            </button>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <div class="stack">
+        <details class="sheet role" th:each="role : ${roles}">
+            <summary class="role-summary">
+                <span class="role-title">
+                    <strong th:text="${role.name}">Rolle</strong>
+                    <span class="muted" th:text="${role.description}">Beschreibung</span>
+                </span>
+                <span class="badge badge-admin" th:if="${role.allPermissions}">Alle Rechte</span>
+                <span class="badge" th:unless="${role.allPermissions}"
+                      th:text="${#sets.size(role.permissions)} == 1 ? '1 Recht' : ${#sets.size(role.permissions)} + ' Rechte'">0 Rechte</span>
+                <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+
+            <div class="role-body">
+                <p class="notice" th:if="${role.allPermissions}">
+                    Diese Rolle hat automatisch alle Rechte, auch die künftiger Bereiche. Sie kann nicht geändert werden.
+                </p>
+
+                <form th:unless="${role.allPermissions}" th:action="@{/admin/roles/{id}(id=${role.id})}" method="post">
+                    <div class="field-row">
+                        <div class="field" th:unless="${role.systemRole}">
+                            <label th:for="'name-' + ${role.id}">Name</label>
+                            <input th:id="'name-' + ${role.id}" type="text" name="name" maxlength="100"
+                                   th:value="${role.name}" required>
+                        </div>
+                        <div class="field">
+                            <label th:for="'desc-' + ${role.id}">Beschreibung</label>
+                            <input th:id="'desc-' + ${role.id}" type="text" name="description" maxlength="255"
+                                   th:value="${role.description}">
+                        </div>
+                    </div>
+                    <fieldset class="field choices" th:each="entry : ${permissionsByModule}">
+                        <legend th:text="${entry.key}">Modul</legend>
+                        <label class="choice" th:each="p : ${entry.value}">
+                            <input type="checkbox" name="permissions" th:value="${p.name()}"
+                                   th:checked="${role.permissions.contains(p.name())}">
+                            <span th:text="${p.label()}">Recht</span>
+                        </label>
+                    </fieldset>
+                    <div class="form-actions">
+                        <button type="submit" class="button">Änderungen speichern</button>
+                    </div>
+                </form>
+
+                <form class="danger-zone" th:unless="${role.systemRole}"
+                      th:action="@{/admin/roles/{id}/delete(id=${role.id})}" method="post"
+                      th:attr="data-confirm=|Rolle „${role.name}“ löschen?|">
+                    <button type="submit" class="button button-danger">Rolle löschen</button>
+                </form>
+            </div>
+        </details>
+    </div>
+</main>
+
+<dialog id="create-role" class="dialog" aria-labelledby="create-role-title">
+    <form th:action="@{/admin/roles}" method="post">
+        <div class="dialog-head">
+            <h2 id="create-role-title">Rolle anlegen</h2>
+            <button type="button" class="icon-button" data-close-dialog>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span class="visually-hidden">Schließen</span>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <div class="field">
+                <label for="new-role-name">Name</label>
+                <input id="new-role-name" type="text" name="name" maxlength="100" required>
+            </div>
+            <div class="field">
+                <label for="new-role-desc">Beschreibung <span class="hint">optional</span></label>
+                <input id="new-role-desc" type="text" name="description" maxlength="255">
+            </div>
+            <fieldset class="field choices" th:each="entry : ${permissionsByModule}">
+                <legend th:text="${entry.key}">Modul</legend>
+                <label class="choice" th:each="p : ${entry.value}">
+                    <input type="checkbox" name="permissions" th:value="${p.name()}">
+                    <span th:text="${p.label()}">Recht</span>
+                </label>
+            </fieldset>
+        </div>
+        <div class="dialog-foot">
+            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+            <button type="submit" class="button">Rolle anlegen</button>
+        </div>
+    </form>
+</dialog>
+
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

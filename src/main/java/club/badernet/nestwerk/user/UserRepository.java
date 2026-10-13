@@ -14,6 +14,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findAllByOrderByUsernameAsc();
 
+    boolean existsByRoles_Id(Long roleId);
+
     @Query("select count(distinct u) from User u join u.roles r "
             + "where u.enabled = true and r.allPermissions = true")
     long countActiveAdministrators();

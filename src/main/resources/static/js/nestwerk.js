@@ -103,6 +103,34 @@
         });
     }
 
+    /* --- Bestätigung vor destruktiven Aktionen ----------------------------- */
+
+    function initConfirm() {
+        const dialog = document.getElementById("confirm-dialog");
+        if (!dialog) return;
+        let pending = null;
+        document.addEventListener("submit", event => {
+            const form = event.target;
+            if (!form.matches("form[data-confirm]") || form.dataset.confirmed === "true") return;
+            event.preventDefault();
+            pending = form;
+            dialog.querySelector("[data-confirm-text]").textContent = form.dataset.confirm;
+            const ok = dialog.querySelector("[data-confirm-ok]");
+            if (form.dataset.confirmLabel) ok.textContent = form.dataset.confirmLabel;
+            dialog.showModal();
+            ok.focus();
+        });
+        dialog.querySelector("[data-confirm-ok]").addEventListener("click", () => {
+            if (!pending) return;
+            pending.dataset.confirmed = "true";
+            dialog.close();
+            pending.requestSubmit();
+        });
+        dialog.addEventListener("close", () => {
+            if (pending && pending.dataset.confirmed !== "true") pending = null;
+        });
+    }
+
     /* --- Passwort anzeigen ----------------------------------------------- */
 
     function initPasswordToggles() {
@@ -230,6 +258,7 @@
         initTheme();
         initNav();
         initDialogs();
+        initConfirm();
         initPasswordToggles();
         initFilters();
         initHtmx();
