@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Anmelden – Nestwerk</title>
+</head>
+<body>
+<h1>Nestwerk</h1>
+<form th:action="@{/login}" method="post">
+    <p th:if="${param.error}">Benutzername oder Passwort ist falsch.</p>
+    <p th:if="${param.logout}">Du wurdest abgemeldet.</p>
+    <p><label>Benutzername <input type="text" name="username" autofocus required></label></p>
+    <p><label>Passwort <input type="password" name="password" required></label></p>
+    <p><button type="submit">Anmelden</button></p>
+</form>
+</body>
+</html>

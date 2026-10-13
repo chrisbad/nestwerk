@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nestwerk}
+      POSTGRES_USER: ${POSTGRES_USER:-nestwerk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD muss in .env gesetzt sein}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-nestwerk}
+      DB_USER: ${POSTGRES_USER:-nestwerk}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      NESTWERK_ADMIN_USERNAME: ${NESTWERK_ADMIN_USERNAME:-admin}
+      NESTWERK_ADMIN_PASSWORD: ${NESTWERK_ADMIN_PASSWORD:-}
+      SPRING_DOCKER_COMPOSE_ENABLED: "false"
+    ports:
+      - "${APP_BIND:-127.0.0.1:8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+volumes:
+  db-data:

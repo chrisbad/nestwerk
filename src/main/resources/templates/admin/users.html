@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Benutzerverwaltung – Nestwerk</title>
+</head>
+<body>
+<p><a th:href="@{/}">Zurück</a></p>
+<h1>Benutzerverwaltung</h1>
+
+<p th:if="${success}" th:text="${success}"></p>
+<p th:if="${error}" th:text="${error}"></p>
+
+<table>
+    <thead>
+    <tr><th>Benutzername</th><th>Rolle</th><th>Aktiv</th></tr>
+    </thead>
+    <tbody>
+    <tr th:each="user : ${users}">
+        <td th:text="${user.username}"></td>
+        <td th:text="${user.role}"></td>
+        <td th:text="${user.enabled} ? 'ja' : 'nein'"></td>
+    </tr>
+    </tbody>
+</table>
+
+<h2>Neuen Benutzer anlegen</h2>
+<form th:action="@{/admin/users}" method="post">
+    <p><label>Benutzername <input type="text" name="username" maxlength="100" required></label></p>
+    <p><label>Passwort (mind. 8 Zeichen) <input type="password" name="password" minlength="8" required></label></p>
+    <p>
+        <label>Rolle
+            <select name="role">
+                <option th:each="r : ${roles}" th:value="${r}" th:text="${r}"></option>
+            </select>
+        </label>
+    </p>
+    <p><button type="submit">Anlegen</button></p>
+</form>
+</body>
+</html>

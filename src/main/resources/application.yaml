@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: nestwerk
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mydatabase}
+    username: ${DB_USER:myuser}
+    password: ${DB_PASSWORD:secret}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+server:
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+nestwerk:
+  admin:
+    username: ${NESTWERK_ADMIN_USERNAME:admin}
+    password: ${NESTWERK_ADMIN_PASSWORD:}

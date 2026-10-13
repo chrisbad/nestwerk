@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Nestwerk</title>
+</head>
+<body>
+<h1>Willkommen bei Nestwerk</h1>
+<p>Angemeldet als <strong sec:authentication="name">benutzer</strong>.</p>
+<p sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/users}">Benutzerverwaltung</a></p>
+<form th:action="@{/logout}" method="post">
+    <button type="submit">Abmelden</button>
+</form>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Nur für die lokale Entwicklung (wird von spring-boot-docker-compose automatisch gestartet).
+# Für den Serverbetrieb siehe compose.prod.yaml.
+services:
+  postgres:
+    image: 'postgres:17'
+    environment:
+      - 'POSTGRES_DB=mydatabase'
+      - 'POSTGRES_PASSWORD=secret'
+      - 'POSTGRES_USER=myuser'
+    ports:
+      - '5432'
