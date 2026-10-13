@@ -931,6 +931,86 @@ a.day-num:hover { background: var(--sage); }
     .agenda-day { grid-template-columns: 3.5rem 1fr; gap: 0.6rem; }
 }
 
+/* --- Terminformular ----------------------------------------------------- */
+
+.event-main { max-width: 44rem; }
+.event-main h1 { font-size: var(--step-3); margin: 0.5rem 0 1.25rem; }
+.event-main > .notice { margin-bottom: 1rem; }
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--ink-soft);
+    font-weight: 600;
+    text-decoration: none;
+}
+.back-link:hover { color: var(--ink); }
+.back-link svg, .cal-step svg { width: 1.1rem; height: 1.1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.event-form { padding: clamp(1.25rem, 3vw, 2rem); }
+.event-fields { margin: 0; padding: 0; border: 0; min-width: 0; display: grid; gap: 1.1rem; }
+.event-fields .field + .field, .event-fields .field + fieldset.field { margin-top: 0; }
+.event-fields:disabled .input-title { border-color: transparent; padding-left: 0; }
+.input-title { font-family: var(--font-display); font-size: var(--step-1) !important; font-weight: 600; }
+
+.field textarea {
+    width: 100%;
+    padding: 0.6rem 0.85rem;
+    border: 1.5px solid var(--line);
+    border-radius: var(--radius-field);
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    resize: vertical;
+}
+.field textarea:focus-visible { outline: none; border-color: var(--moss); box-shadow: 0 0 0 3px color-mix(in srgb, var(--honey) 55%, transparent); }
+
+.date-time { display: flex; gap: 0.5rem; }
+.date-time input[type="date"] { flex: 1 1 auto; min-width: 0; }
+.date-time input[type="time"] { flex: 0 0 7.5rem; }
+.rrule-input { margin-top: 0.5rem; font-family: ui-monospace, Consolas, monospace; }
+.rrule-hint { margin-top: 0.25rem; }
+
+.field-switch { display: grid; gap: 0.2rem; }
+.switch { display: inline-flex; align-items: center; gap: 0.65rem; font-weight: 600; cursor: pointer; width: fit-content; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.switch-track {
+    position: relative;
+    width: 2.6rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    background: var(--line);
+    transition: background-color 0.15s;
+}
+.switch-track::after {
+    content: "";
+    position: absolute;
+    top: 0.2rem;
+    left: 0.2rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+    transition: transform 0.18s var(--ease);
+}
+.switch input:checked + .switch-track { background: var(--moss); }
+.switch input:checked + .switch-track::after { transform: translateX(1.1rem); }
+.switch input:focus-visible + .switch-track { outline: 3px solid var(--honey); outline-offset: 2px; }
+
+.choice-member input { accent-color: var(--member-color); }
+.choice-member:has(input:checked) {
+    border-color: var(--member-color);
+    background: color-mix(in srgb, var(--member-color) 16%, var(--surface));
+}
+
+.occurrence-panel { margin-top: 1.25rem; padding: clamp(1.25rem, 3vw, 2rem); display: grid; gap: 1rem; }
+.occurrence-panel h2 { font-size: var(--step-1); }
+.occurrence-panel .muted { margin-top: -0.6rem; }
+.occurrence-panel form { display: grid; gap: 1rem; }
+.occurrence-panel .form-actions { margin-top: 0; }
+.event-main > .danger-zone { margin-top: 1.25rem; border-top: 0; padding-top: 0; }
+
 /* --- Dialog -------------------------------------------------------------- */
 
 .dialog {

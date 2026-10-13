@@ -240,6 +240,53 @@
         });
     }
 
+    /* --- Terminformular: Ganztägig und Wiederholung ------------------------ */
+
+    function initEventForm() {
+        const form = document.querySelector("[data-event-form]");
+        if (!form) return;
+
+        const allDay = form.querySelector("[data-allday-toggle]");
+        const timeFields = form.querySelectorAll("[data-time-field]");
+        const syncAllDay = () => timeFields.forEach(f => {
+            f.hidden = allDay.checked;
+            f.disabled = allDay.checked;
+        });
+        allDay?.addEventListener("change", syncAllDay);
+        if (allDay) syncAllDay();
+
+        // Beginn verschoben: Ende mitziehen, wenn es sonst davor läge
+        const startDate = form.querySelector("#startDate");
+        const endDate = form.querySelector("#endDate");
+        startDate?.addEventListener("change", () => {
+            if (endDate.value && endDate.value < startDate.value) endDate.value = startDate.value;
+        });
+
+        const select = form.querySelector("[data-repeat-select]");
+        const input = form.querySelector("[data-rrule-input]");
+        const hint = form.querySelector("[data-rrule-hint]");
+        if (!select || !input) return;
+        const presets = [...select.options].map(o => o.value).filter(v => v && v !== "custom");
+        const showCustom = custom => {
+            input.hidden = !custom;
+            if (hint) hint.hidden = !custom;
+        };
+        const current = input.value.trim().replace(/^RRULE:/i, "");
+        if (!current) select.value = "";
+        else if (presets.includes(current)) select.value = current;
+        else select.value = "custom";
+        showCustom(select.value === "custom");
+        select.addEventListener("change", () => {
+            if (select.value === "custom") {
+                showCustom(true);
+                input.focus();
+            } else {
+                input.value = select.value;
+                showCustom(false);
+            }
+        });
+    }
+
     /* --- Begrüßung nach Tageszeit ---------------------------------------- */
 
     function initGreeting() {
@@ -263,6 +310,7 @@
         initFilters();
         initHtmx();
         initGreeting();
+        initEventForm();
         consumeToasts(document);
     });
 })();

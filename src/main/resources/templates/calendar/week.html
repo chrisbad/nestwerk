@@ -4,6 +4,8 @@
 <body>
 <header th:replace="~{fragments/layout :: nav(active='calendar')}"></header>
 <main class="cal-main" id="calendar">
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
     <div th:replace="~{calendar/fragments :: toolbar(
             |${#temporals.format(first, 'd. MMM')} – ${#temporals.format(last, 'd. MMM yyyy')}|, 'week', ${first},
             @{/calendar/week(date=${prev})}, @{/calendar/week(date=${today})}, @{/calendar/week(date=${next})})}"></div>
