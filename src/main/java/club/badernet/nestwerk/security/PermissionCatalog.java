@@ -19,6 +19,7 @@ public final class PermissionCatalog {
     private static List<Permission> collect() {
         List<Permission> all = new ArrayList<>();
         all.addAll(Arrays.asList(AdminPermission.values()));
+        all.addAll(Arrays.asList(club.badernet.nestwerk.calendar.CalendarPermission.values()));
         return List.copyOf(all);
     }
 
