@@ -3,6 +3,8 @@ package club.badernet.nestwerk.web;
 import club.badernet.nestwerk.role.RoleService;
 import club.badernet.nestwerk.security.PermissionCatalog;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/admin/roles")
@@ -36,9 +39,12 @@ public class AdminRoleController {
     String create(@RequestParam String name,
                   @RequestParam(required = false) String description,
                   @RequestParam(required = false) Set<String> permissions,
+                  Authentication actor,
                   RedirectAttributes redirect) {
-        return run(redirect, "Rolle '" + name.trim() + "' wurde angelegt.",
-                () -> roleService.create(name, description, permissions));
+        return run(redirect, "Rolle '" + name.trim() + "' wurde angelegt.", () -> {
+            roleService.requireMayManage(permissions(actor), null, permissions);
+            roleService.create(name, description, permissions);
+        });
     }
 
     @PostMapping("/{id}")
@@ -46,14 +52,24 @@ public class AdminRoleController {
                   @RequestParam(required = false) String name,
                   @RequestParam(required = false) String description,
                   @RequestParam(required = false) Set<String> permissions,
+                  Authentication actor,
                   RedirectAttributes redirect) {
-        return run(redirect, "Rolle wurde gespeichert.",
-                () -> roleService.update(id, name, description, permissions));
+        return run(redirect, "Rolle wurde gespeichert.", () -> {
+            roleService.requireMayManage(permissions(actor), id, permissions);
+            roleService.update(id, name, description, permissions);
+        });
     }
 
     @PostMapping("/{id}/delete")
-    String delete(@PathVariable Long id, RedirectAttributes redirect) {
-        return run(redirect, "Rolle wurde gelöscht.", () -> roleService.delete(id));
+    String delete(@PathVariable Long id, Authentication actor, RedirectAttributes redirect) {
+        return run(redirect, "Rolle wurde gelöscht.", () -> {
+            roleService.requireMayManage(permissions(actor), id, null);
+            roleService.delete(id);
+        });
+    }
+
+    private static Set<String> permissions(Authentication actor) {
+        return actor.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toSet());
     }
 
     private String run(RedirectAttributes redirect, String successMessage, Runnable action) {

@@ -5,6 +5,7 @@ import club.badernet.nestwerk.user.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -63,6 +64,27 @@ public class RoleService {
             throw new IllegalArgumentException("Die Rolle ist noch Benutzern zugewiesen.");
         }
         roles.delete(role);
+    }
+
+    /**
+     * Verhindert Rechteausweitung durch Rollenverwalter ohne Administratorrechte: Sie dürfen nur
+     * Rechte vergeben, die sie selbst besitzen, und keine Rollen mit weitergehenden Rechten ändern.
+     *
+     * @param actorPermissions Rechte des handelnden Benutzers
+     * @param roleId           betroffene Rolle oder {@code null} beim Anlegen
+     * @param permissions      zu setzende Rechte oder {@code null}, wenn keine gesetzt werden
+     */
+    @Transactional(readOnly = true)
+    public void requireMayManage(Collection<String> actorPermissions, Long roleId, Set<String> permissions) {
+        if (actorPermissions.containsAll(PermissionCatalog.names())) {
+            return;
+        }
+        if (roleId != null && !actorPermissions.containsAll(get(roleId).effectivePermissionNames())) {
+            throw new IllegalArgumentException("Diese Rolle enthält Rechte, die du selbst nicht hast.");
+        }
+        if (permissions != null && !actorPermissions.containsAll(permissions)) {
+            throw new IllegalArgumentException("Du kannst nur Rechte vergeben, die du selbst hast.");
+        }
     }
 
     private Role get(Long id) {

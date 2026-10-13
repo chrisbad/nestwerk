@@ -36,7 +36,7 @@ class AdminRoleControllerTest {
     }
 
     @Test
-    @WithMockUser(authorities = "ACCESS_ROLE_MANAGE")
+    @WithMockUser(authorities = {"ACCESS_ROLE_MANAGE", "MEMBER_MANAGE"})
     void createsRoleFromForm() throws Exception {
         mockMvc.perform(post("/admin/roles").with(csrf())
                         .param("name", "Teenager")
@@ -63,5 +63,40 @@ class AdminRoleControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Administrator")))
                 .andExpect(content().string(containsString("value=\"MEMBER_MANAGE\"")));
+    }
+
+    @Test
+    @WithMockUser(authorities = "ACCESS_ROLE_MANAGE")
+    void roleManagerCannotGrantPermissionsBeyondOwn() throws Exception {
+        mockMvc.perform(post("/admin/roles").with(csrf())
+                        .param("name", "Hintertür")
+                        .param("permissions", "USER_MANAGE"))
+                .andExpect(flash().attributeExists("error"));
+
+        assertThat(roles.findByNameIgnoreCase("Hintertür")).isEmpty();
+    }
+
+    @Test
+    @WithMockUser(authorities = "ACCESS_ROLE_MANAGE")
+    void roleManagerCannotEditRoleWithPermissionsBeyondOwn() throws Exception {
+        var role = roles.save(new club.badernet.nestwerk.role.Role("Verwalter", null, java.util.Set.of("USER_MANAGE")));
+
+        mockMvc.perform(post("/admin/roles/{id}", role.getId()).with(csrf())
+                        .param("name", "Verwalter").param("description", "geändert"))
+                .andExpect(flash().attributeExists("error"));
+        mockMvc.perform(post("/admin/roles/{id}/delete", role.getId()).with(csrf()))
+                .andExpect(flash().attributeExists("error"));
+
+        assertThat(roles.findById(role.getId())).get()
+                .extracting(club.badernet.nestwerk.role.Role::getPermissions).asString().contains("USER_MANAGE");
+    }
+
+    @Test
+    @WithMockUser(authorities = {"USER_MANAGE", "ACCESS_ROLE_MANAGE", "MEMBER_MANAGE"})
+    void administratorCanGrantAnyPermission() throws Exception {
+        mockMvc.perform(post("/admin/roles").with(csrf())
+                        .param("name", "Vollverwalter")
+                        .param("permissions", "USER_MANAGE"))
+                .andExpect(flash().attributeExists("success"));
     }
 }
