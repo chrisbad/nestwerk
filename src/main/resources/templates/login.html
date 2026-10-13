@@ -1,18 +1,58 @@
 <!DOCTYPE html>
 <html lang="de" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Anmelden – Nestwerk</title>
-</head>
+<head th:replace="~{fragments/layout :: head('Anmelden')}"></head>
 <body>
-<h1>Nestwerk</h1>
-<form th:action="@{/login}" method="post">
-    <p th:if="${param.error}">Benutzername oder Passwort ist falsch.</p>
-    <p th:if="${param.logout}">Du wurdest abgemeldet.</p>
-    <p><label>Benutzername <input type="text" name="username" autofocus required></label></p>
-    <p><label>Passwort <input type="password" name="password" required></label></p>
-    <p><button type="submit">Anmelden</button></p>
-</form>
+<div class="login">
+    <section class="login-art">
+        <div class="brand">
+            <svg th:replace="~{fragments/layout :: nestmark}"></svg>
+            <span>Nestwerk</span>
+        </div>
+        <svg class="login-weave" viewBox="0 60 600 340" aria-hidden="true" focusable="false">
+            <ellipse class="egg" cx="290" cy="170" rx="58" ry="74"/>
+            <ellipse class="egg egg-second" cx="364" cy="196" rx="44" ry="56"/>
+            <path d="M40 190 Q300 110 560 190"/>
+            <path d="M30 200 Q300 400 570 210"/>
+            <path d="M60 180 Q310 420 560 230"/>
+            <path d="M44 230 Q270 410 550 170"/>
+            <path d="M70 250 Q300 330 530 250"/>
+            <path d="M24 214 Q240 380 520 150"/>
+            <path d="M80 160 Q360 380 576 196"/>
+            <path d="M110 290 Q300 360 490 290"/>
+            <path d="M36 176 Q300 150 566 222"/>
+            <path d="M50 220 Q330 300 590 180"/>
+            <path d="M140 320 Q320 390 460 300"/>
+            <path d="M20 190 Q160 260 280 340"/>
+            <path d="M580 200 Q440 270 320 345"/>
+        </svg>
+        <p class="login-claim">Alles, was die Familie zusammenhält.</p>
+    </section>
+
+    <main class="login-form-wrap">
+        <form class="login-form" th:action="@{/login}" method="post">
+            <h1>Anmelden</h1>
+            <p>Melde dich mit deinem Nestwerk-Konto an.</p>
+
+            <p class="notice notice-error" role="alert" th:if="${param.error}">
+                Benutzername oder Passwort ist falsch.
+            </p>
+            <p class="notice" role="status" th:if="${param.logout}">Du wurdest abgemeldet.</p>
+
+            <div class="field">
+                <label for="username">Benutzername</label>
+                <input id="username" type="text" name="username" autocomplete="username" autofocus required>
+            </div>
+            <div class="field">
+                <label for="password">Passwort</label>
+                <div class="password">
+                    <input id="password" type="password" name="password" autocomplete="current-password" required>
+                    <button th:replace="~{fragments/layout :: passwordToggle}"></button>
+                </div>
+            </div>
+
+            <button type="submit" class="button">Anmelden</button>
+        </form>
+    </main>
+</div>
 </body>
 </html>

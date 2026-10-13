@@ -1,42 +1,105 @@
 <!DOCTYPE html>
 <html lang="de" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Benutzerverwaltung – Nestwerk</title>
-</head>
+<head th:replace="~{fragments/layout :: head('Benutzerverwaltung')}"></head>
 <body>
-<p><a th:href="@{/}">Zurück</a></p>
-<h1>Benutzerverwaltung</h1>
+<header th:replace="~{fragments/layout :: nav(active='users')}"></header>
+<main>
+    <div class="page-head">
+        <div>
+            <h1>Benutzer</h1>
+            <p>Wer sich bei Nestwerk anmelden kann.</p>
+        </div>
+        <div class="page-actions">
+            <label class="search">
+                <span class="visually-hidden">Benutzer suchen</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+                <input class="input" type="search" placeholder="Suchen" data-filter-table="users-table">
+            </label>
+            <button type="button" class="button" data-open-dialog="create-user">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                Benutzer anlegen
+            </button>
+        </div>
+    </div>
 
-<p th:if="${success}" th:text="${success}"></p>
-<p th:if="${error}" th:text="${error}"></p>
+    <div id="users-panel" th:fragment="panel">
+        <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+        <p hidden data-toast="error" data-form-error th:if="${error}" th:text="${error}"></p>
 
-<table>
-    <thead>
-    <tr><th>Benutzername</th><th>Rolle</th><th>Aktiv</th></tr>
-    </thead>
-    <tbody>
-    <tr th:each="user : ${users}">
-        <td th:text="${user.username}"></td>
-        <td th:text="${user.role}"></td>
-        <td th:text="${user.enabled} ? 'ja' : 'nein'"></td>
-    </tr>
-    </tbody>
-</table>
+        <div class="sheet">
+            <table class="table" id="users-table" th:unless="${#lists.isEmpty(users)}">
+                <thead>
+                <tr><th scope="col">Name</th><th scope="col">Rolle</th><th scope="col">Status</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="user : ${users}" th:classappend="${user.username == created} ? 'is-new'">
+                    <td>
+                        <span class="person">
+                            <span class="avatar" aria-hidden="true"
+                                  th:text="${#strings.toUpperCase(#strings.substring(user.username, 0, 1))}">A</span>
+                            <span th:text="${user.username}">admin</span>
+                        </span>
+                    </td>
+                    <td th:switch="${user.role.name()}">
+                        <span th:case="'ADMIN'" class="badge badge-admin">Administrator</span>
+                        <span th:case="*" class="badge">Benutzer</span>
+                    </td>
+                    <td>
+                        <span class="status" th:if="${user.enabled}">Aktiv</span>
+                        <span class="status status-off" th:unless="${user.enabled}">Deaktiviert</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <p class="filter-empty" hidden data-filter-empty="users-table">Kein Benutzer passt zur Suche.</p>
+            <p class="sheet-empty" th:if="${#lists.isEmpty(users)}">
+                Noch keine Benutzer. Lege das erste Konto über „Benutzer anlegen“ an.
+            </p>
+        </div>
+    </div>
+</main>
 
-<h2>Neuen Benutzer anlegen</h2>
-<form th:action="@{/admin/users}" method="post">
-    <p><label>Benutzername <input type="text" name="username" maxlength="100" required></label></p>
-    <p><label>Passwort (mind. 8 Zeichen) <input type="password" name="password" minlength="8" required></label></p>
-    <p>
-        <label>Rolle
-            <select name="role">
-                <option th:each="r : ${roles}" th:value="${r}" th:text="${r}"></option>
-            </select>
-        </label>
-    </p>
-    <p><button type="submit">Anlegen</button></p>
-</form>
+<dialog id="create-user" class="dialog" aria-labelledby="create-user-title">
+    <form th:action="@{/admin/users}" method="post"
+          th:hx-post="@{/admin/users}"
+          hx-target="#users-panel" hx-swap="outerHTML">
+        <div class="dialog-head">
+            <h2 id="create-user-title">Benutzer anlegen</h2>
+            <button type="button" class="icon-button" data-close-dialog>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span class="visually-hidden">Schließen</span>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <p class="notice notice-error" role="alert" hidden data-dialog-error></p>
+            <div class="field">
+                <label for="new-username">Benutzername</label>
+                <input id="new-username" type="text" name="username" maxlength="100" autocomplete="off" required>
+            </div>
+            <div class="field">
+                <label for="new-password">Passwort <span class="hint">mindestens 8 Zeichen</span></label>
+                <div class="password">
+                    <input id="new-password" type="password" name="password" minlength="8"
+                           autocomplete="new-password" required>
+                    <button th:replace="~{fragments/layout :: passwordToggle}"></button>
+                </div>
+            </div>
+            <div class="field">
+                <label for="new-role">Rolle</label>
+                <select id="new-role" name="role">
+                    <option th:each="r : ${roles}" th:value="${r}"
+                            th:text="${r.name() == 'ADMIN'} ? 'Administrator' : 'Benutzer'"
+                            th:selected="${r.name() == 'USER'}">Benutzer</option>
+                </select>
+            </div>
+        </div>
+        <div class="dialog-foot">
+            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+            <button type="submit" class="button">Benutzer anlegen</button>
+        </div>
+    </form>
+</dialog>
+
+<div th:replace="~{fragments/layout :: toasts}"></div>
 </body>
 </html>

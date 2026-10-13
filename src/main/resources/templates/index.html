@@ -1,17 +1,33 @@
 <!DOCTYPE html>
 <html lang="de" xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Nestwerk</title>
-</head>
+<head th:replace="~{fragments/layout :: head('Start')}"></head>
 <body>
-<h1>Willkommen bei Nestwerk</h1>
-<p>Angemeldet als <strong sec:authentication="name">benutzer</strong>.</p>
-<p sec:authorize="hasRole('ADMIN')"><a th:href="@{/admin/users}">Benutzerverwaltung</a></p>
-<form th:action="@{/logout}" method="post">
-    <button type="submit">Abmelden</button>
-</form>
+<header th:replace="~{fragments/layout :: nav(active='home')}"></header>
+<main>
+    <section class="greeting">
+        <time th:datetime="${today}" th:text="${todayLabel}">Datum</time>
+        <h1><span data-greeting>Hallo</span>, <span sec:authentication="name">benutzer</span>.</h1>
+    </section>
+
+    <ul class="areas" sec:authorize="hasRole('ADMIN')">
+        <li>
+            <a class="area" th:href="@{/admin/users}">
+                <span class="area-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <circle cx="9" cy="8" r="3.5"/><path d="M2.5 19.5a6.5 6.5 0 0 1 13 0"/>
+                        <path d="M15.5 4.8a3.5 3.5 0 0 1 0 6.4M18 14a6.5 6.5 0 0 1 3.5 5.5"/>
+                    </svg>
+                </span>
+                <h2>Benutzer</h2>
+                <p>Konten anlegen und Rollen vergeben</p>
+            </a>
+        </li>
+    </ul>
+    <p class="empty-home" sec:authorize="!hasRole('ADMIN')">
+        Hier erscheinen Kalender und weitere Bereiche, sobald sie eingerichtet sind.
+    </p>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
 </body>
 </html>

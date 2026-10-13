@@ -1017,6 +1017,8 @@ git commit -m "feat: Rollen mit Einzelrechten, mehrere Rollen je Benutzer, Letzt
 
 ### Task 3: Layout und Navigation
 
+> **Stand 2026-10-14:** `fragments/layout.html`, `static/css/nestwerk.css`, `static/js/nestwerk.js` (inkl. htmx) existieren bereits mit dem neuen Design. Fragmente: `head(title)`, `nav` (Aufruf mit `nav(active='…')`, Klasse `topnav`), `toasts`, `passwordToggle`, `nestmark`. Für diese Task bleiben nur: `sec:authorize` in `nav` von `hasRole('ADMIN')` auf die Rechte umstellen, Menüpunkte Rollen/Mitglieder ergänzen und `NavigationTests` anlegen. Die CSS-/HTML-Beispiele unten sind überholt.
+
 **Files:**
 - Create: `src/main/resources/templates/fragments/layout.html`
 - Create: `src/main/resources/static/css/nestwerk.css`
