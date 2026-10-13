@@ -13,7 +13,45 @@
 
     <p class="notice notice-error" role="alert" th:if="${error}" th:text="${error}">Fehler</p>
 
+    <section class="sheet occurrence-panel" th:if="${occurrenceId != null and canEdit}">
+        <h2>Nur dieses Vorkommen</h2>
+        <p class="muted" th:if="${occurrence != null}"
+           th:text="${#temporals.format(occurrence.start, 'EEEE, d. MMMM yyyy')}">Datum</p>
+        <form th:if="${occurrence != null}" th:action="@{/calendar/events/{id}/occurrence(id=${event.id})}" method="post">
+            <input type="hidden" name="recurrenceId" th:value="${occurrenceId}">
+            <div class="field">
+                <label for="occ-title">Titel</label>
+                <input id="occ-title" type="text" name="title" th:value="${occurrence.title}" maxlength="200" required>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="occ-start">Beginn</label>
+                    <input id="occ-start" type="datetime-local" name="start"
+                           th:value="${#temporals.format(occurrence.start, 'yyyy-MM-dd''T''HH:mm')}" required>
+                </div>
+                <div class="field">
+                    <label for="occ-end">Ende</label>
+                    <input id="occ-end" type="datetime-local" name="end"
+                           th:value="${#temporals.format(occurrence.end, 'yyyy-MM-dd''T''HH:mm')}" required>
+                </div>
+            </div>
+            <div class="field">
+                <label for="occ-location">Ort <span class="hint">optional</span></label>
+                <input id="occ-location" type="text" name="location" th:value="${occurrence.location}" maxlength="255">
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="button">Vorkommen speichern</button>
+            </div>
+        </form>
+        <form class="danger-zone" th:action="@{/calendar/events/{id}/occurrence/cancel(id=${event.id})}" method="post"
+              data-confirm="Dieses Vorkommen absagen?" data-confirm-label="Absagen">
+            <input type="hidden" name="recurrenceId" th:value="${occurrenceId}">
+            <button type="submit" class="button button-ghost">Dieses Vorkommen absagen</button>
+        </form>
+    </section>
+
     <form class="sheet event-form" th:action="@{${action}}" method="post" th:object="${form}" data-event-form>
+        <h2 class="series-heading" th:if="${occurrenceId != null and canEdit}">Ganze Serie</h2>
         <fieldset class="event-fields" th:disabled="${!isNew and !canEdit}">
             <div class="field">
                 <label for="title">Titel</label>
@@ -96,42 +134,6 @@
         </div>
     </form>
 
-    <section class="sheet occurrence-panel" th:if="${occurrenceId != null and canEdit}">
-        <h2>Nur dieses Vorkommen</h2>
-        <p class="muted" th:if="${occurrence != null}"
-           th:text="${#temporals.format(occurrence.start, 'EEEE, d. MMMM yyyy')}">Datum</p>
-        <form th:if="${occurrence != null}" th:action="@{/calendar/events/{id}/occurrence(id=${event.id})}" method="post">
-            <input type="hidden" name="recurrenceId" th:value="${occurrenceId}">
-            <div class="field">
-                <label for="occ-title">Titel</label>
-                <input id="occ-title" type="text" name="title" th:value="${occurrence.title}" maxlength="200" required>
-            </div>
-            <div class="field-row">
-                <div class="field">
-                    <label for="occ-start">Beginn</label>
-                    <input id="occ-start" type="datetime-local" name="start"
-                           th:value="${#temporals.format(occurrence.start, 'yyyy-MM-dd''T''HH:mm')}" required>
-                </div>
-                <div class="field">
-                    <label for="occ-end">Ende</label>
-                    <input id="occ-end" type="datetime-local" name="end"
-                           th:value="${#temporals.format(occurrence.end, 'yyyy-MM-dd''T''HH:mm')}" required>
-                </div>
-            </div>
-            <div class="field">
-                <label for="occ-location">Ort <span class="hint">optional</span></label>
-                <input id="occ-location" type="text" name="location" th:value="${occurrence.location}" maxlength="255">
-            </div>
-            <div class="form-actions">
-                <button type="submit" class="button">Vorkommen speichern</button>
-            </div>
-        </form>
-        <form class="danger-zone" th:action="@{/calendar/events/{id}/occurrence/cancel(id=${event.id})}" method="post"
-              data-confirm="Dieses Vorkommen absagen?" data-confirm-label="Absagen">
-            <input type="hidden" name="recurrenceId" th:value="${occurrenceId}">
-            <button type="submit" class="button button-ghost">Dieses Vorkommen absagen</button>
-        </form>
-    </section>
 
     <form class="danger-zone" th:if="${!isNew and canDelete}"
           th:action="@{/calendar/events/{id}/delete(id=${event.id})}" method="post"

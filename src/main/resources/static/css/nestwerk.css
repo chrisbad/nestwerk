@@ -367,7 +367,7 @@ html:not([data-theme-mode]) .theme-icon-system { display: block !important; }
 .field + .field { margin-top: 1rem; }
 
 .field label { font-weight: 600; }
-.field .hint { color: var(--ink-soft); font-size: var(--step--1); font-weight: 400; }
+.hint, .field .hint { color: var(--ink-soft); font-size: var(--step--1); font-weight: 400; }
 
 .input,
 .field input:not([type="checkbox"]):not([type="radio"]),
@@ -839,6 +839,7 @@ fieldset.field legend { padding: 0; margin-bottom: 0.35rem; font-weight: 600; }
     font-variant-numeric: tabular-nums;
     text-decoration: none;
 }
+.day > .day-num { justify-self: start; }
 a.day-num:hover { background: var(--sage); }
 .day-today .day-num { background: var(--honey); color: #241a05; }
 
@@ -889,6 +890,8 @@ a.day-num:hover { background: var(--sage); }
     font-size: var(--step-0);
 }
 .week-day-name { color: var(--ink-soft); font-family: var(--font-body); font-size: var(--step--1); font-weight: 600; }
+.week .occ, .agenda .occ { flex-wrap: wrap; }
+.week .occ-title span, .agenda .occ-title span { white-space: normal; overflow-wrap: anywhere; }
 .day-empty { color: var(--ink-soft); font-size: var(--step--1); opacity: 0.7; }
 
 /* Agenda */
@@ -1004,7 +1007,9 @@ a.day-num:hover { background: var(--sage); }
     background: color-mix(in srgb, var(--member-color) 16%, var(--surface));
 }
 
-.occurrence-panel { margin-top: 1.25rem; padding: clamp(1.25rem, 3vw, 2rem); display: grid; gap: 1rem; }
+.series-heading { font-size: var(--step-1); margin-bottom: 1.1rem; }
+.occurrence-panel + .event-form { margin-top: 1.25rem; }
+.occurrence-panel { padding: clamp(1.25rem, 3vw, 2rem); display: grid; gap: 1rem; }
 .occurrence-panel h2 { font-size: var(--step-1); }
 .occurrence-panel .muted { margin-top: -0.6rem; }
 .occurrence-panel form { display: grid; gap: 1rem; }
