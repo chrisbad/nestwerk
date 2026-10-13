@@ -167,4 +167,21 @@ class AdminUserControllerTest {
         assertThat(users.findByUsername("zweiter-admin")).get()
                 .extracting(User::isAdministrator).isEqualTo(true);
     }
+
+    @Test
+    void nonAdministratorCannotTakeOverUserWithMorePermissions() throws Exception {
+        Role roleAdmins = roles.save(new Role("Rollenpflege", null, Set.of("ACCESS_ROLE_MANAGE")));
+        User target = userService.create("rollenwart", "passwort1", Set.of(roleAdmins.getId()));
+        String before = target.getPasswordHash();
+
+        mockMvc.perform(post("/admin/users/{id}/password", target.getId()).with(csrf())
+                        .param("password", "uebernommen1"))
+                .andExpect(flash().attributeExists("error"));
+        mockMvc.perform(post("/admin/users/{id}/enabled", target.getId()).with(csrf())
+                        .param("enabled", "false"))
+                .andExpect(flash().attributeExists("error"));
+
+        assertThat(users.findById(target.getId())).get().extracting(User::getPasswordHash).isEqualTo(before);
+        assertThat(users.findById(target.getId())).get().extracting(User::isEnabled).isEqualTo(true);
+    }
 }

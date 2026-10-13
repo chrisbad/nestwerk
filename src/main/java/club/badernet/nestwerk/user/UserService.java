@@ -111,8 +111,15 @@ public class UserService implements UserDetailsService {
         if (actorIsAdministrator) {
             return;
         }
-        if (targetUserId != null && load(targetUserId).isAdministrator()) {
-            throw new IllegalArgumentException("Administratoren können nur von Administratoren geändert werden.");
+        if (targetUserId != null) {
+            User target = load(targetUserId);
+            if (target.isAdministrator()) {
+                throw new IllegalArgumentException("Administratoren können nur von Administratoren geändert werden.");
+            }
+            if (!actorPermissions.containsAll(target.permissionNames())) {
+                throw new IllegalArgumentException(
+                        "„" + target.getUsername() + "“ hat Rechte, die du selbst nicht hast, und kann daher nicht geändert werden.");
+            }
         }
         for (Role role : resolveRoles(roleIds)) {
             if (role.isAllPermissions() || !actorPermissions.containsAll(role.effectivePermissionNames())) {
