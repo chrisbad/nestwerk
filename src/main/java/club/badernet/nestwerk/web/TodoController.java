@@ -7,6 +7,8 @@ import club.badernet.nestwerk.todo.TodoAccess;
 import club.badernet.nestwerk.todo.TodoConflictException;
 import club.badernet.nestwerk.todo.TodoFilter;
 import club.badernet.nestwerk.attachment.AttachmentService;
+import club.badernet.nestwerk.notification.Channel;
+import club.badernet.nestwerk.notification.NotificationPreferences;
 import club.badernet.nestwerk.todo.TodoComment;
 import club.badernet.nestwerk.todo.TodoCommentService;
 import club.badernet.nestwerk.todo.TodoGroup;
@@ -54,12 +56,14 @@ public class TodoController {
     private final TodoHistoryRepository history;
     private final TodoHistoryFormatter historyFormatter;
     private final AttachmentService attachments;
+    private final NotificationPreferences preferences;
 
     public TodoController(TodoService todos, TodoQuery query, TodoAccess access, TodoViews views,
                           MarkdownRenderer markdown, CurrentUser currentUser, UserRepository users,
                           TodoStructureService structure, TodoCommentService comments,
                           TodoHistoryRepository history, TodoHistoryFormatter historyFormatter,
-                          AttachmentService attachments) {
+                          AttachmentService attachments, NotificationPreferences preferences) {
+        this.preferences = preferences;
         this.structure = structure;
         this.comments = comments;
         this.history = history;
@@ -281,6 +285,12 @@ public class TodoController {
         model.addAttribute("watchers", todo.getWatcherUserIds().stream().map(labels::user).sorted().toList());
         model.addAttribute("watcherIds", todo.getWatcherUserIds());
         model.addAttribute("currentUserId", viewer.getId());
+        model.addAttribute("canOverride", access.can(viewer, "NOTIFY_OVERRIDE", todo));
+        model.addAttribute("overrideEmail", preferences.choice(NotificationPreferences.Scope.TODO, id,
+                NotificationPreferences.ALL, Channel.EMAIL));
+        model.addAttribute("overridePush", preferences.choice(NotificationPreferences.Scope.TODO, id,
+                NotificationPreferences.ALL, Channel.PUSH));
+        model.addAttribute("choices", NotificationPreferences.Choice.values());
         model.addAttribute("canWatch", access.can(viewer, "WATCH", todo));
         boolean canManageWatchers = access.can(viewer, "MANAGE_WATCHERS", todo);
         model.addAttribute("canManageWatchers", canManageWatchers);
@@ -454,6 +464,22 @@ public class TodoController {
             case MONTH -> "Wiedervorlage in einem Monat.";
         });
         return "redirect:" + safeBack(back, "/todos/" + id);
+    }
+
+    @PostMapping("/{id}/notification-override")
+    String notificationOverride(@PathVariable Long id,
+                                @RequestParam(name = "EMAIL", defaultValue = "DEFAULT") NotificationPreferences.Choice email,
+                                @RequestParam(name = "PUSH", defaultValue = "DEFAULT") NotificationPreferences.Choice push,
+                                RedirectAttributes redirect) {
+        User actor = requireModule();
+        Todo todo = todos.get(id, actor);
+        if (!access.can(actor, "NOTIFY_OVERRIDE", todo)) {
+            throw new AccessDeniedException("Keine Berechtigung, Benachrichtigungen dieses ToDos zu ändern");
+        }
+        preferences.set(NotificationPreferences.Scope.TODO, id, NotificationPreferences.ALL, Channel.EMAIL, email);
+        preferences.set(NotificationPreferences.Scope.TODO, id, NotificationPreferences.ALL, Channel.PUSH, push);
+        redirect.addFlashAttribute("success", "Benachrichtigungen für dieses ToDo wurden gespeichert.");
+        return "redirect:/todos/" + id;
     }
 
     @PostMapping("/{id}/watch")

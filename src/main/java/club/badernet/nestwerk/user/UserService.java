@@ -94,6 +94,16 @@ public class UserService implements UserDetailsService {
         user.setEnabled(enabled);
     }
 
+    /** Eigene E-Mail-Adresse für Benachrichtigungen; leer entfernt sie. */
+    @Transactional
+    public void changeEmail(Long userId, String email) {
+        String clean = email == null || email.isBlank() ? null : email.trim();
+        if (clean != null && (clean.length() > 200 || !clean.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+"))) {
+            throw new IllegalArgumentException("Die E-Mail-Adresse ist ungültig.");
+        }
+        load(userId).setEmail(clean);
+    }
+
     @Transactional
     public void resetPassword(Long userId, String rawPassword) {
         requireValidPassword(rawPassword);

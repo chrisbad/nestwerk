@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Meine Benachrichtigungswege')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='notifications')}"></header>
+<main class="event-main">
+    <div class="page-head">
+        <div>
+            <h1>Meine Benachrichtigungswege</h1>
+            <p>Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich kannst du sie per E-Mail oder als Push aufs Handy bekommen.</p>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <section class="sheet event-form settings-section" th:if="${mailConfigured}">
+        <h2>E-Mail</h2>
+        <form method="post" th:action="@{/settings/notifications/email}" class="inline-form">
+            <div class="field">
+                <label for="email">E-Mail-Adresse <span class="hint">leer lassen, um keine Mails zu bekommen</span></label>
+                <input id="email" type="email" name="email" maxlength="200" th:value="${email}">
+            </div>
+            <button type="submit" class="button">Speichern</button>
+        </form>
+    </section>
+
+    <section class="sheet event-form settings-section">
+        <h2>Push auf diesem Gerät</h2>
+        <p class="muted" data-push-state>Push wird von diesem Browser nicht unterstützt.</p>
+        <p class="hint">Auf dem iPhone muss Nestwerk dafür über „Teilen → Zum Home-Bildschirm“ installiert sein.</p>
+        <div class="push-actions">
+            <button type="button" class="button" data-push-subscribe th:data-vapid-key="${vapidKey}" hidden>
+                Push auf diesem Gerät aktivieren
+            </button>
+            <form method="post" th:action="@{/settings/notifications/push-test}" th:unless="${#lists.isEmpty(devices)}">
+                <button type="submit" class="button button-ghost">Testnachricht senden</button>
+            </form>
+        </div>
+        <ul class="device-list" th:unless="${#lists.isEmpty(devices)}">
+            <li th:each="d : ${devices}">
+                <span th:text="${d.deviceLabel()}">Chrome auf Android</span>
+                <form method="post" th:action="@{/settings/notifications/push-subscriptions/{id}/delete(id=${d.id})}">
+                    <button type="submit" class="link-button">Entfernen</button>
+                </form>
+            </li>
+        </ul>
+    </section>
+
+    <section class="sheet event-form settings-section">
+        <h2>Wofür und wie</h2>
+        <form method="post" th:action="@{/settings/notifications/preferences}">
+            <div class="acl-scroll">
+                <table class="acl-matrix pref-matrix">
+                    <thead>
+                    <tr>
+                        <th scope="col">Anlass</th>
+                        <th scope="col" th:if="${mailConfigured}">E-Mail</th>
+                        <th scope="col">Push</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="row : ${rows}">
+                        <th scope="row" th:text="${row.type().label()}">Bald fällig</th>
+                        <td th:if="${mailConfigured}">
+                            <select th:name="${row.type().name()} + ':EMAIL'" th:attr="aria-label=${row.type().label()} + ': E-Mail'">
+                                <option th:each="c : ${choices}" th:value="${c.name()}" th:selected="${row.email() == c}"
+                                        th:text="${c.name() == 'DEFAULT'} ? 'Standard (' + (${row.defaultEmail()} ? 'an' : 'aus') + ')' : ${c.label()}">Standard</option>
+                            </select>
+                        </td>
+                        <td>
+                            <select th:name="${row.type().name()} + ':PUSH'" th:attr="aria-label=${row.type().label()} + ': Push'">
+                                <option th:each="c : ${choices}" th:value="${c.name()}" th:selected="${row.push() == c}"
+                                        th:text="${c.name() == 'DEFAULT'} ? 'Standard (' + (${row.defaultPush()} ? 'an' : 'aus') + ')' : ${c.label()}">Standard</option>
+                            </select>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="button">Einstellungen speichern</button>
+            </div>
+        </form>
+    </section>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

@@ -36,6 +36,17 @@ docker compose -f compose.prod.yaml up -d --build
 - Der erste Admin wird aus `NESTWERK_ADMIN_USERNAME`/`NESTWERK_ADMIN_PASSWORD` angelegt,
   solange keine Benutzer existieren. Weitere Konten legt der Admin unter `/admin/users` an.
 
+### Benachrichtigungen
+
+Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich:
+
+- **E-Mail:** `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASSWORD` und `MAIL_FROM` in der `.env` setzen.
+  Jeder Benutzer hinterlegt seine Adresse unter „Meine Benachrichtigungswege“.
+- **Push aufs Handy:** funktioniert, sobald Nestwerk über HTTPS erreichbar ist und `NESTWERK_BASE_URL`
+  gesetzt ist. Die nötigen Schlüssel erzeugt Nestwerk beim ersten Bedarf selbst. Auf dem iPhone muss
+  Nestwerk über „Teilen → Zum Home-Bildschirm“ installiert sein.
+- Welche Wege standardmäßig gelten, legt ein Administrator unter „Benachrichtigungen einstellen“ fest.
+
 ### Update
 
 ```bash

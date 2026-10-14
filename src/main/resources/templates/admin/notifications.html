@@ -7,7 +7,7 @@
     <div class="page-head">
         <div>
             <h1>Benachrichtigungen einstellen</h1>
-            <p>Wann Nestwerk an ToDos erinnert und über welche Wege.</p>
+            <p>Wann Nestwerk an ToDos erinnert und über welche Wege, solange Benutzer nichts anderes wählen.</p>
         </div>
     </div>
 
@@ -35,6 +35,72 @@
                 <button type="submit" class="button">Speichern</button>
             </div>
         </form>
+    </section>
+
+    <section class="sheet event-form settings-section">
+        <h2>Zustellwege</h2>
+        <dl class="event-facts">
+            <dt>E-Mail</dt>
+            <dd>
+                <th:block th:if="${mailConfigured}">Eingerichtet.
+                    <form method="post" th:action="@{/admin/notifications/test-mail}" class="inline">
+                        <button type="submit" class="link-button link-button-plain">Testmail an mich senden</button>
+                    </form>
+                </th:block>
+                <th:block th:unless="${mailConfigured}">E-Mail ist nicht eingerichtet. Setze <code>MAIL_HOST</code>,
+                    <code>MAIL_PORT</code>, <code>MAIL_USER</code>, <code>MAIL_PASSWORD</code> und <code>MAIL_FROM</code> in der <code>.env</code>.</th:block>
+            </dd>
+            <dt>Push</dt>
+            <dd>Eingerichtet. Funktioniert, sobald Nestwerk über HTTPS erreichbar ist (<code>NESTWERK_BASE_URL</code>).</dd>
+        </dl>
+    </section>
+
+    <section class="sheet event-form settings-section">
+        <h2>Standard-Kanäle</h2>
+        <form method="post" th:action="@{/admin/notifications/preferences}">
+            <div class="acl-scroll">
+                <table class="acl-matrix pref-matrix">
+                    <thead>
+                    <tr>
+                        <th scope="col">Anlass</th>
+                        <th scope="col">E-Mail</th>
+                        <th scope="col">Push</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="row : ${rows}">
+                        <th scope="row" th:text="${row.type().label()}">Bald fällig</th>
+                        <td>
+                            <select th:name="${row.type().name()} + ':EMAIL'" th:attr="aria-label=${row.type().label()} + ': E-Mail'">
+                                <option value="ON" th:selected="${row.email()}">An</option>
+                                <option value="OFF" th:selected="${!row.email()}">Aus</option>
+                            </select>
+                        </td>
+                        <td>
+                            <select th:name="${row.type().name()} + ':PUSH'" th:attr="aria-label=${row.type().label()} + ': Push'">
+                                <option value="ON" th:selected="${row.push()}">An</option>
+                                <option value="OFF" th:selected="${!row.push()}">Aus</option>
+                            </select>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="button">Standard speichern</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="sheet event-form settings-section" th:unless="${#lists.isEmpty(failures)}">
+        <h2>Fehlgeschlagene Zustellungen</h2>
+        <ul class="failure-list">
+            <li th:each="f : ${failures}">
+                <strong th:text="${f.title}">Steuer</strong>
+                <span class="muted" th:text="${f.channel} + ' an ' + ${f.user} + ', ' + ${f.at}">PUSH an mama</span>
+                <span class="failure-error" th:text="${f.error}">Fehler</span>
+            </li>
+        </ul>
     </section>
 </main>
 <div th:replace="~{fragments/layout :: toasts}"></div>

@@ -1549,6 +1549,25 @@ a.tag:hover { text-decoration: underline; }
 .settings-section h2 { font-size: var(--step-1); margin: 0 0 1rem; }
 .settings-section + .settings-section { margin-top: 1rem; }
 
+/* Einstellungen der Benachrichtigungswege */
+.inline-form { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; }
+.inline-form .field { flex: 1 1 16rem; margin: 0; }
+.push-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin: 0.75rem 0; }
+.device-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
+.device-list li { display: flex; justify-content: space-between; gap: 1rem; padding: 0.5rem 0; border-top: 1px solid var(--line); }
+.device-list form { margin: 0; }
+.pref-matrix select { padding: 0.3rem 0.5rem; border: 1px solid var(--line); border-radius: var(--radius-field); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--step--1); }
+.pref-matrix { min-width: 22rem; }
+form.inline { display: inline; margin: 0; }
+.link-button-plain { color: var(--moss); }
+.failure-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.failure-list li { display: grid; gap: 0.1rem; }
+.failure-error { font-size: var(--step--1); color: var(--brick); overflow-wrap: anywhere; }
+.override { display: grid; gap: 0.5rem; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.override h2 { font-size: var(--step-0); color: var(--ink-soft); font-weight: 500; margin: 0; }
+.override label { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; font-size: var(--step--1); }
+.override select { padding: 0.3rem 0.5rem; border: 1px solid var(--line); border-radius: var(--radius-field); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--step--1); }
+
 .home-todos { margin-bottom: 2rem; }
 .home-todos-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: 0.6rem; }
 .home-todos-head h2 { font-size: var(--step-1); }

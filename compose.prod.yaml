@@ -28,6 +28,12 @@ services:
       NESTWERK_ADMIN_PASSWORD: ${NESTWERK_ADMIN_PASSWORD:-}
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
       NESTWERK_ATTACHMENT_DIR: /data/attachments
+      NESTWERK_BASE_URL: ${NESTWERK_BASE_URL:-http://localhost:8080}
+      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USER: ${MAIL_USER:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
     ports:
       - "${APP_BIND:-127.0.0.1:8080}:8080"
     volumes:

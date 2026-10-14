@@ -392,6 +392,67 @@
         });
     }
 
+    /* --- Service Worker und Push ------------------------------------------ */
+
+    function initPush() {
+        if (!("serviceWorker" in navigator)) return;
+        // Service Worker auf allen Seiten registrieren (macht Nestwerk installierbar)
+        navigator.serviceWorker.register("/sw.js").catch(() => { /* z. B. ohne HTTPS */ });
+
+        const button = document.querySelector("[data-push-subscribe]");
+        const state = document.querySelector("[data-push-state]");
+        if (!button || !state) return;
+        if (!("PushManager" in window) || !("Notification" in window)) return;
+
+        const toKey = base64 => {
+            const padded = (base64 + "===".slice((base64.length + 3) % 4)).replace(/-/g, "+").replace(/_/g, "/");
+            return Uint8Array.from(atob(padded), c => c.charCodeAt(0));
+        };
+        const show = async () => {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+            if (Notification.permission === "denied") {
+                state.textContent = "Benachrichtigungen sind in diesem Browser blockiert. Du kannst sie in den Website-Einstellungen erlauben.";
+                button.hidden = true;
+            } else if (subscription) {
+                state.textContent = "Push ist auf diesem Gerät aktiv.";
+                button.hidden = true;
+            } else {
+                state.textContent = "Auf diesem Gerät ist Push noch nicht aktiviert.";
+                button.hidden = false;
+            }
+        };
+        button.addEventListener("click", async () => {
+            button.disabled = true;
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission !== "granted") {
+                    showToast("Ohne Erlaubnis kann Nestwerk keine Push-Nachrichten schicken.", "error");
+                    return;
+                }
+                const registration = await navigator.serviceWorker.ready;
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: toKey(button.dataset.vapidKey)
+                });
+                const token = document.querySelector('meta[name="_csrf"]')?.content;
+                const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+                const headers = { "Content-Type": "application/json" };
+                if (token && header) headers[header] = token;
+                const response = await fetch("/settings/notifications/push-subscriptions", {
+                    method: "POST", headers, body: JSON.stringify(subscription.toJSON())
+                });
+                if (!response.ok) throw new Error(await response.text());
+                window.location.reload();
+            } catch (error) {
+                showToast(error.message || "Push konnte nicht aktiviert werden.", "error");
+            } finally {
+                button.disabled = false;
+            }
+        });
+        show().catch(() => { state.textContent = "Push ist hier nicht verfügbar (Nestwerk braucht HTTPS)."; });
+    }
+
     /* --- Filterformulare: bei Änderung sofort absenden --------------------- */
 
     function initAutoSubmit() {
@@ -429,6 +490,7 @@
         initAutoSubmit();
         initBoard();
         initCollaboration();
+        initPush();
         consumeToasts(document);
     });
 })();

@@ -268,6 +268,27 @@
                     <button type="submit" class="button button-small">Hinzufügen</button>
                 </form>
             </div>
+
+            <form class="override" th:if="${canOverride}" method="post"
+                  th:action="@{/todos/{id}/notification-override(id=${todo.id})}">
+                <h2>Benachrichtigungen für dieses ToDo</h2>
+                <p class="hint">Gilt für alle Beteiligten und geht ihren eigenen Einstellungen vor.</p>
+                <label>E-Mail
+                    <select name="EMAIL">
+                        <option th:each="c : ${choices}" th:value="${c.name()}"
+                                th:text="${c.name() == 'DEFAULT'} ? 'wie eingestellt' : (${c.name() == 'ON'} ? 'immer' : 'nie')"
+                                th:selected="${overrideEmail == c}">wie eingestellt</option>
+                    </select>
+                </label>
+                <label>Push
+                    <select name="PUSH">
+                        <option th:each="c : ${choices}" th:value="${c.name()}"
+                                th:text="${c.name() == 'DEFAULT'} ? 'wie eingestellt' : (${c.name() == 'ON'} ? 'immer' : 'nie')"
+                                th:selected="${overridePush == c}">wie eingestellt</option>
+                    </select>
+                </label>
+                <button type="submit" class="button button-ghost button-small">Speichern</button>
+            </form>
         </aside>
     </div>
 

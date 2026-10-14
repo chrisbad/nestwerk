@@ -18,7 +18,8 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login", "/error", "/actuator/health/**",
-                                "/css/**", "/js/**", "/fonts/**", "/favicon.svg").permitAll()
+                                "/css/**", "/js/**", "/fonts/**", "/favicon.svg", "/icons/**",
+                                "/sw.js", "/manifest.webmanifest").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(form -> form.loginPage("/login").permitAll())
                 .logout(Customizer.withDefaults());

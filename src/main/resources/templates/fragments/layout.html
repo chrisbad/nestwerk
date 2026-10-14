@@ -15,6 +15,9 @@
         } catch (e) { /* Speicher nicht verfügbar */ }
     </script>
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <link rel="manifest" th:href="@{/manifest.webmanifest}">
+    <link rel="apple-touch-icon" th:href="@{/icons/apple-touch-icon.png}">
+    <meta name="theme-color" content="#3F5B45">
     <link rel="preload" as="font" type="font/woff2" crossorigin th:href="@{/fonts/bricolage-grotesque.woff2}">
     <link rel="stylesheet" th:href="@{/css/nestwerk.css}">
     <script defer th:src="@{/js/vendor/htmx.min.js}"></script>
@@ -102,6 +105,7 @@
                 <div class="menu-panel" hidden data-menu-panel>
                     <p class="menu-label">Angemeldet als<br><strong sec:authentication="name">benutzer</strong></p>
                     <a class="menu-item" th:href="@{/notifications}">Benachrichtigungen</a>
+                    <a class="menu-item" th:href="@{/settings/notifications}">Meine Benachrichtigungswege</a>
                     <a class="menu-item" th:href="@{/admin/notifications}"
                        sec:authorize="hasAuthority('NOTIFICATION_SETTINGS_MANAGE')">Benachrichtigungen einstellen</a>
                     <form th:action="@{/logout}" method="post">
