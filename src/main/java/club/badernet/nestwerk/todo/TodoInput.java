@@ -10,5 +10,14 @@ import java.util.Set;
 public record TodoInput(String title, String description, TodoPriority priority, LocalDate availableFrom,
                         LocalDate dueOn, LocalDate followUpOn, Integer remindDaysBefore, boolean privateTodo,
                         CompletionMode completionMode, Set<String> tags, Set<AssigneeRef> assignees,
-                        Long responsibleUserId) {
+                        Long responsibleUserId, String rrule) {
+
+    /** Ohne Wiederholung. */
+    public TodoInput(String title, String description, TodoPriority priority, LocalDate availableFrom,
+                     LocalDate dueOn, LocalDate followUpOn, Integer remindDaysBefore, boolean privateTodo,
+                     CompletionMode completionMode, Set<String> tags, Set<AssigneeRef> assignees,
+                     Long responsibleUserId) {
+        this(title, description, priority, availableFrom, dueOn, followUpOn, remindDaysBefore, privateTodo,
+                completionMode, tags, assignees, responsibleUserId, null);
+    }
 }

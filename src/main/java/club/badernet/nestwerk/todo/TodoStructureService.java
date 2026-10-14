@@ -166,6 +166,7 @@ public class TodoStructureService {
         TodoLink link = links.save(new TodoLink(sourceId, targetId, type, actor.getId()));
         if (type == TodoLinkType.DUPLICATES && !source.isClosed()) {
             source.changeStatus(TodoStatus.DISCARDED, actor.getId());
+            service.afterStatusChange(source, actor);
         }
         source.markChanged(actor.getId());
         return link;

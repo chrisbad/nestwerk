@@ -11,6 +11,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Locale;
@@ -32,10 +35,12 @@ public class TodoService {
     private final ContactRepository contacts;
     private final UserRepository users;
     private final ContactService contactService;
+    private final TodoRecurrence recurrence;
+    private final Clock clock;
 
     public TodoService(TodoRepository todos, TodoAccess access, FamilyMemberRepository members,
                        RoleRepository roles, ContactRepository contacts, UserRepository users,
-                       ContactService contactService) {
+                       ContactService contactService, TodoRecurrence recurrence, Clock clock) {
         this.todos = todos;
         this.access = access;
         this.members = members;
@@ -43,6 +48,8 @@ public class TodoService {
         this.contacts = contacts;
         this.users = users;
         this.contactService = contactService;
+        this.recurrence = recurrence;
+        this.clock = clock;
     }
 
     /** Liefert das ToDo, wenn der Betrachter es sehen darf; sonst wie „nicht vorhanden“. */
@@ -132,6 +139,7 @@ public class TodoService {
         require(actor, "CHANGE_STATUS", todo);
         todo.changeStatus(status, actor.getId());
         todo.markChanged(actor.getId());
+        afterStatusChange(todo, actor);
     }
 
     /** „Ich kümmere mich“: setzt den Status auf In Arbeit. */
@@ -163,6 +171,7 @@ public class TodoService {
             }
         }
         todo.markChanged(actor.getId());
+        afterStatusChange(todo, actor);
     }
 
     @Transactional
@@ -194,6 +203,82 @@ public class TodoService {
         Todo todo = get(id, actor);
         require(actor, "DELETE", todo);
         todos.delete(todo);
+    }
+
+    // --- Wiederholung -----------------------------------------------------------
+
+    /** Nach einem Statuswechsel: abgeschlossene wiederkehrende ToDos bekommen genau einen Nachfolger. */
+    void afterStatusChange(Todo todo, User actor) {
+        if (todo.isClosed() && todo.getRrule() != null && todo.getSuccessorId() == null) {
+            createSuccessor(todo);
+        }
+    }
+
+    private void createSuccessor(Todo todo) {
+        LocalDate today = LocalDate.now(clock);
+        Todo origin = todo.getSeriesId() == null ? todo : todos.findById(todo.getSeriesId()).orElse(todo);
+        LocalDate seed = anchor(origin) != null ? anchor(origin) : createdDate(origin, today);
+        LocalDate after = anchor(todo) != null ? anchor(todo) : today;
+        LocalDate next = recurrence.next(todo.getRrule(), seed, after).orElse(null);
+        if (next == null) {
+            return;
+        }
+        long shift = ChronoUnit.DAYS.between(after, next);
+        Todo copy = copy(todo, todo.getParentId(), shift, true);
+        if (anchor(todo) == null) {
+            copy.setDueOn(next);
+        }
+        copy.setSeriesId(todo.getSeriesId() == null ? todo.getId() : todo.getSeriesId());
+        Todo saved = todos.save(copy);
+        copyChildren(todo.getId(), saved.getId(), shift);
+        todo.setSuccessorId(saved.getId());
+    }
+
+    private void copyChildren(Long fromParentId, Long toParentId, long shift) {
+        for (Todo child : todos.findAllByParentId(fromParentId)) {
+            Todo copied = todos.save(copy(child, toParentId, shift, false));
+            copyChildren(child.getId(), copied.getId(), shift);
+        }
+    }
+
+    /** Offene Kopie mit verschobenem Zeitfenster; Unteraufgaben erben die Regel nicht. */
+    private Todo copy(Todo source, Long parentId, long shift, boolean keepRule) {
+        Todo copy = new Todo(source.getTitle(), source.getCreatedBy());
+        copy.setDescription(source.getDescription());
+        copy.setPriority(source.getPriority());
+        copy.setAvailableFrom(plus(source.getAvailableFrom(), shift));
+        copy.setDueOn(plus(source.getDueOn(), shift));
+        copy.setFollowUpOn(plus(source.getFollowUpOn(), shift));
+        copy.setRemindDaysBefore(source.getRemindDaysBefore());
+        copy.setPrivateTodo(source.isPrivateTodo());
+        copy.setCompletionMode(source.getCompletionMode());
+        copy.setTags(source.getTags());
+        copy.replaceAssignees(source.assigneeRefs());
+        copy.setResponsibleUserId(source.getResponsibleUserId());
+        copy.setParentId(parentId);
+        source.getWatcherUserIds().forEach(copy::addWatcher);
+        if (keepRule) {
+            copy.setRrule(source.getRrule());
+        }
+        syncCompletions(copy);
+        copy.markChanged(source.getResponsibleUserId());
+        return copy;
+    }
+
+    private static LocalDate plus(LocalDate date, long days) {
+        return date == null ? null : date.plusDays(days);
+    }
+
+    private static LocalDate anchor(Todo todo) {
+        return todo.getDueOn() != null ? todo.getDueOn() : todo.getAvailableFrom();
+    }
+
+    private LocalDate createdDate(Todo todo, LocalDate fallback) {
+        return todo.getCreatedAt() == null ? fallback : todo.getCreatedAt().atZone(clock.getZone()).toLocalDate();
+    }
+
+    private LocalDate seed(LocalDate due, LocalDate from) {
+        return due != null ? due : from != null ? from : LocalDate.now(clock);
     }
 
     // --- intern ----------------------------------------------------------------
@@ -253,6 +338,7 @@ public class TodoService {
         todo.setFollowUpOn(in.followUpOn());
         todo.setRemindDaysBefore(in.remindDaysBefore());
         todo.setTags(cleanTags(in.tags()));
+        todo.setRrule(recurrence.normalize(in.rrule(), seed(in.dueOn(), in.availableFrom())));
         if (todo.getId() == null) {
             todo.setCompletionMode(mode(in));
         }
@@ -267,7 +353,9 @@ public class TodoService {
                 || !Objects.equals(in.followUpOn(), todo.getFollowUpOn())
                 || !Objects.equals(in.remindDaysBefore(), todo.getRemindDaysBefore())
                 || in.privateTodo() != todo.isPrivateTodo()
-                || !cleanTags(in.tags()).equals(todo.getTags());
+                || !cleanTags(in.tags()).equals(todo.getTags())
+                || !Objects.equals(recurrence.normalize(in.rrule(), seed(in.dueOn(), in.availableFrom())),
+                todo.getRrule());
     }
 
     private static CompletionMode mode(TodoInput in) {
