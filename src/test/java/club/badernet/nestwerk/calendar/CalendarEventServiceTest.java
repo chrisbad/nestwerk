@@ -113,6 +113,32 @@ class CalendarEventServiceTest {
     }
 
     @Test
+    void rejectsOverlongLocationAndDescription() {
+        EventInput longLocation = new EventInput("Termin", null, "x".repeat(256), LocalDate.of(2026, 10, 12),
+                LocalTime.of(10, 0), LocalDate.of(2026, 10, 12), LocalTime.of(11, 0), false, null, false, Set.of());
+        EventInput longDescription = new EventInput("Termin", "x".repeat(5001), null, LocalDate.of(2026, 10, 12),
+                LocalTime.of(10, 0), LocalDate.of(2026, 10, 12), LocalTime.of(11, 0), false, null, false, Set.of());
+
+        assertThatThrownBy(() -> service.create(longLocation, owner))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Ort");
+        assertThatThrownBy(() -> service.create(longDescription, owner))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Notizen");
+    }
+
+    @Test
+    void rejectsOverlongLocationForSingleOccurrence() {
+        EventInput in = new EventInput("Serie", null, null, LocalDate.of(2026, 10, 5), LocalTime.of(10, 0),
+                LocalDate.of(2026, 10, 5), LocalTime.of(11, 0), false, "FREQ=WEEKLY", false, Set.of());
+        CalendarEvent e = service.create(in, owner);
+        Instant occurrence = LocalDate.of(2026, 10, 12).atTime(10, 0).atZone(BERLIN).toInstant();
+        OccurrenceInput change = new OccurrenceInput("Serie", null, "x".repeat(256),
+                LocalDate.of(2026, 10, 12).atTime(10, 0), LocalDate.of(2026, 10, 12).atTime(11, 0));
+
+        assertThatThrownBy(() -> service.overrideOccurrence(e.getId(), occurrence, change, owner))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Ort");
+    }
+
+    @Test
     void acceptsRulePrefixedWithRRULE() {
         EventInput in = new EventInput("Serie", null, null, LocalDate.of(2026, 10, 12), LocalTime.of(10, 0),
                 LocalDate.of(2026, 10, 12), LocalTime.of(11, 0), false, "RRULE:FREQ=WEEKLY", false, Set.of());

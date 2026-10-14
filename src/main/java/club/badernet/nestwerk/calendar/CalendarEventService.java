@@ -20,6 +20,8 @@ import java.util.UUID;
 public class CalendarEventService {
 
     private static final Duration MAX_WINDOW = Duration.ofDays(400);
+    public static final int MAX_LOCATION_LENGTH = 255;
+    public static final int MAX_DESCRIPTION_LENGTH = 5000;
 
     private final CalendarEventRepository events;
     private final FamilyMemberRepository members;
@@ -114,8 +116,8 @@ public class CalendarEventService {
         if (!end.isAfter(start)) {
             throw new IllegalArgumentException("Das Ende muss nach dem Beginn liegen.");
         }
-        event.overrideOccurrence(recurrenceId, requireTitle(in.title()), clean(in.description()),
-                clean(in.location()), start, end);
+        event.overrideOccurrence(recurrenceId, requireTitle(in.title()), description(in.description()),
+                location(in.location()), start, end);
         event.markChanged();
     }
 
@@ -143,8 +145,8 @@ public class CalendarEventService {
     }
 
     private void applyDetails(CalendarEvent event, EventInput in) {
-        event.setDescription(clean(in.description()));
-        event.setLocation(clean(in.location()));
+        event.setDescription(description(in.description()));
+        event.setLocation(location(in.location()));
         event.setPrivateEvent(in.privateEvent());
         String rule = normalizeRule(in.rrule());
         if (rule != null) {
@@ -196,6 +198,23 @@ public class CalendarEventService {
         String cleaned = title == null ? "" : title.trim();
         if (cleaned.isEmpty() || cleaned.length() > 200) {
             throw new IllegalArgumentException("Der Titel muss 1–200 Zeichen lang sein.");
+        }
+        return cleaned;
+    }
+
+    private String location(String location) {
+        return limited(location, MAX_LOCATION_LENGTH, "Der Ort darf höchstens " + MAX_LOCATION_LENGTH + " Zeichen lang sein.");
+    }
+
+    private String description(String description) {
+        return limited(description, MAX_DESCRIPTION_LENGTH,
+                "Die Notizen dürfen höchstens " + MAX_DESCRIPTION_LENGTH + " Zeichen lang sein.");
+    }
+
+    private String limited(String text, int maxLength, String message) {
+        String cleaned = clean(text);
+        if (cleaned != null && cleaned.length() > maxLength) {
+            throw new IllegalArgumentException(message);
         }
         return cleaned;
     }

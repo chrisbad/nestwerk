@@ -106,7 +106,7 @@
             </div>
             <div class="field">
                 <label for="description">Notizen <span class="hint">optional</span></label>
-                <textarea id="description" th:field="*{description}" rows="3"></textarea>
+                <textarea id="description" th:field="*{description}" rows="3" maxlength="5000"></textarea>
             </div>
 
             <fieldset class="field choices" th:unless="${#lists.isEmpty(allMembers)}">
