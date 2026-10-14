@@ -7,4 +7,6 @@ import java.util.List;
 public interface TodoRepository extends JpaRepository<Todo, Long> {
 
     List<Todo> findAllByParentId(Long parentId);
+
+    List<Todo> findAllByStatusIn(java.util.Collection<TodoStatus> statuses);
 }

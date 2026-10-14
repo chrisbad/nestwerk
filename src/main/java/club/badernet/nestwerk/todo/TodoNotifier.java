@@ -79,9 +79,15 @@ public class TodoNotifier {
 
         for (TodoLink link : links.findAllBySourceIdAndType(todo.getId(), TodoLinkType.BLOCKS)) {
             todos.findById(link.getTargetId()).filter(t -> !t.isClosed()).filter(t -> !hasOpenBlocker(t))
-                    .ifPresent(blocked -> send(visible(involved(blocked, false), blocked, actor), blocked,
-                            NotificationType.TODO_UNBLOCKED, "u" + todo.getId(),
-                            "Nicht mehr blockiert: „" + todo.getTitle() + "“ ist abgeschlossen."));
+                    .ifPresent(blocked -> {
+                        // Titel des Blockers nur für Empfänger, die ihn sehen dürfen
+                        for (User u : visible(involved(blocked, false), blocked, actor)) {
+                            String body = access.can(u, "VIEW", todo)
+                                    ? "Nicht mehr blockiert: „" + todo.getTitle() + "“ ist abgeschlossen."
+                                    : "Nicht mehr blockiert: Alle vorausgehenden ToDos sind abgeschlossen.";
+                            send(Set.of(u), blocked, NotificationType.TODO_UNBLOCKED, "u" + todo.getId(), body);
+                        }
+                    });
         }
     }
 

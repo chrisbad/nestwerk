@@ -120,6 +120,19 @@ class TodoNotifierTest {
     }
 
     @Test
+    void unblockedMessageHidesTitleOfInvisibleBlocker() {
+        Todo geheim = todo("Geheime Vorarbeit", true);
+        Todo fliesen = todo("Fliesen", false, AssigneeRef.member(papaMember.getId()));
+        structure.link(geheim.getId(), fliesen.getId(), TodoLinkType.BLOCKS, mama);
+
+        service.check(geheim.getId(), mama);
+
+        Notification n = notifications.list(papa.getId(), false, 50).stream()
+                .filter(x -> x.getType() == NotificationType.TODO_UNBLOCKED).findFirst().orElseThrow();
+        assertThat(n.getBody()).doesNotContain("Geheime Vorarbeit");
+    }
+
+    @Test
     void lastBlockerClosedNotifiesUnblocked() {
         Todo estrich = todo("Estrich", false);
         Todo kleber = todo("Kleber kaufen", false);
