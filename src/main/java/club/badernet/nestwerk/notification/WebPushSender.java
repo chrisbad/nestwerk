@@ -24,7 +24,8 @@ public class WebPushSender {
 
     private final VapidKeys vapid;
     private final String subject;
-    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
+            .followRedirects(HttpClient.Redirect.NEVER).build();
 
     public WebPushSender(VapidKeys vapid, @Value("${nestwerk.mail.from:}") String mailFrom,
                          @Value("${nestwerk.base-url:http://localhost:8080}") String baseUrl) {
@@ -47,7 +48,7 @@ public class WebPushSender {
                     .header("Authorization", "vapid t=" + jwt + ", k=" + vapid.publicKey())
                     .POST(HttpRequest.BodyPublishers.ofByteArray(body))
                     .build();
-            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<Void> response = http.send(request, HttpResponse.BodyHandlers.discarding());
             int status = response.statusCode();
             if (status >= 200 && status < 300) {
                 return new Outcome(Result.SENT, null);
@@ -55,7 +56,7 @@ public class WebPushSender {
             if (status == 404 || status == 410) {
                 return new Outcome(Result.GONE, "Abo abgelaufen (" + status + ")");
             }
-            return new Outcome(Result.FAILED, "Push-Dienst antwortet " + status + ": " + abbreviate(response.body()));
+            return new Outcome(Result.FAILED, "Push-Dienst antwortet mit Status " + status);
         } catch (IOException | IllegalArgumentException | IllegalStateException e) {
             return new Outcome(Result.FAILED, e.getClass().getSimpleName() + ": " + e.getMessage());
         } catch (InterruptedException e) {
@@ -64,7 +65,4 @@ public class WebPushSender {
         }
     }
 
-    private static String abbreviate(String text) {
-        return text == null ? "" : text.length() > 200 ? text.substring(0, 200) : text;
-    }
 }

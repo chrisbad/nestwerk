@@ -50,9 +50,22 @@ public class PushSubscriptions {
         subscriptions.delete(sub);
     }
 
+    /** Push-Dienste der Browser (Chrome/Edge-Android, Firefox, Edge/Windows, Safari). */
+    static final List<String> PUSH_SERVICES = List.of("fcm.googleapis.com", "push.services.mozilla.com",
+            "notify.windows.com", "push.apple.com");
+
+    public boolean isSafe(String endpoint) {
+        try {
+            requireSafeEndpoint(endpoint);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     /**
-     * Push-Dienste sind öffentliche HTTPS-Adressen. Lokale Ziele und IP-Adressen werden abgelehnt, damit der
-     * Server nicht als Werkzeug gegen interne Dienste missbraucht werden kann.
+     * Nur bekannte Push-Dienste über HTTPS auf dem Standardport. So kann der Server nicht als Werkzeug gegen
+     * interne Dienste missbraucht werden – auch nicht über DNS-Namen, die auf interne Adressen zeigen.
      */
     void requireSafeEndpoint(String endpoint) {
         URI uri;
@@ -68,10 +81,10 @@ public class PushSubscriptions {
             return;
         }
         String host = uri.getHost().toLowerCase(Locale.ROOT);
-        boolean ip = host.matches("[0-9.]+") || host.contains(":") || host.startsWith("[");
-        if (!"https".equals(uri.getScheme()) || ip || host.equals("localhost") || host.endsWith(".local")
-                || host.endsWith(".internal") || !host.contains(".")) {
-            throw new IllegalArgumentException("Push-Adressen müssen öffentliche HTTPS-Adressen sein.");
+        boolean known = PUSH_SERVICES.stream().anyMatch(s -> host.equals(s) || host.endsWith("." + s));
+        if (!"https".equals(uri.getScheme()) || !known || (uri.getPort() != -1 && uri.getPort() != 443)
+                || uri.getUserInfo() != null) {
+            throw new IllegalArgumentException("Diese Push-Adresse gehört zu keinem bekannten Push-Dienst.");
         }
     }
 

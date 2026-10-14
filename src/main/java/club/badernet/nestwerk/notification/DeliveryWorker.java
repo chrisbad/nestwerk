@@ -41,9 +41,12 @@ public class DeliveryWorker {
     private final WebPushSender push;
     private final PushSubscriptionRepository subscriptions;
     private final Clock clock;
+    private final PushSubscriptions safety;
 
     public DeliveryWorker(NamedParameterJdbcTemplate jdbc, UserRepository users, MailDelivery mail,
-                          WebPushSender push, PushSubscriptionRepository subscriptions, Clock clock) {
+                          WebPushSender push, PushSubscriptionRepository subscriptions, Clock clock,
+                          PushSubscriptions safety) {
+        this.safety = safety;
         this.jdbc = jdbc;
         this.users = users;
         this.mail = mail;
@@ -119,6 +122,10 @@ public class DeliveryWorker {
         int sent = 0;
         List<String> errors = new ArrayList<>();
         for (PushSubscription sub : subs) {
+            if (!safety.isSafe(sub.getEndpoint())) {
+                subscriptions.delete(sub);
+                continue;
+            }
             WebPushSender.Outcome outcome = push.send(sub, json);
             switch (outcome.result()) {
                 case SENT -> sent++;
