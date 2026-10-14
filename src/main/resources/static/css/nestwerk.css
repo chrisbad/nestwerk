@@ -1192,6 +1192,34 @@ a.day-num:hover { background: var(--sage); }
 .acl-matrix input { width: 1.05rem; height: 1.05rem; margin: 0; accent-color: var(--moss); }
 .acl-matrix input:disabled { opacity: 0.35; cursor: not-allowed; }
 
+/* --- Kontakte ------------------------------------------------------------ */
+
+.contact-group + .contact-group { margin-top: 1.75rem; }
+.contact-group h2 { font-size: var(--step-1); margin-bottom: 0.6rem; }
+.contact-tiles {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.75rem;
+}
+.contact-tile {
+    display: grid;
+    gap: 0.15rem;
+    padding: 1rem 1.15rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    background: var(--surface);
+    color: var(--ink);
+    text-decoration: none;
+}
+.contact-tile:hover { border-color: var(--moss); }
+.contact-tile strong { font-family: var(--font-display); font-size: var(--step-1); overflow-wrap: anywhere; }
+.contact-tile .muted { font-size: var(--step--1); }
+.detail-head { display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
+.detail-head .button { flex: none; }
+
 /* --- Animationen --------------------------------------------------------- */
 
 @keyframes pop { from { opacity: 0; transform: scale(0.96); } }

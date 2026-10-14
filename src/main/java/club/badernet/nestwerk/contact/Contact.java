@@ -99,6 +99,11 @@ public class Contact {
     public Instant getUpdatedAt() { return updatedAt; }
     public int getVersion() { return version; }
 
+    /** {@code tel:}-Link ohne Leer- und Trennzeichen. */
+    public String phoneHref() {
+        return phone == null ? null : "tel:" + phone.replaceAll("[^0-9+]", "");
+    }
+
     public boolean hasAddress() {
         return street != null || postalCode != null || city != null;
     }

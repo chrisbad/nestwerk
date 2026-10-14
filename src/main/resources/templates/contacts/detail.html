@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${contact.name})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='contacts')}"></header>
+<main class="event-main">
+    <a class="back-link" th:href="@{/contacts}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+        Zu den Kontakten
+    </a>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+
+    <article class="sheet event-view">
+        <div class="detail-head">
+            <div>
+                <h1 th:text="${contact.name}">Elektriker Meier</h1>
+                <p class="event-when" th:if="${contact.company != null or contact.category != null}"
+                   th:text="${contact.company != null and contact.category != null} ? ${contact.company + ', ' + contact.category} : (${contact.company} ?: ${contact.category})">Firma</p>
+            </div>
+            <a class="button button-ghost" th:if="${canEdit}" th:href="@{/contacts/{id}/edit(id=${contact.id})}">Bearbeiten</a>
+        </div>
+
+        <dl class="event-facts">
+            <th:block th:if="${contact.phone != null}">
+                <dt>Telefon</dt>
+                <dd><a th:href="${contact.phoneHref()}" th:text="${contact.phone}">0711</a></dd>
+            </th:block>
+            <th:block th:if="${contact.email != null}">
+                <dt>E-Mail</dt>
+                <dd><a th:href="'mailto:' + ${contact.email}" th:text="${contact.email}">mail</a></dd>
+            </th:block>
+            <th:block th:if="${contact.hasAddress()}">
+                <dt>Adresse</dt>
+                <dd>
+                    <span th:text="${contact.addressLine()}">Hauptstr. 1</span><br>
+                    <a th:href="@{https://www.openstreetmap.org/search(query=${contact.addressLine()})}"
+                       target="_blank" rel="noopener noreferrer">Auf der Karte zeigen</a>
+                </dd>
+            </th:block>
+            <th:block th:if="${contact.url != null}">
+                <dt>Webseite</dt>
+                <dd><a th:href="${contact.url}" th:text="${contact.url}" target="_blank" rel="noopener noreferrer nofollow">url</a></dd>
+            </th:block>
+        </dl>
+
+        <div class="event-notes" th:if="${contact.note != null}">
+            <h2>Notiz</h2>
+            <p th:text="${contact.note}">Notiz</p>
+        </div>
+    </article>
+
+    <form class="danger-zone" th:if="${canDelete}" th:action="@{/contacts/{id}/delete(id=${contact.id})}" method="post"
+          th:attr="data-confirm=|Kontakt „${contact.name}“ löschen? Zuweisungen an ToDos werden entfernt.|">
+        <button type="submit" class="button button-danger">Kontakt löschen</button>
+    </form>
+</main>
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

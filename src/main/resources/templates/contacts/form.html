@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${isNew} ? 'Neuer Kontakt' : 'Kontakt bearbeiten')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='contacts')}"></header>
+<main class="event-main">
+    <a class="back-link" th:href="${isNew} ? @{/contacts} : @{/contacts/{id}(id=${contact.id})}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+        Zurück
+    </a>
+    <h1 th:text="${isNew} ? 'Neuer Kontakt' : 'Kontakt bearbeiten'">Neuer Kontakt</h1>
+
+    <p class="notice notice-error" role="alert" th:if="${error}" th:text="${error}">Fehler</p>
+
+    <form class="sheet event-form" th:action="@{${action}}" method="post" th:object="${form}">
+        <div class="event-fields">
+            <div class="field">
+                <label for="name">Name</label>
+                <input id="name" class="input-title" type="text" th:field="*{name}" maxlength="150" required
+                       placeholder="z. B. Elektriker Meier">
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="category">Kategorie <span class="hint">optional</span></label>
+                    <input id="category" type="text" th:field="*{category}" maxlength="100" placeholder="Handwerker, Schule …">
+                </div>
+                <div class="field">
+                    <label for="company">Firma <span class="hint">optional</span></label>
+                    <input id="company" type="text" th:field="*{company}" maxlength="150">
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="phone">Telefon <span class="hint">optional</span></label>
+                    <input id="phone" type="tel" th:field="*{phone}" maxlength="50">
+                </div>
+                <div class="field">
+                    <label for="email">E-Mail <span class="hint">optional</span></label>
+                    <input id="email" type="email" th:field="*{email}" maxlength="200">
+                </div>
+            </div>
+            <div class="field">
+                <label for="street">Straße <span class="hint">optional</span></label>
+                <input id="street" type="text" th:field="*{street}" maxlength="200">
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="postalCode">PLZ <span class="hint">optional</span></label>
+                    <input id="postalCode" type="text" th:field="*{postalCode}" maxlength="20">
+                </div>
+                <div class="field">
+                    <label for="city">Ort <span class="hint">optional</span></label>
+                    <input id="city" type="text" th:field="*{city}" maxlength="100">
+                </div>
+            </div>
+            <div class="field">
+                <label for="url">Webseite <span class="hint">optional</span></label>
+                <input id="url" type="url" th:field="*{url}" maxlength="500" placeholder="https://">
+            </div>
+            <div class="field">
+                <label for="note">Notiz <span class="hint">optional</span></label>
+                <textarea id="note" th:field="*{note}" rows="3" maxlength="5000"></textarea>
+            </div>
+        </div>
+        <div class="form-actions">
+            <a class="button button-ghost" th:href="${isNew} ? @{/contacts} : @{/contacts/{id}(id=${contact.id})}">Abbrechen</a>
+            <button type="submit" class="button" th:text="${isNew} ? 'Kontakt anlegen' : 'Änderungen speichern'">Speichern</button>
+        </div>
+    </form>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

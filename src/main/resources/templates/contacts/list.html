@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Kontakte')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='contacts')}"></header>
+<main>
+    <div class="page-head">
+        <div>
+            <h1>Kontakte</h1>
+            <p>Menschen und Stellen außerhalb der Familie, an die Aufgaben gehen.</p>
+        </div>
+        <div class="page-actions">
+            <form class="search" th:action="@{/contacts}" method="get" role="search">
+                <label class="visually-hidden" for="contact-search">Kontakte suchen</label>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+                <input id="contact-search" class="input" type="search" name="q" placeholder="Suchen" th:value="${q}">
+            </form>
+            <a class="button" th:if="${canCreate}" th:href="@{/contacts/new}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                Kontakt anlegen
+            </a>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+
+    <div class="sheet sheet-empty" th:if="${#maps.isEmpty(groups)}">
+        <th:block th:if="${q != null and !#strings.isEmpty(q)}">Kein Kontakt passt zu „<span th:text="${q}">x</span>“.</th:block>
+        <th:block th:unless="${q != null and !#strings.isEmpty(q)}">Noch keine Kontakte.</th:block>
+    </div>
+
+    <section class="contact-group" th:each="group : ${groups}">
+        <h2 th:text="${group.key}">Handwerker</h2>
+        <ul class="contact-tiles">
+            <li th:each="c : ${group.value}">
+                <a class="contact-tile" th:href="@{/contacts/{id}(id=${c.id})}">
+                    <strong th:text="${c.name}">Elektriker Meier</strong>
+                    <span class="muted" th:if="${c.company != null}" th:text="${c.company}">Firma</span>
+                    <span class="muted" th:if="${c.phone != null}" th:text="${c.phone}">0711</span>
+                </a>
+            </li>
+        </ul>
+    </section>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>
