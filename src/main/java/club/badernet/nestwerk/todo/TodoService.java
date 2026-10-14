@@ -219,6 +219,47 @@ public class TodoService {
         return !ownCompletions(todo, user).isEmpty();
     }
 
+    // --- Beobachter -------------------------------------------------------------
+
+    @Transactional
+    public void watch(Long id, User actor) {
+        Todo todo = get(id, actor);
+        require(actor, "WATCH", todo);
+        if (!todo.getWatcherUserIds().contains(actor.getId())) {
+            todo.addWatcher(actor.getId());
+            history.record(id, actor.getId(), "WATCHER_ADDED", null, String.valueOf(actor.getId()));
+        }
+    }
+
+    @Transactional
+    public void unwatch(Long id, User actor) {
+        removeWatcher(id, actor.getId(), actor);
+    }
+
+    @Transactional
+    public void addWatcher(Long id, Long userId, User actor) {
+        Todo todo = get(id, actor);
+        require(actor, "MANAGE_WATCHERS", todo);
+        Long watcher = requireActiveUser(userId);
+        if (!todo.getWatcherUserIds().contains(watcher)) {
+            todo.addWatcher(watcher);
+            history.record(id, actor.getId(), "WATCHER_ADDED", null, String.valueOf(watcher));
+        }
+    }
+
+    /** Sich selbst entfernen geht immer; andere entfernen braucht {@code MANAGE_WATCHERS}. */
+    @Transactional
+    public void removeWatcher(Long id, Long userId, User actor) {
+        Todo todo = get(id, actor);
+        if (!userId.equals(actor.getId())) {
+            require(actor, "MANAGE_WATCHERS", todo);
+        }
+        if (todo.getWatcherUserIds().contains(userId)) {
+            todo.removeWatcher(userId);
+            history.record(id, actor.getId(), "WATCHER_REMOVED", String.valueOf(userId), null);
+        }
+    }
+
     @Transactional
     public void delete(Long id, User actor) {
         Todo todo = get(id, actor);
