@@ -50,6 +50,13 @@
         </div>
     </article>
 
+    <section class="sheet contact-todos" th:unless="${#lists.isEmpty(openTodos)}">
+        <h2>Offene ToDos</h2>
+        <ul>
+            <li th:each="t : ${openTodos}"><a th:href="@{/todos/{id}(id=${t.id})}" th:text="${t.title}">Steckdose</a></li>
+        </ul>
+    </section>
+
     <form class="danger-zone" th:if="${canDelete}" th:action="@{/contacts/{id}/delete(id=${contact.id})}" method="post"
           th:attr="data-confirm=|Kontakt „${contact.name}“ löschen? Zuweisungen an ToDos werden entfernt.|">
         <button type="submit" class="button button-danger">Kontakt löschen</button>

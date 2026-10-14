@@ -287,6 +287,16 @@
         });
     }
 
+    /* --- Filterformulare: bei Änderung sofort absenden --------------------- */
+
+    function initAutoSubmit() {
+        document.addEventListener("change", event => {
+            const form = event.target.closest("form[data-auto-submit]");
+            if (!form || event.target.matches("input[type=search], input[type=text]")) return;
+            form.requestSubmit();
+        });
+    }
+
     /* --- Begrüßung nach Tageszeit ---------------------------------------- */
 
     function initGreeting() {
@@ -311,6 +321,7 @@
         initHtmx();
         initGreeting();
         initEventForm();
+        initAutoSubmit();
         consumeToasts(document);
     });
 })();

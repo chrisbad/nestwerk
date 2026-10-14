@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${isNew} ? 'Neues ToDo' : 'ToDo bearbeiten')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='todos')}"></header>
+<main class="event-main">
+    <a class="back-link" th:href="${isNew} ? @{/todos} : @{/todos/{id}(id=${todo.id})}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+        Zurück
+    </a>
+    <h1 th:text="${isNew} ? 'Neues ToDo' : 'ToDo bearbeiten'">Neues ToDo</h1>
+
+    <p class="notice notice-error" role="alert" th:if="${error}" th:text="${error}">Fehler</p>
+
+    <form class="sheet event-form" th:action="@{${action}}" method="post" th:object="${form}">
+        <input type="hidden" th:field="*{version}" th:unless="${isNew}">
+
+        <fieldset class="event-fields" th:disabled="${!canContent}">
+            <div class="field">
+                <label for="title">Titel</label>
+                <input id="title" class="input-title" type="text" th:field="*{title}" maxlength="200" required
+                       placeholder="Was muss irgendwann erledigt werden?">
+            </div>
+            <div class="field">
+                <label for="description">Beschreibung <span class="hint">optional, Markdown möglich</span></label>
+                <textarea id="description" th:field="*{description}" rows="5" maxlength="20000"></textarea>
+            </div>
+
+            <fieldset class="field choices">
+                <legend>Priorität</legend>
+                <label class="choice" th:each="p : ${priorities}">
+                    <input type="radio" th:field="*{priority}" th:value="${p}">
+                    <span th:text="${p.label()}">Normal</span>
+                </label>
+            </fieldset>
+
+            <div class="field-row">
+                <div class="field">
+                    <label for="availableFrom">Frühestens ab <span class="hint">optional</span></label>
+                    <input id="availableFrom" type="date" th:field="*{availableFrom}">
+                </div>
+                <div class="field">
+                    <label for="dueOn">Spätestens bis <span class="hint">optional</span></label>
+                    <input id="dueOn" type="date" th:field="*{dueOn}">
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="followUpOn">Wiedervorlage <span class="hint">optional</span></label>
+                    <input id="followUpOn" type="date" th:field="*{followUpOn}">
+                </div>
+                <div class="field">
+                    <label for="remindDaysBefore">Erinnern, Tage vor „bis“ <span class="hint">optional</span></label>
+                    <input id="remindDaysBefore" type="number" min="0" max="365" th:field="*{remindDaysBefore}">
+                </div>
+            </div>
+
+            <div class="field">
+                <label for="tags">Schlagworte <span class="hint">kommagetrennt</span></label>
+                <input id="tags" type="text" th:field="*{tags}" list="tag-list" placeholder="haus, auto">
+                <datalist id="tag-list">
+                    <option th:each="t : ${tags}" th:value="${t}"></option>
+                </datalist>
+            </div>
+
+            <div class="field-switch" th:if="${canPrivate}">
+                <label class="switch">
+                    <input type="checkbox" th:field="*{privateTodo}">
+                    <span class="switch-track" aria-hidden="true"></span>
+                    Privat
+                </label>
+                <p class="hint">Nur Verantwortliche, Zuständige, Beobachter und Administratoren sehen es.</p>
+            </div>
+        </fieldset>
+
+        <fieldset class="event-fields assign-fields" th:disabled="${!canAssign}">
+            <h2>Zuständig</h2>
+            <fieldset class="field choices" th:unless="${#lists.isEmpty(labels.members())}">
+                <legend>Mitglieder</legend>
+                <label class="choice choice-member" th:each="m : ${labels.members()}"
+                       th:style="|--member-color: ${m.color}|">
+                    <input type="checkbox" name="assignees" th:value="'member:' + ${m.id}"
+                           th:checked="${form.hasAssignee('member:' + m.id)}">
+                    <span th:text="${m.name}">Lena</span>
+                </label>
+            </fieldset>
+            <fieldset class="field choices">
+                <legend>Rollen</legend>
+                <label class="choice" th:each="r : ${labels.roles()}">
+                    <input type="checkbox" name="assignees" th:value="'role:' + ${r.id}"
+                           th:checked="${form.hasAssignee('role:' + r.id)}">
+                    <span th:text="${r.name}">Eltern</span>
+                </label>
+            </fieldset>
+            <fieldset class="field choices" th:unless="${#lists.isEmpty(labels.contacts())}">
+                <legend>Kontakte</legend>
+                <label class="choice" th:each="c : ${labels.contacts()}">
+                    <input type="checkbox" name="assignees" th:value="'contact:' + ${c.id}"
+                           th:checked="${form.hasAssignee('contact:' + c.id)}">
+                    <span th:text="${c.name}">Meier</span>
+                </label>
+            </fieldset>
+            <fieldset class="field choices">
+                <legend>Abhaken</legend>
+                <label class="choice">
+                    <input type="radio" th:field="*{completionMode}" value="ANY">
+                    <span>Einer reicht</span>
+                </label>
+                <label class="choice">
+                    <input type="radio" th:field="*{completionMode}" value="EACH">
+                    <span>Jeder einzeln</span>
+                </label>
+            </fieldset>
+        </fieldset>
+
+        <fieldset class="event-fields" th:disabled="${!canResponsible}">
+            <div class="field">
+                <label for="responsibleUserId">Verantwortlich</label>
+                <select id="responsibleUserId" th:field="*{responsibleUserId}">
+                    <option th:each="u : ${activeUsers}" th:value="${u.id}" th:text="${u.username}">mama</option>
+                </select>
+                <p class="hint">Wird immer erinnert und kümmert sich, dass es passiert.</p>
+            </div>
+        </fieldset>
+
+        <div class="form-actions">
+            <a class="button button-ghost" th:href="${isNew} ? @{/todos} : @{/todos/{id}(id=${todo.id})}">Abbrechen</a>
+            <button type="submit" class="button" th:text="${isNew} ? 'ToDo anlegen' : 'Änderungen speichern'">Speichern</button>
+        </div>
+    </form>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

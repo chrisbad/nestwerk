@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Eine ToDo-Zeile; erwartet ${row} (TodoViews.TodoRow), optional ${back} als Rücksprung -->
+<li th:fragment="row" class="todo-row" th:id="'todo-' + ${row.todo().id}"
+    th:classappend="${row.checked()} ? 'is-checked'"
+    th:with="action=${row.checked()} ? 'uncheck' : 'check'">
+    <form class="todo-check" th:if="${row.canCheck()}" method="post"
+          th:action="@{/todos/{id}/{a}(id=${row.todo().id}, a=${action})}"
+          th:hx-post="@{/todos/{id}/{a}(id=${row.todo().id}, a=${action})}"
+          th:hx-target="'#todo-' + ${row.todo().id}" hx-swap="outerHTML">
+        <input type="hidden" name="back" th:value="${back} ?: '/todos'">
+        <button type="submit" class="check" th:aria-pressed="${row.checked()}"
+                th:title="${row.checked()} ? 'Wieder öffnen' : 'Abhaken'">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12.5 4 4 8-9"/></svg>
+            <span class="visually-hidden" th:text="${row.checked()} ? 'Wieder öffnen' : 'Abhaken'">Abhaken</span>
+        </button>
+    </form>
+    <span class="check check-static" th:unless="${row.canCheck()}" aria-hidden="true"
+          th:classappend="${row.checked()} ? 'is-done'">
+        <svg viewBox="0 0 24 24"><path d="m6 12.5 4 4 8-9"/></svg>
+    </span>
+
+    <div class="todo-body">
+        <a class="todo-title" th:href="@{/todos/{id}(id=${row.todo().id})}" th:text="${row.todo().title}">Titel</a>
+        <div class="todo-meta">
+            <span class="prio" th:if="${row.todo().priority.name() != 'NORMAL'}"
+                  th:classappend="'prio-' + ${#strings.toLowerCase(row.todo().priority.name())}"
+                  th:text="${row.todo().priority.label()}">Hoch</span>
+            <span class="pill pill-progress" th:if="${row.todo().status.name() == 'IN_PROGRESS'}">In Arbeit</span>
+            <span class="pill" th:if="${row.todo().status.name() == 'DISCARDED'}">Verworfen</span>
+            <span class="due" th:if="${row.dueLabel() != null}"
+                  th:classappend="'due-' + ${#strings.toLowerCase(row.timing().name())}"
+                  th:text="${row.dueLabel()}">heute fällig</span>
+            <span class="pill" th:if="${row.progress() != null}" th:text="${row.progress()}">2 von 3</span>
+            <svg th:if="${row.todo().privateTodo}" class="occ-lock" viewBox="0 0 24 24" role="img" aria-label="Privat">
+                <rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+            </svg>
+            <th:block th:each="tag : ${row.todo().tags}">
+                <span class="tag" th:text="'#' + ${tag}">#haus</span>
+            </th:block>
+        </div>
+        <p class="row-error" role="alert" th:if="${rowError != null}" th:text="${rowError}">Fehler</p>
+    </div>
+
+    <ul class="todo-assignees" th:unless="${#lists.isEmpty(row.assignees())}">
+        <th:block th:each="a : ${row.assignees()}">
+            <li th:replace="~{todos/fragments :: assignee(${a})}"></li>
+        </th:block>
+    </ul>
+</li>
+
+<!-- Ein Zuständiger als Chip -->
+<li th:fragment="assignee(a)" class="assignee" th:classappend="'assignee-' + ${a.kind()}"
+    th:style="${a.color() != null} ? |--member-color: ${a.color()}|">
+    <svg th:if="${a.kind() == 'role'}" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="9" cy="8" r="3"/><path d="M3.5 18a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5M18 13.5a5.5 5.5 0 0 1 2.5 4.5"/>
+    </svg>
+    <svg th:if="${a.kind() == 'contact'}" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="10" r="2.5"/><path d="M8 16.5a4 4 0 0 1 8 0"/>
+    </svg>
+    <span th:text="${a.label()}">Lena</span>
+</li>
+
+</body>
+</html>

@@ -1220,6 +1220,138 @@ a.day-num:hover { background: var(--sage); }
 .detail-head { display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
 .detail-head .button { flex: none; }
 
+/* --- ToDos -------------------------------------------------------------- */
+
+.todo-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+.todo-filters .search { flex: 1 1 14rem; }
+.todo-filters select {
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--step--1);
+}
+.choice-compact { padding: 0.35rem 0.7rem; font-size: var(--step--1); }
+.filter-reset { font-size: var(--step--1); color: var(--ink-soft); }
+
+.todo-group + .todo-group { margin-top: 1.75rem; }
+.todo-group h2 {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: var(--step-1);
+    margin-bottom: 0.6rem;
+}
+.todo-group h2 .count { font-size: var(--step--1); color: var(--ink-soft); font-weight: 500; }
+.todo-group-overdue h2 { color: var(--brick); }
+
+.todo-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.todo-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 0.75rem;
+    align-items: start;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    background: var(--surface);
+}
+.todo-row.htmx-added { animation: highlight 0.8s var(--ease); }
+.todo-row.is-checked .todo-title { text-decoration: line-through; color: var(--ink-soft); }
+.todo-check { margin: 0; }
+.check {
+    display: inline-grid;
+    place-items: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    margin-top: 0.1rem;
+    border: 2px solid var(--moss);
+    border-radius: 50%;
+    background: none;
+    color: transparent;
+    cursor: pointer;
+}
+.check svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.check:hover { background: var(--sage); color: var(--moss); }
+.check[aria-pressed="true"], .check-static.is-done { background: var(--moss); color: var(--on-moss); }
+.check-static { border-color: var(--line); cursor: default; }
+.check-static:hover { background: none; color: transparent; }
+.check-static.is-done:hover { background: var(--moss); color: var(--on-moss); }
+.todo-body { min-width: 0; display: grid; gap: 0.3rem; }
+.todo-title { font-weight: 650; color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+.todo-title:hover { text-decoration: underline; }
+.todo-meta { display: flex; flex-wrap: wrap; gap: 0.35rem 0.6rem; align-items: center; font-size: var(--step--1); color: var(--ink-soft); }
+.prio { font-weight: 650; }
+.prio-low { color: var(--ink-soft); }
+.prio-high { color: var(--honey-strong, #a46d0d); }
+.prio-urgent { color: var(--brick); }
+.pill { padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--sage); color: var(--ink); }
+.pill-progress { background: var(--honey-soft); }
+.due-overdue { color: var(--brick); font-weight: 650; }
+.due-due_soon { color: var(--ink); font-weight: 600; }
+.tag { color: var(--moss); text-decoration: none; }
+a.tag:hover { text-decoration: underline; }
+.row-error { color: var(--brick); font-size: var(--step--1); margin: 0; }
+
+.todo-assignees { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.3rem; justify-content: flex-end; }
+.assignee {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.1rem 0.55rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: var(--step--1);
+    white-space: nowrap;
+}
+.assignee-member { border-color: var(--member-color); background: color-mix(in srgb, var(--member-color) 14%, var(--surface)); }
+.assignee svg { width: 0.95rem; height: 0.95rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+
+.todo-detail-head { display: grid; gap: 1rem; margin: 0.5rem 0 1.25rem; }
+.todo-list-single .todo-row { padding: 1rem 1.25rem; }
+.todo-list-single .todo-title { font-family: var(--font-display); font-size: var(--step-2); pointer-events: none; }
+.todo-detail-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: flex-end; align-items: center; }
+.status-form select {
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+}
+.todo-detail { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: 1rem; align-items: start; }
+.todo-description, .todo-facts { padding: clamp(1.25rem, 3vw, 1.75rem); }
+.todo-facts .event-facts { grid-template-columns: 1fr; gap: 0.15rem; }
+.todo-facts .event-facts dd + dt { margin-top: 0.7rem; }
+.todo-facts .todo-assignees { justify-content: flex-start; }
+.completion-lines { list-style: none; margin: 0.3rem 0 0; padding: 0; font-size: var(--step--1); color: var(--ink-soft); }
+.prose { overflow-wrap: anywhere; }
+.prose > * + * { margin-top: 0.75rem; }
+.prose ul, .prose ol { padding-left: 1.4rem; }
+.prose pre { overflow-x: auto; padding: 0.75rem; border-radius: var(--radius-field); background: var(--sage); }
+.prose blockquote { margin: 0; padding-left: 1rem; border-left: 3px solid var(--line); color: var(--ink-soft); }
+.assign-fields { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px dashed var(--line); }
+.assign-fields h2, .contact-todos h2 { font-size: var(--step-1); margin: 0; }
+.contact-todos { margin-top: 1rem; padding: clamp(1.25rem, 3vw, 1.75rem); }
+.contact-todos ul { margin: 0.5rem 0 0; padding-left: 1.2rem; }
+
+@media (max-width: 48rem) {
+    .todo-detail { grid-template-columns: 1fr; }
+}
+@media (max-width: 40rem) {
+    .todo-row { grid-template-columns: auto 1fr; }
+    .todo-assignees { grid-column: 2; justify-content: flex-start; }
+    .todo-filters select, .todo-filters .choice-compact { flex: 1 1 45%; }
+}
+
 /* --- Animationen --------------------------------------------------------- */
 
 @keyframes pop { from { opacity: 0; transform: scale(0.96); } }

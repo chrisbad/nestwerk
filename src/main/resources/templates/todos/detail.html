@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${todo.title})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='todos')}"></header>
+<main class="todo-detail-page">
+    <a class="back-link" th:href="@{/todos}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+        Zu den ToDos
+    </a>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <div class="todo-detail-head">
+        <ul class="todo-list todo-list-single">
+            <th:block th:with="back='/todos/' + ${todo.id}">
+                <li th:replace="~{todos/fragments :: row}"></li>
+            </th:block>
+        </ul>
+        <div class="todo-detail-actions">
+            <form th:if="${canStatus and todo.status.name() == 'OPEN'}" method="post"
+                  th:action="@{/todos/{id}/take(id=${todo.id})}">
+                <button type="submit" class="button button-ghost">Ich kümmere mich</button>
+            </form>
+            <form class="status-form" th:if="${canStatus}" method="post"
+                  th:action="@{/todos/{id}/status(id=${todo.id})}" data-auto-submit>
+                <label class="visually-hidden" for="status">Status</label>
+                <select id="status" name="status">
+                    <option th:each="s : ${statuses}" th:value="${s.name()}" th:text="${s.label()}"
+                            th:selected="${todo.status == s}">Offen</option>
+                </select>
+                <noscript><button type="submit" class="button button-small">Setzen</button></noscript>
+            </form>
+            <a class="button" th:if="${canEdit}" th:href="@{/todos/{id}/edit(id=${todo.id})}">Bearbeiten</a>
+        </div>
+    </div>
+
+    <div class="todo-detail">
+        <article class="sheet todo-description">
+            <h2 class="visually-hidden">Beschreibung</h2>
+            <div class="prose" th:if="${!#strings.isEmpty(descriptionHtml)}" th:utext="${descriptionHtml}"></div>
+            <p class="muted" th:if="${#strings.isEmpty(descriptionHtml)}">Keine Beschreibung.</p>
+        </article>
+
+        <aside class="sheet todo-facts">
+            <dl class="event-facts">
+                <dt>Status</dt>
+                <dd th:text="${todo.status.label()}">Offen</dd>
+                <dt>Priorität</dt>
+                <dd th:text="${todo.priority.label()}">Normal</dd>
+                <dt>Zuständig</dt>
+                <dd>
+                    <ul class="todo-assignees" th:unless="${#lists.isEmpty(row.assignees())}">
+                        <th:block th:each="a : ${row.assignees()}">
+                            <li th:replace="~{todos/fragments :: assignee(${a})}"></li>
+                        </th:block>
+                    </ul>
+                    <span class="muted" th:if="${#lists.isEmpty(row.assignees())}">Niemand</span>
+                </dd>
+                <th:block th:unless="${#lists.isEmpty(row.assignees())}">
+                    <dt>Abhaken</dt>
+                    <dd>
+                        <span th:text="${todo.completionMode.label()}">Einer reicht</span>
+                        <ul class="completion-lines" th:unless="${#lists.isEmpty(completionLines)}">
+                            <li th:each="line : ${completionLines}" th:text="${line}">✓ Lena</li>
+                        </ul>
+                    </dd>
+                </th:block>
+                <dt>Verantwortlich</dt>
+                <dd th:text="${labels.user(todo.responsibleUserId)}">mama</dd>
+                <th:block th:if="${availableFromLabel != null}">
+                    <dt>Ab</dt>
+                    <dd th:text="${availableFromLabel}">Montag</dd>
+                </th:block>
+                <th:block th:if="${dueOnLabel != null}">
+                    <dt>Bis</dt>
+                    <dd th:text="${dueOnLabel}">Montag</dd>
+                </th:block>
+                <th:block th:if="${followUpLabel != null}">
+                    <dt>Wiedervorlage</dt>
+                    <dd th:text="${followUpLabel}">Montag</dd>
+                </th:block>
+                <th:block th:if="${todo.remindDaysBefore != null}">
+                    <dt>Erinnern</dt>
+                    <dd th:text="${todo.remindDaysBefore == 0} ? 'Am Fälligkeitstag' : ${todo.remindDaysBefore} + ' Tage vorher'">2 Tage vorher</dd>
+                </th:block>
+                <th:block th:if="${todo.privateTodo}">
+                    <dt>Sichtbarkeit</dt>
+                    <dd>Privat</dd>
+                </th:block>
+                <th:block th:unless="${#sets.isEmpty(todo.tags)}">
+                    <dt>Schlagworte</dt>
+                    <dd class="badges">
+                        <th:block th:each="tag : ${todo.tags}">
+                            <a class="tag" th:href="@{/todos(tag=${tag})}" th:text="'#' + ${tag}">#haus</a>
+                        </th:block>
+                    </dd>
+                </th:block>
+                <dt>Angelegt</dt>
+                <dd th:text="${labels.user(todo.createdBy)}">mama</dd>
+            </dl>
+        </aside>
+    </div>
+
+    <form class="danger-zone" th:if="${canDelete}" th:action="@{/todos/{id}/delete(id=${todo.id})}" method="post"
+          th:attr="data-confirm=|„${todo.title}“ löschen?|">
+        <button type="submit" class="button button-danger">ToDo löschen</button>
+    </form>
+</main>
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

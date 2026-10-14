@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('ToDos')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='todos')}"></header>
+<main class="todos-page">
+    <div class="page-head">
+        <div>
+            <h1>ToDos</h1>
+            <p th:text="${count == 1} ? '1 Eintrag' : ${count} + ' Einträge'">3 Einträge</p>
+        </div>
+        <div class="page-actions">
+            <a class="button" th:if="${canCreate}" th:href="@{/todos/new}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                ToDo
+            </a>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <form class="todo-filters" th:action="@{/todos}" method="get" data-auto-submit role="search">
+        <label class="search">
+            <span class="visually-hidden">ToDos durchsuchen</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+            <input class="input" type="search" name="q" placeholder="Suchen" th:value="${filter.text()}">
+        </label>
+        <label class="filter">
+            <span class="visually-hidden">Beteiligung</span>
+            <select name="involvement">
+                <option th:each="i : ${involvements}" th:value="${i.name()}" th:text="${i.label()}"
+                        th:selected="${filter.involvement() == i}">Alle</option>
+            </select>
+        </label>
+        <label class="filter">
+            <span class="visually-hidden">Zuständig</span>
+            <select name="assignee">
+                <option value="">Alle Zuständigen</option>
+                <optgroup label="Mitglieder" th:unless="${#lists.isEmpty(labels.members())}">
+                    <option th:each="m : ${labels.members()}" th:value="'member:' + ${m.id}" th:text="${m.name}"
+                            th:selected="${assigneeKey == 'member:' + m.id}">Lena</option>
+                </optgroup>
+                <optgroup label="Rollen">
+                    <option th:each="r : ${labels.roles()}" th:value="'role:' + ${r.id}" th:text="${r.name}"
+                            th:selected="${assigneeKey == 'role:' + r.id}">Eltern</option>
+                </optgroup>
+                <optgroup label="Kontakte" th:unless="${#lists.isEmpty(labels.contacts())}">
+                    <option th:each="c : ${labels.contacts()}" th:value="'contact:' + ${c.id}" th:text="${c.name}"
+                            th:selected="${assigneeKey == 'contact:' + c.id}">Meier</option>
+                </optgroup>
+            </select>
+        </label>
+        <label class="filter">
+            <span class="visually-hidden">Zeitlage</span>
+            <select name="timing">
+                <option value="">Jede Zeitlage</option>
+                <option th:each="t : ${timings}" th:value="${t.name()}" th:text="${t.label()}"
+                        th:selected="${filter.timing() == t}">Überfällig</option>
+            </select>
+        </label>
+        <label class="filter">
+            <span class="visually-hidden">Status</span>
+            <select name="status">
+                <option value="">Jeder Status</option>
+                <option th:each="s : ${statuses}" th:value="${s.name()}" th:text="${s.label()}"
+                        th:selected="${filter.status() == s}">Offen</option>
+            </select>
+        </label>
+        <label class="filter">
+            <span class="visually-hidden">Priorität</span>
+            <select name="priority">
+                <option value="">Jede Priorität</option>
+                <option th:each="p : ${priorities}" th:value="${p.name()}" th:text="${p.label()}"
+                        th:selected="${filter.priority() == p}">Hoch</option>
+            </select>
+        </label>
+        <label class="filter" th:unless="${#lists.isEmpty(tags)}">
+            <span class="visually-hidden">Schlagwort</span>
+            <select name="tag">
+                <option value="">Alle Schlagworte</option>
+                <option th:each="t : ${tags}" th:value="${t}" th:text="'#' + ${t}"
+                        th:selected="${filter.tag() == t}">#haus</option>
+            </select>
+        </label>
+        <label class="choice choice-compact">
+            <input type="checkbox" name="closed" value="true" th:checked="${filter.includeClosed()}">
+            <span>Abgeschlossene zeigen</span>
+        </label>
+        <button type="submit" class="button button-ghost button-small">Filtern</button>
+        <a class="filter-reset" th:if="${filter.isActive()}" th:href="@{/todos}">Zurücksetzen</a>
+    </form>
+
+    <div class="sheet sheet-empty" th:if="${#lists.isEmpty(groups)}">
+        <th:block th:if="${filter.isActive()}">Kein ToDo passt zu diesen Filtern.</th:block>
+        <th:block th:unless="${filter.isActive()}">Nichts zu tun. Neue Aufgaben legst du über „ToDo“ an.</th:block>
+    </div>
+
+    <section class="todo-group" th:each="group : ${groups}"
+             th:classappend="'todo-group-' + ${#strings.toLowerCase(group.timing().name())}">
+        <h2>
+            <span th:text="${group.timing().label()}">Überfällig</span>
+            <span class="count" th:text="${#lists.size(group.rows())}">2</span>
+        </h2>
+        <ul class="todo-list">
+            <th:block th:each="row : ${group.rows()}">
+                <li th:replace="~{todos/fragments :: row}"></li>
+            </th:block>
+        </ul>
+    </section>
+</main>
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

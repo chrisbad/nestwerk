@@ -50,6 +50,8 @@
             <a th:href="@{/}" th:aria-current="${active == 'home'} ? 'page'">Start</a>
             <a th:href="@{/calendar}" sec:authorize="hasAuthority('CALENDAR_VIEW')"
                th:aria-current="${active == 'calendar'} ? 'page'">Kalender</a>
+            <a th:href="@{/todos}" th:if="${@todoAccess.mayOpen(#authentication.name)}"
+               th:aria-current="${active == 'todos'} ? 'page'">ToDos</a>
             <a th:href="@{/contacts}" th:if="${@contactService.mayOpen(#authentication.name)}"
                th:aria-current="${active == 'contacts'} ? 'page'">Kontakte</a>
             <a th:href="@{/admin/users}" sec:authorize="hasAuthority('USER_MANAGE')"

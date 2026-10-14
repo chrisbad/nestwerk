@@ -69,4 +69,24 @@ class NavigationTests {
                 .andExpect(content().string(containsString("<h2>Kalender</h2>")))
                 .andExpect(content().string(containsString("href=\"/calendar\"")));
     }
+
+    @Autowired club.badernet.nestwerk.user.UserService userService;
+    @Autowired club.badernet.nestwerk.role.RoleRepository roles;
+
+    @Test
+    @org.springframework.transaction.annotation.Transactional
+    void showsTodoAndContactEntriesOnlyWithAccessRules() throws Exception {
+        Long benutzer = roles.findByNameIgnoreCase("Benutzer").orElseThrow().getId();
+        userService.create("navmitregeln", "passwort1", java.util.Set.of(benutzer));
+        userService.create("navohneregeln", "passwort1", java.util.Set.of());
+
+        mockMvc.perform(get("/").with(org.springframework.security.test.web.servlet.request
+                        .SecurityMockMvcRequestPostProcessors.user("navmitregeln")))
+                .andExpect(content().string(containsString("href=\"/todos\"")))
+                .andExpect(content().string(containsString("href=\"/contacts\"")));
+        mockMvc.perform(get("/").with(org.springframework.security.test.web.servlet.request
+                        .SecurityMockMvcRequestPostProcessors.user("navohneregeln")))
+                .andExpect(content().string(not(containsString("href=\"/todos\""))))
+                .andExpect(content().string(not(containsString("href=\"/contacts\""))));
+    }
 }

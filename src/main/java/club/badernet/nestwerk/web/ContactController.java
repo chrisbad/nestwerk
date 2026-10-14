@@ -3,6 +3,11 @@ package club.badernet.nestwerk.web;
 import club.badernet.nestwerk.contact.Contact;
 import club.badernet.nestwerk.contact.ContactService;
 import club.badernet.nestwerk.security.CurrentUser;
+import club.badernet.nestwerk.todo.AssigneeRef;
+import club.badernet.nestwerk.todo.Todo;
+import club.badernet.nestwerk.todo.TodoAccess;
+import club.badernet.nestwerk.todo.TodoFilter;
+import club.badernet.nestwerk.todo.TodoQuery;
 import club.badernet.nestwerk.user.User;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
@@ -29,10 +34,15 @@ public class ContactController {
 
     private final ContactService contacts;
     private final CurrentUser currentUser;
+    private final TodoQuery todoQuery;
+    private final TodoAccess todoAccess;
 
-    public ContactController(ContactService contacts, CurrentUser currentUser) {
+    public ContactController(ContactService contacts, CurrentUser currentUser, TodoQuery todoQuery,
+                             TodoAccess todoAccess) {
         this.contacts = contacts;
         this.currentUser = currentUser;
+        this.todoQuery = todoQuery;
+        this.todoAccess = todoAccess;
     }
 
     @GetMapping
@@ -92,6 +102,12 @@ public class ContactController {
         model.addAttribute("contact", contact);
         model.addAttribute("canEdit", contacts.can(viewer, "EDIT", contact));
         model.addAttribute("canDelete", contacts.can(viewer, "DELETE", contact));
+        List<Todo> openTodos = List.of();
+        if (todoAccess.mayOpen(viewer.getUsername())) {
+            openTodos = todoQuery.list(viewer, TodoFilter.defaults().withAssignee(AssigneeRef.contact(id))).stream()
+                    .flatMap(g -> g.todos().stream()).toList();
+        }
+        model.addAttribute("openTodos", openTodos);
         return "contacts/detail";
     }
 
