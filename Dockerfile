@@ -16,7 +16,9 @@ FROM eclipse-temurin:25-jre
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --system --uid 1001 nestwerk
+    && useradd --system --uid 1001 nestwerk \
+    && mkdir -p /data/attachments \
+    && chown -R nestwerk /data
 
 WORKDIR /app
 COPY --from=build /build/target/app.jar app.jar

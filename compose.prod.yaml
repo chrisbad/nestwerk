@@ -27,8 +27,11 @@ services:
       NESTWERK_ADMIN_USERNAME: ${NESTWERK_ADMIN_USERNAME:-admin}
       NESTWERK_ADMIN_PASSWORD: ${NESTWERK_ADMIN_PASSWORD:-}
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
+      NESTWERK_ATTACHMENT_DIR: /data/attachments
     ports:
       - "${APP_BIND:-127.0.0.1:8080}:8080"
+    volumes:
+      - attachments:/data/attachments
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
       interval: 15s
@@ -38,3 +41,4 @@ services:
 
 volumes:
   db-data:
+  attachments:

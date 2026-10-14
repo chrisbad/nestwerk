@@ -45,7 +45,19 @@ docker compose -f compose.prod.yaml up -d --build
 
 ### Backup
 
+Datenbank:
+
 ```bash
 docker compose -f compose.prod.yaml exec -T db \
   pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > backup.sql
 ```
+
+Anhänge (Dateien an ToDos, Kommentaren und Kontakten liegen im Volume `attachments`):
+
+```bash
+docker compose -f compose.prod.yaml run --rm --no-deps -v "$PWD":/backup --entrypoint "" app \
+  tar czf /backup/anhaenge.tgz -C /data/attachments .
+```
+
+Datenbank und Anhänge gehören zusammen: Ein Anhang ohne passenden Datensatz wird nachts automatisch
+entfernt, ein Datensatz ohne Datei liefert beim Herunterladen einen Fehler.
