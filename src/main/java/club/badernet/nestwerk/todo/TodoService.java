@@ -37,10 +37,12 @@ public class TodoService {
     private final ContactService contactService;
     private final TodoRecurrence recurrence;
     private final Clock clock;
+    private final TodoHistoryRecorder history;
 
     public TodoService(TodoRepository todos, TodoAccess access, FamilyMemberRepository members,
                        RoleRepository roles, ContactRepository contacts, UserRepository users,
-                       ContactService contactService, TodoRecurrence recurrence, Clock clock) {
+                       ContactService contactService, TodoRecurrence recurrence, Clock clock,
+                       TodoHistoryRecorder history) {
         this.todos = todos;
         this.access = access;
         this.members = members;
@@ -50,6 +52,7 @@ public class TodoService {
         this.contactService = contactService;
         this.recurrence = recurrence;
         this.clock = clock;
+        this.history = history;
     }
 
     /** Liefert das ToDo, wenn der Betrachter es sehen darf; sonst wie „nicht vorhanden“. */
@@ -82,7 +85,9 @@ public class TodoService {
         }
         syncCompletions(todo);
         todo.markChanged(actor.getId());
-        return todos.save(todo);
+        Todo saved = todos.save(todo);
+        history.record(saved.getId(), actor.getId(), "CREATED", null, null);
+        return saved;
     }
 
     /**
@@ -115,6 +120,7 @@ public class TodoService {
         if (responsibleChanged) {
             require(actor, "CHANGE_RESPONSIBLE", todo);
         }
+        java.util.Map<String, String> before = TodoHistoryRecorder.snapshot(todo);
         if (contentChanged) {
             todo.setTitle(title);
             applyContent(todo, in);
@@ -130,6 +136,7 @@ public class TodoService {
         }
         if (contentChanged || assigneesChanged || responsibleChanged) {
             todo.markChanged(actor.getId());
+            history.recordChanges(todo, actor.getId(), before);
         }
     }
 
@@ -137,9 +144,17 @@ public class TodoService {
     public void changeStatus(Long id, TodoStatus status, User actor) {
         Todo todo = get(id, actor);
         require(actor, "CHANGE_STATUS", todo);
+        TodoStatus before = todo.getStatus();
         todo.changeStatus(status, actor.getId());
         todo.markChanged(actor.getId());
+        recordStatus(todo, actor, before);
         afterStatusChange(todo, actor);
+    }
+
+    private void recordStatus(Todo todo, User actor, TodoStatus before) {
+        if (before != todo.getStatus()) {
+            history.record(todo.getId(), actor.getId(), "STATUS", before.name(), todo.getStatus().name());
+        }
     }
 
     /** „Ich kümmere mich“: setzt den Status auf In Arbeit. */
@@ -157,6 +172,7 @@ public class TodoService {
     public void check(Long id, User actor) {
         Todo todo = get(id, actor);
         require(actor, "CHANGE_STATUS", todo);
+        TodoStatus before = todo.getStatus();
         if (todo.getCompletionMode() == CompletionMode.ANY || todo.getCompletions().isEmpty()) {
             todo.changeStatus(TodoStatus.DONE, actor.getId());
         } else {
@@ -166,11 +182,13 @@ public class TodoService {
                         + "Über den Status lässt sich das ToDo trotzdem abschließen.");
             }
             mine.forEach(c -> c.complete(actor.getId()));
+            history.record(todo.getId(), actor.getId(), "CHECKED", null, String.valueOf(actor.getId()));
             if (todo.getCompletions().stream().allMatch(TodoCompletion::isDone)) {
                 todo.changeStatus(TodoStatus.DONE, actor.getId());
             }
         }
         todo.markChanged(actor.getId());
+        recordStatus(todo, actor, before);
         afterStatusChange(todo, actor);
     }
 
@@ -178,13 +196,16 @@ public class TodoService {
     public void uncheck(Long id, User actor) {
         Todo todo = get(id, actor);
         require(actor, "CHANGE_STATUS", todo);
-        if (todo.getCompletionMode() == CompletionMode.EACH) {
+        TodoStatus before = todo.getStatus();
+        if (todo.getCompletionMode() == CompletionMode.EACH && !ownCompletions(todo, actor).isEmpty()) {
             ownCompletions(todo, actor).forEach(TodoCompletion::reopen);
+            history.record(todo.getId(), actor.getId(), "UNCHECKED", null, String.valueOf(actor.getId()));
         }
         if (todo.getStatus() == TodoStatus.DONE) {
             todo.changeStatus(TodoStatus.OPEN, actor.getId());
         }
         todo.markChanged(actor.getId());
+        recordStatus(todo, actor, before);
     }
 
     /** Hat der Benutzer bei „jeder einzeln“ seine Stelle schon abgehakt? */
@@ -232,6 +253,8 @@ public class TodoService {
         Todo saved = todos.save(copy);
         copyChildren(todo.getId(), saved.getId(), shift);
         todo.setSuccessorId(saved.getId());
+        history.record(saved.getId(), null, "CREATED_FROM_SERIES", String.valueOf(todo.getId()), null);
+        history.record(todo.getId(), null, "SUCCESSOR", null, String.valueOf(saved.getId()));
     }
 
     private void copyChildren(Long fromParentId, Long toParentId, long shift) {

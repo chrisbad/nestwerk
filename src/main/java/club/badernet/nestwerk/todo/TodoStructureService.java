@@ -62,9 +62,12 @@ public class TodoStructureService {
     private final TodoAccess access;
     private final NamedParameterJdbcTemplate jdbc;
     private final EntityManager entityManager;
+    private final TodoHistoryRecorder history;
 
     public TodoStructureService(TodoRepository todos, TodoLinkRepository links, TodoService service,
-                                TodoAccess access, NamedParameterJdbcTemplate jdbc, EntityManager entityManager) {
+                                TodoAccess access, NamedParameterJdbcTemplate jdbc, EntityManager entityManager,
+                                TodoHistoryRecorder history) {
+        this.history = history;
         this.todos = todos;
         this.links = links;
         this.service = service;
@@ -81,6 +84,7 @@ public class TodoStructureService {
         require(actor, "LINK", parent);
         Todo child = service.create(input, actor);
         child.setParentId(parent.getId());
+        history.record(parent.getId(), actor.getId(), "CHILD_ADDED", null, String.valueOf(child.getId()));
         return child;
     }
 
@@ -96,8 +100,14 @@ public class TodoStructureService {
                 throw new IllegalArgumentException("Das ergäbe einen Kreis: Ein ToDo kann nicht unter sich selbst hängen.");
             }
         }
+        Long oldParent = todo.getParentId();
         todo.setParentId(newParentId);
         todo.markChanged(actor.getId());
+        history.record(id, actor.getId(), "PARENT", oldParent == null ? null : oldParent.toString(),
+                newParentId == null ? null : newParentId.toString());
+        if (newParentId != null) {
+            history.record(newParentId, actor.getId(), "CHILD_ADDED", null, String.valueOf(id));
+        }
     }
 
     @Transactional(readOnly = true)
@@ -164,6 +174,8 @@ public class TodoStructureService {
             throw new IllegalArgumentException("Das ergäbe einen Kreis aus Blockaden.");
         }
         TodoLink link = links.save(new TodoLink(sourceId, targetId, type, actor.getId()));
+        history.record(sourceId, actor.getId(), "LINK_ADDED", null, type.name() + ":" + targetId);
+        history.record(targetId, actor.getId(), "LINK_ADDED", null, incoming(type) + ":" + sourceId);
         if (type == TodoLinkType.DUPLICATES && !source.isClosed()) {
             source.changeStatus(TodoStatus.DISCARDED, actor.getId());
             service.afterStatusChange(source, actor);
@@ -182,6 +194,17 @@ public class TodoStructureService {
         }
         links.delete(link);
         source.markChanged(actor.getId());
+        history.record(source.getId(), actor.getId(), "LINK_REMOVED", link.getType().name() + ":" + target.getId(), null);
+        history.record(target.getId(), actor.getId(), "LINK_REMOVED", incoming(link.getType()) + ":" + source.getId(), null);
+    }
+
+    /** Name der Gegenrichtung für den Verlauf. */
+    static String incoming(TodoLinkType type) {
+        return switch (type) {
+            case BLOCKS -> "BLOCKED_BY";
+            case RELATES -> "RELATES";
+            case DUPLICATES -> "DUPLICATED_BY";
+        };
     }
 
     /** Sichtbare Verknüpfungen eines ToDos in beide Richtungen. */
