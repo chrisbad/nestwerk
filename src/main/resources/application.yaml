@@ -5,6 +5,10 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/mydatabase}
     username: ${DB_USER:myuser}
     password: ${DB_PASSWORD:secret}
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 100MB
   jpa:
     open-in-view: false
     hibernate:
@@ -24,3 +28,5 @@ nestwerk:
     username: ${NESTWERK_ADMIN_USERNAME:admin}
     password: ${NESTWERK_ADMIN_PASSWORD:}
   timezone: ${NESTWERK_TIMEZONE:Europe/Berlin}
+  attachments:
+    dir: ${NESTWERK_ATTACHMENT_DIR:./data/attachments}

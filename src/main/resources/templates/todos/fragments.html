@@ -73,6 +73,43 @@
     <span th:text="${a.label()}">Lena</span>
 </li>
 
+<!-- Anhänge mit Bildvorschau und optionalem Upload -->
+<div th:fragment="attachments(items, back, uploadAction)" class="attachments">
+    <ul class="attachment-list" th:unless="${#lists.isEmpty(items)}">
+        <li th:each="a : ${items}" class="attachment">
+            <a th:if="${a.image}" class="attachment-thumb" th:href="@{/attachments/{id}(id=${a.id})}" target="_blank" rel="noopener">
+                <img th:src="@{/attachments/{id}(id=${a.id})}" th:alt="${a.filename}" loading="lazy">
+            </a>
+            <svg th:unless="${a.image}" class="attachment-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>
+            </svg>
+            <span class="attachment-text">
+                <a th:href="@{/attachments/{id}(id=${a.id})}" th:text="${a.filename}" target="_blank" rel="noopener">datei.pdf</a>
+                <span class="muted" th:text="${a.sizeLabel()}">1,2 MB</span>
+            </span>
+            <form method="post" th:action="@{/attachments/{id}/delete(id=${a.id})}"
+                  th:attr="data-confirm=|„${a.filename}“ löschen?|">
+                <input type="hidden" name="back" th:value="${back}">
+                <button type="submit" class="icon-button" title="Anhang löschen">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                    <span class="visually-hidden">Anhang löschen</span>
+                </button>
+            </form>
+        </li>
+    </ul>
+    <form class="dropzone" th:if="${uploadAction != null}" method="post" enctype="multipart/form-data"
+          th:action="@{${uploadAction}}" data-dropzone>
+        <label>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+            <span>Dateien hierher ziehen oder <strong>auswählen</strong></span>
+            <span class="hint">Bilder, PDF, Office, Text; höchstens 20 MB je Datei</span>
+            <input type="file" name="files" multiple class="visually-hidden"
+                   accept="image/png,image/jpeg,image/gif,image/webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.txt,.csv">
+        </label>
+        <noscript><button type="submit" class="button button-small">Hochladen</button></noscript>
+    </form>
+</div>
+
 <!-- Kopf der ToDo-Ansichten mit Umschalter Liste | Board | Baum; erwartet ${view} und ${viewQuery} -->
 <div th:fragment="viewHead(subtitle)" class="page-head">
     <div>

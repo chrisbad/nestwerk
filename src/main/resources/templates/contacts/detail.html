@@ -50,6 +50,11 @@
         </div>
     </article>
 
+    <section class="sheet contact-todos" th:if="${!#lists.isEmpty(attachments) or canAttach}">
+        <h2>Anhänge</h2>
+        <div th:replace="~{todos/fragments :: attachments(${attachments}, '/contacts/' + ${contact.id}, ${canAttach} ? '/contacts/' + ${contact.id} + '/attachments' : null)}"></div>
+    </section>
+
     <section class="sheet contact-todos" th:unless="${#lists.isEmpty(openTodos)}">
         <h2>Offene ToDos</h2>
         <ul>

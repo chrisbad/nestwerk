@@ -51,6 +51,10 @@ public class TodoQuery {
         return LocalDate.now(clock);
     }
 
+    public java.time.ZoneId zone() {
+        return clock.getZone();
+    }
+
     @Transactional(readOnly = true)
     public List<TodoGroup> list(User viewer, TodoFilter filter) {
         LocalDate today = today();

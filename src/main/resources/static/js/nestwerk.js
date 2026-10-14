@@ -346,6 +346,52 @@
         });
     }
 
+    /* --- Kommentare und Anhänge ------------------------------------------- */
+
+    function initCollaboration() {
+        // @name per Klick in den Kommentar einfügen
+        document.addEventListener("click", event => {
+            const chip = event.target.closest("[data-mention]");
+            if (!chip) return;
+            const area = chip.closest("form")?.querySelector("[data-mention-target]");
+            if (!area) return;
+            const insert = "@" + chip.dataset.mention + " ";
+            const pos = area.selectionStart ?? area.value.length;
+            const before = area.value.slice(0, pos);
+            const spacer = before && !/\s$/.test(before) ? " " : "";
+            area.value = before + spacer + insert + area.value.slice(pos);
+            area.focus();
+            area.selectionStart = area.selectionEnd = pos + spacer.length + insert.length;
+        });
+        // Anzahl gewählter Dateien im Kommentarformular anzeigen
+        document.addEventListener("change", event => {
+            const input = event.target;
+            if (!input.matches?.("input[type=file]")) return;
+            const counter = input.closest("label")?.querySelector("[data-file-count]");
+            if (counter) {
+                counter.textContent = input.files.length === 0 ? "Dateien anhängen"
+                    : input.files.length === 1 ? input.files[0].name : input.files.length + " Dateien";
+            }
+            const zone = input.closest("[data-dropzone]");
+            if (zone && input.files.length > 0) zone.requestSubmit();
+        });
+        // Dateien in die Ablagefläche ziehen
+        document.querySelectorAll("[data-dropzone]").forEach(zone => {
+            const input = zone.querySelector("input[type=file]");
+            ["dragenter", "dragover"].forEach(type => zone.addEventListener(type, event => {
+                event.preventDefault();
+                zone.classList.add("is-over");
+            }));
+            ["dragleave", "drop"].forEach(type => zone.addEventListener(type, () => zone.classList.remove("is-over")));
+            zone.addEventListener("drop", event => {
+                event.preventDefault();
+                if (!event.dataTransfer?.files?.length) return;
+                input.files = event.dataTransfer.files;
+                zone.requestSubmit();
+            });
+        });
+    }
+
     /* --- Filterformulare: bei Änderung sofort absenden --------------------- */
 
     function initAutoSubmit() {
@@ -382,6 +428,7 @@
         initEventForm();
         initAutoSubmit();
         initBoard();
+        initCollaboration();
         consumeToasts(document);
     });
 })();

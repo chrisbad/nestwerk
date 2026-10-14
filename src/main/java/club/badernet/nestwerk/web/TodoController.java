@@ -6,7 +6,12 @@ import club.badernet.nestwerk.todo.Todo;
 import club.badernet.nestwerk.todo.TodoAccess;
 import club.badernet.nestwerk.todo.TodoConflictException;
 import club.badernet.nestwerk.todo.TodoFilter;
+import club.badernet.nestwerk.attachment.AttachmentService;
+import club.badernet.nestwerk.todo.TodoComment;
+import club.badernet.nestwerk.todo.TodoCommentService;
 import club.badernet.nestwerk.todo.TodoGroup;
+import club.badernet.nestwerk.todo.TodoHistoryEntry;
+import club.badernet.nestwerk.todo.TodoHistoryRepository;
 import club.badernet.nestwerk.todo.TodoLinkType;
 import club.badernet.nestwerk.todo.TodoNotFoundException;
 import club.badernet.nestwerk.todo.TodoStructureService;
@@ -45,11 +50,21 @@ public class TodoController {
     private final CurrentUser currentUser;
     private final UserRepository users;
     private final TodoStructureService structure;
+    private final TodoCommentService comments;
+    private final TodoHistoryRepository history;
+    private final TodoHistoryFormatter historyFormatter;
+    private final AttachmentService attachments;
 
     public TodoController(TodoService todos, TodoQuery query, TodoAccess access, TodoViews views,
                           MarkdownRenderer markdown, CurrentUser currentUser, UserRepository users,
-                          TodoStructureService structure) {
+                          TodoStructureService structure, TodoCommentService comments,
+                          TodoHistoryRepository history, TodoHistoryFormatter historyFormatter,
+                          AttachmentService attachments) {
         this.structure = structure;
+        this.comments = comments;
+        this.history = history;
+        this.historyFormatter = historyFormatter;
+        this.attachments = attachments;
         this.todos = todos;
         this.query = query;
         this.access = access;
@@ -195,8 +210,18 @@ public class TodoController {
         }
     }
 
+    /** Ein Eintrag im Zeitstrahl: Kommentar oder Verlaufseintrag. */
+    public record TimelineItem(java.time.Instant at, String when, String actor, boolean comment, Long commentId,
+                               String html, String text,
+                               List<club.badernet.nestwerk.attachment.Attachment> attachments,
+                               boolean canEdit, boolean canDelete, String body, boolean edited) {
+    }
+
+    static final java.time.format.DateTimeFormatter TIMESTAMP =
+            java.time.format.DateTimeFormatter.ofPattern("d. MMM yyyy, HH:mm", java.util.Locale.GERMANY);
+
     @GetMapping("/{id}")
-    String detail(@PathVariable Long id, Model model) {
+    String detail(@PathVariable Long id, @RequestParam(required = false) String timeline, Model model) {
         User viewer = requireModule();
         Todo todo = todos.get(id, viewer);
         TodoViews.Labels labels = views.labels(viewer);
@@ -227,6 +252,41 @@ public class TodoController {
         model.addAttribute("linkTypes", TodoLinkType.values());
         model.addAttribute("linkCandidates", canLink ? query.list(viewer, TodoFilter.defaults()).stream()
                 .flatMap(g -> g.todos().stream()).filter(t -> !t.getId().equals(id)).limit(300).toList() : List.of());
+
+        // Zusammenarbeit
+        boolean onlyComments = "comments".equals(timeline);
+        List<TodoComment> todoComments = comments.forTodo(id, viewer);
+        java.util.Map<Long, List<club.badernet.nestwerk.attachment.Attachment>> commentFiles =
+                attachments.forComments(todoComments.stream().map(TodoComment::getId).toList());
+        List<TimelineItem> items = new ArrayList<>();
+        for (TodoComment c : todoComments) {
+            boolean own = c.getAuthorId().equals(viewer.getId());
+            items.add(new TimelineItem(c.getCreatedAt(), when(c.getCreatedAt()), labels.user(c.getAuthorId()), true, c.getId(),
+                    markdown.render(c.getBody()), null, commentFiles.getOrDefault(c.getId(), List.of()),
+                    own, own || viewer.isAdministrator(), c.getBody(), c.getEditedAt() != null));
+        }
+        if (!onlyComments) {
+            for (TodoHistoryEntry e : history.findAllByTodoIdOrderByAtAscIdAsc(id)) {
+                items.add(new TimelineItem(e.getAt(), when(e.getAt()), labels.user(e.getActorId()), false, null, null,
+                        historyFormatter.text(e, labels, viewer), List.of(), false, false, null, false));
+            }
+        }
+        items.sort(java.util.Comparator.comparing(TimelineItem::at));
+        model.addAttribute("timeline", items);
+        model.addAttribute("onlyComments", onlyComments);
+        model.addAttribute("canComment", access.can(viewer, "COMMENT", todo));
+        model.addAttribute("canAttach", access.can(viewer, "ATTACH", todo));
+        model.addAttribute("attachments", attachments.forTodo(id));
+        model.addAttribute("watching", todo.getWatcherUserIds().contains(viewer.getId()));
+        model.addAttribute("watchers", todo.getWatcherUserIds().stream().map(labels::user).sorted().toList());
+        model.addAttribute("watcherIds", todo.getWatcherUserIds());
+        model.addAttribute("currentUserId", viewer.getId());
+        model.addAttribute("canWatch", access.can(viewer, "WATCH", todo));
+        boolean canManageWatchers = access.can(viewer, "MANAGE_WATCHERS", todo);
+        model.addAttribute("canManageWatchers", canManageWatchers);
+        model.addAttribute("mentionable", users.findAllByOrderByUsernameAsc().stream()
+                .filter(User::isEnabled).filter(u -> access.can(u, "VIEW", todo)).map(User::getUsername).toList());
+        model.addAttribute("activeUsers", users.findAllByOrderByUsernameAsc().stream().filter(User::isEnabled).toList());
         return "todos/detail";
     }
 
@@ -347,6 +407,104 @@ public class TodoController {
         return "redirect:/todos/" + id;
     }
 
+    // --- Kommentare, Beobachter, Anhänge ------------------------------------------
+
+    @PostMapping("/{id}/comments")
+    String addComment(@PathVariable Long id, @RequestParam String body,
+                      @RequestParam(name = "files", required = false) List<org.springframework.web.multipart.MultipartFile> files,
+                      RedirectAttributes redirect) {
+        User actor = requireModule();
+        try {
+            TodoComment comment = comments.add(id, body, actor);
+            storeAll(club.badernet.nestwerk.attachment.AttachmentOwner.comment(comment.getId()), files, actor);
+            redirect.addFlashAttribute("success", "Kommentar wurde gespeichert.");
+        } catch (IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/todos/" + id + "#timeline";
+    }
+
+    @PostMapping("/{id}/comments/{commentId}/edit")
+    String editComment(@PathVariable Long id, @PathVariable Long commentId, @RequestParam String body,
+                       RedirectAttributes redirect) {
+        try {
+            comments.edit(commentId, body, requireModule());
+            redirect.addFlashAttribute("success", "Kommentar wurde geändert.");
+        } catch (IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/todos/" + id + "#timeline";
+    }
+
+    @PostMapping("/{id}/comments/{commentId}/delete")
+    String deleteComment(@PathVariable Long id, @PathVariable Long commentId, RedirectAttributes redirect) {
+        comments.delete(commentId, requireModule());
+        redirect.addFlashAttribute("success", "Kommentar wurde gelöscht.");
+        return "redirect:/todos/" + id + "#timeline";
+    }
+
+    @PostMapping("/{id}/watch")
+    String watch(@PathVariable Long id, RedirectAttributes redirect) {
+        todos.watch(id, requireModule());
+        redirect.addFlashAttribute("success", "Du beobachtest dieses ToDo.");
+        return "redirect:/todos/" + id;
+    }
+
+    @PostMapping("/{id}/unwatch")
+    String unwatch(@PathVariable Long id, RedirectAttributes redirect) {
+        todos.unwatch(id, requireModule());
+        redirect.addFlashAttribute("success", "Du beobachtest dieses ToDo nicht mehr.");
+        return "redirect:/todos/" + id;
+    }
+
+    @PostMapping("/{id}/watchers")
+    String addWatcher(@PathVariable Long id, @RequestParam Long userId, RedirectAttributes redirect) {
+        try {
+            todos.addWatcher(id, userId, requireModule());
+            redirect.addFlashAttribute("success", "Beobachter wurde hinzugefügt.");
+        } catch (IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/todos/" + id;
+    }
+
+    @PostMapping("/{id}/watchers/{userId}/delete")
+    String removeWatcher(@PathVariable Long id, @PathVariable Long userId, RedirectAttributes redirect) {
+        todos.removeWatcher(id, userId, requireModule());
+        redirect.addFlashAttribute("success", "Beobachter wurde entfernt.");
+        return "redirect:/todos/" + id;
+    }
+
+    @PostMapping("/{id}/attachments")
+    String upload(@PathVariable Long id,
+                  @RequestParam(name = "files", required = false) List<org.springframework.web.multipart.MultipartFile> files,
+                  RedirectAttributes redirect) {
+        User actor = requireModule();
+        try {
+            int stored = storeAll(club.badernet.nestwerk.attachment.AttachmentOwner.todo(id), files, actor);
+            redirect.addFlashAttribute(stored == 0 ? "error" : "success",
+                    stored == 0 ? "Bitte eine Datei auswählen." : (stored == 1 ? "Datei wurde hochgeladen." : stored + " Dateien wurden hochgeladen."));
+        } catch (IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/todos/" + id + "#attachments";
+    }
+
+    /** Speichert alle nicht leeren Dateien; bricht beim ersten ungültigen mit Meldung ab. */
+    private int storeAll(club.badernet.nestwerk.attachment.AttachmentOwner owner,
+                         List<org.springframework.web.multipart.MultipartFile> files, User actor) {
+        int stored = 0;
+        if (files != null) {
+            for (org.springframework.web.multipart.MultipartFile f : files) {
+                if (f != null && !f.isEmpty()) {
+                    attachments.store(owner, f, actor);
+                    stored++;
+                }
+            }
+        }
+        return stored;
+    }
+
     @PostMapping("/{id}/delete")
     String delete(@PathVariable Long id, RedirectAttributes redirect) {
         todos.delete(id, requireModule());
@@ -403,6 +561,10 @@ public class TodoController {
             throw new AccessDeniedException("Keine Berechtigung für ToDos");
         }
         return user;
+    }
+
+    private String when(java.time.Instant at) {
+        return TIMESTAMP.format(at.atZone(query.zone()));
     }
 
     /** Liest „#12 Titel“ oder „12“; sonst {@code null}. */

@@ -107,6 +107,72 @@
                 <button type="submit" class="button button-ghost button-small">Aus übergeordnetem ToDo lösen</button>
             </form>
         </section>
+
+        <section class="sheet todo-section" id="attachments" th:if="${!#lists.isEmpty(attachments) or canAttach}">
+            <h2>Anhänge</h2>
+            <div th:replace="~{todos/fragments :: attachments(${attachments}, '/todos/' + ${todo.id}, ${canAttach} ? '/todos/' + ${todo.id} + '/attachments' : null)}"></div>
+        </section>
+
+        <section class="sheet todo-section" id="timeline">
+            <div class="todo-section-head">
+                <h2>Verlauf</h2>
+                <nav class="segmented segmented-small" aria-label="Verlauf filtern">
+                    <a th:href="@{/todos/{id}(id=${todo.id})} + '#timeline'" th:aria-current="${!onlyComments} ? 'page'">Alles</a>
+                    <a th:href="@{/todos/{id}(id=${todo.id}, timeline='comments')} + '#timeline'" th:aria-current="${onlyComments} ? 'page'">Nur Kommentare</a>
+                </nav>
+            </div>
+            <ol class="timeline">
+                <li th:each="item : ${timeline}" th:classappend="${item.comment()} ? 'timeline-comment' : 'timeline-event'">
+                    <div class="timeline-meta">
+                        <strong th:text="${item.actor()} ?: 'Nestwerk'">mama</strong>
+                        <time th:text="${item.when()}">14. Okt 2026, 08:00</time>
+                        <span class="muted" th:if="${item.edited()}">(bearbeitet)</span>
+                    </div>
+                    <p class="timeline-text" th:unless="${item.comment()}" th:text="${item.text()}">Status geändert</p>
+                    <th:block th:if="${item.comment()}">
+                        <div class="prose" th:utext="${item.html()}">Kommentar</div>
+                        <div th:unless="${#lists.isEmpty(item.attachments())}"
+                             th:replace="~{todos/fragments :: attachments(${item.attachments()}, '/todos/' + ${todo.id}, null)}"></div>
+                        <div class="comment-actions" th:if="${item.canEdit() or item.canDelete()}">
+                            <details th:if="${item.canEdit()}">
+                                <summary>Bearbeiten</summary>
+                                <form method="post" th:action="@{/todos/{id}/comments/{c}/edit(id=${todo.id}, c=${item.commentId()})}">
+                                    <textarea name="body" rows="3" maxlength="10000" required th:text="${item.body()}"></textarea>
+                                    <button type="submit" class="button button-small">Speichern</button>
+                                </form>
+                            </details>
+                            <form th:if="${item.canDelete()}" method="post"
+                                  th:action="@{/todos/{id}/comments/{c}/delete(id=${todo.id}, c=${item.commentId()})}"
+                                  data-confirm="Kommentar löschen?">
+                                <button type="submit" class="link-button">Löschen</button>
+                            </form>
+                        </div>
+                    </th:block>
+                </li>
+            </ol>
+            <p class="muted" th:if="${#lists.isEmpty(timeline)}">Noch keine Kommentare.</p>
+
+            <form class="comment-form" th:if="${canComment}" method="post" enctype="multipart/form-data"
+                  th:action="@{/todos/{id}/comments(id=${todo.id})}">
+                <label for="comment-body">Kommentar</label>
+                <textarea id="comment-body" name="body" rows="3" maxlength="10000" required
+                          placeholder="Schreib etwas … mit @name erwähnst du jemanden" data-mention-target></textarea>
+                <div class="mention-hint" th:unless="${#lists.isEmpty(mentionable)}">
+                    <span class="hint">Erwähnen:</span>
+                    <button type="button" class="chip-button" th:each="name : ${mentionable}" th:text="'@' + ${name}"
+                            th:data-mention="${name}">@mama</button>
+                </div>
+                <div class="comment-form-foot">
+                    <label class="file-pick">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.5 12.5 21a5 5 0 0 1-7-7L14 5.5a3.3 3.3 0 0 1 4.7 4.7L10.2 18.7a1.7 1.7 0 0 1-2.4-2.4L15.5 8.6"/></svg>
+                        <span data-file-count>Dateien anhängen</span>
+                        <input type="file" name="files" multiple class="visually-hidden"
+                               accept="image/png,image/jpeg,image/gif,image/webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.txt,.csv">
+                    </label>
+                    <button type="submit" class="button">Kommentieren</button>
+                </div>
+            </form>
+        </section>
         </div>
 
         <aside class="sheet todo-facts">
@@ -170,6 +236,38 @@
                 <dt>Angelegt</dt>
                 <dd th:text="${labels.user(todo.createdBy)}">mama</dd>
             </dl>
+
+            <div class="watchers">
+                <h2>Beobachter</h2>
+                <ul class="watcher-list" th:unless="${#sets.isEmpty(watcherIds)}">
+                    <li th:each="wid : ${watcherIds}">
+                        <span th:text="${labels.user(wid)}">oma</span>
+                        <form th:if="${canManageWatchers or wid == currentUserId}" method="post"
+                              th:action="@{/todos/{id}/watchers/{u}/delete(id=${todo.id}, u=${wid})}">
+                            <button type="submit" class="icon-button" title="Entfernen">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                                <span class="visually-hidden">Entfernen</span>
+                            </button>
+                        </form>
+                    </li>
+                </ul>
+                <p class="muted" th:if="${#sets.isEmpty(watcherIds)}">Noch niemand.</p>
+                <form th:if="${canWatch and !watching}" method="post" th:action="@{/todos/{id}/watch(id=${todo.id})}">
+                    <button type="submit" class="button button-ghost button-small">Beobachten</button>
+                </form>
+                <form th:if="${watching}" method="post" th:action="@{/todos/{id}/unwatch(id=${todo.id})}">
+                    <button type="submit" class="button button-ghost button-small">Nicht mehr beobachten</button>
+                </form>
+                <form class="watcher-add" th:if="${canManageWatchers}" method="post"
+                      th:action="@{/todos/{id}/watchers(id=${todo.id})}">
+                    <label class="visually-hidden" for="watcher-user">Beobachter hinzufügen</label>
+                    <select id="watcher-user" name="userId">
+                        <option th:each="u : ${activeUsers}" th:unless="${watcherIds.contains(u.id)}"
+                                th:value="${u.id}" th:text="${u.username}">oma</option>
+                    </select>
+                    <button type="submit" class="button button-small">Hinzufügen</button>
+                </form>
+            </div>
         </aside>
     </div>
 

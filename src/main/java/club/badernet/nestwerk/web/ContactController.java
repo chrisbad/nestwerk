@@ -36,9 +36,11 @@ public class ContactController {
     private final CurrentUser currentUser;
     private final TodoQuery todoQuery;
     private final TodoAccess todoAccess;
+    private final club.badernet.nestwerk.attachment.AttachmentService attachments;
 
     public ContactController(ContactService contacts, CurrentUser currentUser, TodoQuery todoQuery,
-                             TodoAccess todoAccess) {
+                             TodoAccess todoAccess, club.badernet.nestwerk.attachment.AttachmentService attachments) {
+        this.attachments = attachments;
         this.contacts = contacts;
         this.currentUser = currentUser;
         this.todoQuery = todoQuery;
@@ -108,6 +110,8 @@ public class ContactController {
                     .flatMap(g -> g.todos().stream()).toList();
         }
         model.addAttribute("openTodos", openTodos);
+        model.addAttribute("attachments", attachments.forContact(id));
+        model.addAttribute("canAttach", contacts.can(viewer, "ATTACH", contact));
         return "contacts/detail";
     }
 
@@ -140,6 +144,29 @@ public class ContactController {
             model.addAttribute("contact", contacts.get(id, actor));
             return "contacts/form";
         }
+    }
+
+    @PostMapping("/{id}/attachments")
+    String upload(@PathVariable Long id,
+                  @RequestParam(name = "files", required = false) List<org.springframework.web.multipart.MultipartFile> files,
+                  RedirectAttributes redirect) {
+        User actor = requireModule();
+        int stored = 0;
+        try {
+            if (files != null) {
+                for (org.springframework.web.multipart.MultipartFile f : files) {
+                    if (f != null && !f.isEmpty()) {
+                        attachments.store(club.badernet.nestwerk.attachment.AttachmentOwner.contact(id), f, actor);
+                        stored++;
+                    }
+                }
+            }
+            redirect.addFlashAttribute(stored == 0 ? "error" : "success",
+                    stored == 0 ? "Bitte eine Datei auswählen." : "Datei wurde hochgeladen.");
+        } catch (IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/contacts/" + id;
     }
 
     @PostMapping("/{id}/delete")
