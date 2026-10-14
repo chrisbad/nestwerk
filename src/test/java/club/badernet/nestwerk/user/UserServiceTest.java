@@ -73,15 +73,12 @@ class UserServiceTest {
     }
 
     @Test
-    void unknownPermissionNamesInDatabaseAreIgnored() {
+    void unknownPermissionNamesCannotBeStored() {
         Role role = customRole("Alt", AdminPermission.USER_MANAGE.name());
-        jdbc.update("INSERT INTO role_permissions (role_id, permission) VALUES (?, 'ENTFERNTES_RECHT')",
-                role.getId());
-        userService.create("altlast", "passwort1", Set.of(role.getId()));
-        users.flush();
 
-        assertThat(userService.loadUserByUsername("altlast").getAuthorities())
-                .extracting(GrantedAuthority::getAuthority).containsExactly("USER_MANAGE");
+        assertThatThrownBy(() -> jdbc.update(
+                "INSERT INTO role_permissions (role_id, permission) VALUES (?, 'ENTFERNTES_RECHT')", role.getId()))
+                .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
     }
 
     @Test

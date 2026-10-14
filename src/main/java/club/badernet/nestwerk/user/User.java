@@ -15,7 +15,6 @@ import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Entity
@@ -83,12 +82,6 @@ public class User {
 
     public boolean isAdministrator() {
         return roles.stream().anyMatch(Role::isAllPermissions);
-    }
-
-    public Set<String> permissionNames() {
-        Set<String> names = new LinkedHashSet<>();
-        roles.forEach(r -> names.addAll(r.effectivePermissionNames()));
-        return names;
     }
 
     public boolean isEnabled() {

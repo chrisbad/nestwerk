@@ -16,10 +16,12 @@ public class RoleService {
 
     private final RoleRepository roles;
     private final UserRepository users;
+    private final PermissionCatalog catalog;
 
-    public RoleService(RoleRepository roles, UserRepository users) {
+    public RoleService(RoleRepository roles, UserRepository users, PermissionCatalog catalog) {
         this.roles = roles;
         this.users = users;
+        this.catalog = catalog;
     }
 
     @Transactional(readOnly = true)
@@ -76,10 +78,10 @@ public class RoleService {
      */
     @Transactional(readOnly = true)
     public void requireMayManage(Collection<String> actorPermissions, Long roleId, Set<String> permissions) {
-        if (actorPermissions.containsAll(PermissionCatalog.names())) {
+        if (catalog.isAdministrator(actorPermissions)) {
             return;
         }
-        if (roleId != null && !actorPermissions.containsAll(get(roleId).effectivePermissionNames())) {
+        if (roleId != null && !actorPermissions.containsAll(catalog.effective(get(roleId)))) {
             throw new IllegalArgumentException("Diese Rolle enthält Rechte, die du selbst nicht hast.");
         }
         if (permissions != null && !actorPermissions.containsAll(permissions)) {
@@ -113,7 +115,7 @@ public class RoleService {
             return valid;
         }
         for (String p : permissions) {
-            if (PermissionCatalog.find(p).isEmpty()) {
+            if (!catalog.exists(p)) {
                 throw new IllegalArgumentException("Unbekanntes Recht: " + p);
             }
             valid.add(p);

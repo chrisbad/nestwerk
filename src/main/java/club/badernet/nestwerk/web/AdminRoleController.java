@@ -23,16 +23,18 @@ import java.util.stream.Collectors;
 public class AdminRoleController {
 
     private final RoleService roleService;
+    private final PermissionCatalog catalog;
 
-    public AdminRoleController(RoleService roleService) {
+    public AdminRoleController(RoleService roleService, PermissionCatalog catalog) {
         this.roleService = roleService;
+        this.catalog = catalog;
     }
 
     @GetMapping
     String list(Authentication actor, Model model) {
         model.addAttribute("roles", roleService.findAll());
         model.addAttribute("grantable", permissions(actor));
-        model.addAttribute("permissionsByModule", PermissionCatalog.byModule());
+        model.addAttribute("permissionsByModule", catalog.byModule());
         return "admin/roles";
     }
 

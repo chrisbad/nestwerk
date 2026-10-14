@@ -25,11 +25,14 @@ public class UserService implements UserDetailsService {
     private final UserRepository users;
     private final RoleRepository roles;
     private final PasswordEncoder passwordEncoder;
+    private final PermissionCatalog catalog;
 
-    public UserService(UserRepository users, RoleRepository roles, PasswordEncoder passwordEncoder) {
+    public UserService(UserRepository users, RoleRepository roles, PasswordEncoder passwordEncoder,
+                       PermissionCatalog catalog) {
         this.users = users;
         this.roles = roles;
         this.passwordEncoder = passwordEncoder;
+        this.catalog = catalog;
     }
 
     @Override
@@ -37,7 +40,7 @@ public class UserService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = users.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Benutzer nicht gefunden: " + username));
-        Set<GrantedAuthority> authorities = user.permissionNames().stream()
+        Set<GrantedAuthority> authorities = catalog.effective(user).stream()
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toSet());
         return org.springframework.security.core.userdetails.User.withUsername(user.getUsername())
@@ -107,7 +110,7 @@ public class UserService implements UserDetailsService {
      */
     @Transactional(readOnly = true)
     public void requireMayManage(Collection<String> actorPermissions, Long targetUserId, Set<Long> roleIds) {
-        boolean actorIsAdministrator = actorPermissions.containsAll(PermissionCatalog.names());
+        boolean actorIsAdministrator = catalog.isAdministrator(actorPermissions);
         if (actorIsAdministrator) {
             return;
         }
@@ -116,13 +119,13 @@ public class UserService implements UserDetailsService {
             if (target.isAdministrator()) {
                 throw new IllegalArgumentException("Administratoren können nur von Administratoren geändert werden.");
             }
-            if (!actorPermissions.containsAll(target.permissionNames())) {
+            if (!actorPermissions.containsAll(catalog.effective(target))) {
                 throw new IllegalArgumentException(
                         "„" + target.getUsername() + "“ hat Rechte, die du selbst nicht hast, und kann daher nicht geändert werden.");
             }
         }
         for (Role role : resolveRoles(roleIds)) {
-            if (role.isAllPermissions() || !actorPermissions.containsAll(role.effectivePermissionNames())) {
+            if (role.isAllPermissions() || !actorPermissions.containsAll(catalog.effective(role))) {
                 throw new IllegalArgumentException(
                         "Die Rolle „" + role.getName() + "“ enthält Rechte, die du selbst nicht hast.");
             }

@@ -1,6 +1,7 @@
 package club.badernet.nestwerk.calendar;
 
 import club.badernet.nestwerk.member.FamilyMemberRepository;
+import club.badernet.nestwerk.security.PermissionCatalog;
 import club.badernet.nestwerk.user.User;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -27,13 +28,16 @@ public class CalendarEventService {
     private final FamilyMemberRepository members;
     private final RecurrenceExpander expander;
     private final ZoneId zone;
+    private final PermissionCatalog permissions;
 
     public CalendarEventService(CalendarEventRepository events, FamilyMemberRepository members,
-                                RecurrenceExpander expander, CalendarSettings settings) {
+                                RecurrenceExpander expander, CalendarSettings settings,
+                                PermissionCatalog permissions) {
         this.events = events;
         this.members = members;
         this.expander = expander;
         this.zone = settings.zone();
+        this.permissions = permissions;
     }
 
     @Transactional(readOnly = true)
@@ -230,12 +234,12 @@ public class CalendarEventService {
     }
 
     private boolean has(User user, CalendarPermission permission) {
-        return user.permissionNames().contains(permission.name());
+        return permissions.effective(user).contains(permission.name());
     }
 
     private void require(User user, CalendarPermission permission) {
         if (!has(user, permission)) {
-            throw new AccessDeniedException("Keine Berechtigung: " + permission.label());
+            throw new AccessDeniedException("Keine Berechtigung: " + permission.name());
         }
     }
 }

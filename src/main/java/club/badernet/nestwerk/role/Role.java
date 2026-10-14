@@ -1,6 +1,5 @@
 package club.badernet.nestwerk.role;
 
-import club.badernet.nestwerk.security.PermissionCatalog;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -13,7 +12,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.Set;
 
 @Entity
@@ -70,19 +68,9 @@ public class Role {
         return allPermissions;
     }
 
-    /** Gespeicherte Rechte, die im Katalog existieren (unbekannte Namen werden ignoriert). */
+    /** Gespeicherte Rechte; der Fremdschlüssel auf {@code permissions} garantiert, dass sie existieren. */
     public Set<String> getPermissions() {
-        Set<String> known = new LinkedHashSet<>();
-        for (String p : permissions) {
-            if (PermissionCatalog.find(p).isPresent()) {
-                known.add(p);
-            }
-        }
-        return known;
-    }
-
-    public Set<String> effectivePermissionNames() {
-        return allPermissions ? PermissionCatalog.names() : getPermissions();
+        return Set.copyOf(permissions);
     }
 
     public void rename(String name) {
