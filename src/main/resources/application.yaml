@@ -5,6 +5,16 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/mydatabase}
     username: ${DB_USER:myuser}
     password: ${DB_PASSWORD:secret}
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USER:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_STARTTLS:true}
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 15000
   servlet:
     multipart:
       max-file-size: 20MB
@@ -18,6 +28,9 @@ server:
   forward-headers-strategy: framework
 
 management:
+  health:
+    mail:
+      enabled: false
   endpoints:
     web:
       exposure:
@@ -30,3 +43,6 @@ nestwerk:
   timezone: ${NESTWERK_TIMEZONE:Europe/Berlin}
   attachments:
     dir: ${NESTWERK_ATTACHMENT_DIR:./data/attachments}
+  base-url: ${NESTWERK_BASE_URL:http://localhost:8080}
+  mail:
+    from: ${MAIL_FROM:}
