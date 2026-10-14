@@ -1569,7 +1569,7 @@ form.inline { display: inline; margin: 0; }
 .override select { padding: 0.3rem 0.5rem; border: 1px solid var(--line); border-radius: var(--radius-field); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--step--1); }
 
 /* Fällige ToDos im Kalender */
-.occ-todo { --occ-color: var(--honey); border-style: dashed; }
+.occ-todo { --occ-color: var(--honey); border-left-style: dashed; }
 .occ-todo-urgent, .occ-todo-high { --occ-color: var(--brick); }
 .hide-todos .occ-todo { display: none; }
 .cal-todo-toggle svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
