@@ -1365,6 +1365,76 @@ a.tag:hover { text-decoration: underline; }
 .pill-blocked { background: var(--brick-soft); color: var(--brick); }
 .pill-icon { width: 0.85rem; height: 0.85rem; fill: none; stroke: currentColor; stroke-width: 2; vertical-align: -0.1rem; }
 
+/* Board */
+.todos-board-page { max-width: 86rem; }
+.board {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(16rem, 1fr)) minmax(12rem, 0.7fr);
+    gap: 1rem;
+    align-items: start;
+}
+.board-column { display: grid; gap: 0.5rem; padding: 0.85rem; border-radius: var(--radius-panel); background: var(--sage); }
+.board-column h2, .board-column summary { display: flex; align-items: baseline; gap: 0.5rem; font-size: var(--step-0); font-weight: 650; margin: 0; }
+.board-column summary { cursor: pointer; }
+.board-column .count { color: var(--ink-soft); font-size: var(--step--1); font-weight: 500; }
+.board-column > .hint { margin: -0.4rem 0 0; }
+.board-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; min-height: 4rem; }
+.board-card {
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-field);
+    background: var(--surface);
+    cursor: grab;
+}
+.board-card.sortable-ghost { opacity: 0.4; }
+.board-card.sortable-chosen { box-shadow: 0 8px 24px rgb(0 0 0 / 0.12); }
+.board-card .todo-assignees { justify-content: flex-start; }
+.board-status select {
+    width: 100%;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-field);
+    background: var(--bg);
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--step--1);
+}
+.board-done .todo-title, .board-discarded .todo-title { color: var(--ink-soft); }
+
+/* Baum */
+.tree { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.tree .tree { margin: 0.4rem 0 0 1.4rem; padding-left: 0.9rem; border-left: 2px solid var(--line); }
+.tree-node > details > summary, .tree-leaf {
+    padding: 0.6rem 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-field);
+    background: var(--surface);
+}
+.tree-node > details > summary { cursor: pointer; list-style: none; }
+.tree-node > details > summary::-webkit-details-marker { display: none; }
+.tree-node > details > summary::before {
+    content: "▸";
+    display: inline-block;
+    width: 1rem;
+    color: var(--ink-soft);
+    transition: transform 0.15s var(--ease);
+}
+.tree-node > details[open] > summary::before { transform: rotate(90deg); }
+.tree-leaf { padding-left: calc(0.85rem + 1rem); }
+.tree-line { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.75rem; }
+.tree-line.is-closed .todo-title { text-decoration: line-through; color: var(--ink-soft); }
+.tree-progress { display: inline-flex; align-items: center; gap: 0.4rem; }
+.tree-progress .progress { width: 5rem; }
+.tree-progress .count { font-size: var(--step--1); color: var(--ink-soft); }
+.tree-children > .muted { margin: 0.4rem 0 0 1.4rem; font-size: var(--step--1); }
+
+@media (max-width: 60rem) {
+    .board { grid-template-columns: repeat(4, minmax(16rem, 82vw)); overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 0.5rem; }
+    .board-column { scroll-snap-align: start; }
+}
+
 .home-todos { margin-bottom: 2rem; }
 .home-todos-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: 0.6rem; }
 .home-todos-head h2 { font-size: var(--step-1); }

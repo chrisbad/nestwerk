@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('ToDo-Board')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='todos')}"></header>
+<main class="todos-page todos-board-page">
+    <div th:replace="~{todos/fragments :: viewHead('Karten zwischen den Spalten ziehen, um den Status zu ändern')}"></div>
+    <form th:replace="~{todos/fragments :: filters('/todos/board')}"></form>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <div class="board" data-board>
+        <section class="board-column" th:each="col : ${columns}"
+                 th:classappend="'board-' + ${#strings.toLowerCase(col.status().name())}">
+            <th:block th:if="${col.status().name() != 'DISCARDED'}">
+                <h2>
+                    <span th:text="${col.status().label()}">Offen</span>
+                    <span class="count" th:text="${#lists.size(col.rows())}">3</span>
+                </h2>
+                <p class="hint" th:if="${col.status().name() == 'DONE'}">der letzten 14 Tage</p>
+                <ul class="board-cards" th:data-board-column="${col.status().name()}">
+                    <th:block th:each="row : ${col.rows()}">
+                        <li th:replace="~{todos/board :: card}"></li>
+                    </th:block>
+                </ul>
+            </th:block>
+            <details th:if="${col.status().name() == 'DISCARDED'}">
+                <summary>
+                    <span th:text="${col.status().label()}">Verworfen</span>
+                    <span class="count" th:text="${#lists.size(col.rows())}">1</span>
+                </summary>
+                <ul class="board-cards" th:data-board-column="${col.status().name()}">
+                    <th:block th:each="row : ${col.rows()}">
+                        <li th:replace="~{todos/board :: card}"></li>
+                    </th:block>
+                </ul>
+            </details>
+        </section>
+    </div>
+</main>
+
+<th:block th:if="${false}"><!-- nur Fragment-Definitionen -->
+<li th:fragment="card" class="board-card" th:data-todo-id="${row.todo().id}">
+    <a class="todo-title" th:href="@{/todos/{id}(id=${row.todo().id})}" th:text="${row.todo().title}">Titel</a>
+    <div class="todo-meta">
+        <span class="prio" th:if="${row.todo().priority.name() != 'NORMAL'}"
+              th:classappend="'prio-' + ${#strings.toLowerCase(row.todo().priority.name())}"
+              th:text="${row.todo().priority.label()}">Hoch</span>
+        <span class="due" th:if="${row.dueLabel() != null}"
+              th:classappend="'due-' + ${#strings.toLowerCase(row.timing().name())}"
+              th:text="${row.dueLabel()}">heute fällig</span>
+        <span class="pill pill-blocked" th:if="${row.blockedWarning() != null}">blockiert</span>
+        <span class="pill" th:if="${row.childProgress() != null}" th:text="${row.childProgress()}">3/5</span>
+    </div>
+    <ul class="todo-assignees" th:unless="${#lists.isEmpty(row.assignees())}">
+        <th:block th:each="a : ${row.assignees()}">
+            <li th:replace="~{todos/fragments :: assignee(${a})}"></li>
+        </th:block>
+    </ul>
+    <form class="board-status" method="post" th:action="@{/todos/{id}/status(id=${row.todo().id})}" data-auto-submit>
+        <label class="visually-hidden" th:for="'st-' + ${row.todo().id}">Status</label>
+        <select th:id="'st-' + ${row.todo().id}" name="status">
+            <option th:each="s : ${statuses}" th:value="${s.name()}" th:text="${s.label()}"
+                    th:selected="${row.todo().status == s}">Offen</option>
+        </select>
+    </form>
+</li>
+
+</th:block>
+
+<div th:replace="~{fragments/layout :: toasts}"></div>
+<script defer th:src="@{/js/vendor/sortable.min.js}"></script>
+</body>
+</html>

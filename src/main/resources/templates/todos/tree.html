@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('ToDo-Baum')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='todos')}"></header>
+<main class="todos-page">
+    <div th:replace="~{todos/fragments :: viewHead('Aufgaben mit ihren Unteraufgaben')}"></div>
+    <form th:replace="~{todos/fragments :: filters('/todos/tree')}"></form>
+
+    <div class="sheet sheet-empty" th:if="${#lists.isEmpty(roots)}">Kein ToDo passt zu diesen Filtern.</div>
+
+    <ul class="tree" th:unless="${#lists.isEmpty(roots)}">
+        <th:block th:each="node : ${roots}">
+            <li th:replace="~{todos/tree :: node(${node})}"></li>
+        </th:block>
+    </ul>
+</main>
+
+<th:block th:if="${false}"><!-- nur Fragment-Definitionen -->
+<!-- Ein Knoten; Unteraufgaben werden beim ersten Aufklappen nachgeladen -->
+<li th:fragment="node(node)" class="tree-node">
+    <details th:if="${node.children().total() > 0}"
+             th:hx-get="@{/todos/{id}/children(id=${node.row().todo().id})}"
+             hx-trigger="toggle once" th:hx-target="'#children-' + ${node.row().todo().id}" hx-swap="innerHTML">
+        <summary>
+            <span th:replace="~{todos/tree :: nodeLine(${node})}"></span>
+        </summary>
+        <div class="tree-children" th:id="'children-' + ${node.row().todo().id}">
+            <p class="muted">Wird geladen …</p>
+        </div>
+    </details>
+    <div class="tree-leaf" th:unless="${node.children().total() > 0}">
+        <span th:replace="~{todos/tree :: nodeLine(${node})}"></span>
+    </div>
+</li>
+
+<span th:fragment="nodeLine(node)" class="tree-line" th:classappend="${node.row().todo().closed} ? 'is-closed'">
+    <a class="todo-title" th:href="@{/todos/{id}(id=${node.row().todo().id})}" th:text="${node.row().todo().title}">Titel</a>
+    <span class="todo-meta">
+        <span class="prio" th:if="${node.row().todo().priority.name() != 'NORMAL'}"
+              th:classappend="'prio-' + ${#strings.toLowerCase(node.row().todo().priority.name())}"
+              th:text="${node.row().todo().priority.label()}">Hoch</span>
+        <span class="pill pill-progress" th:if="${node.row().todo().status.name() == 'IN_PROGRESS'}">In Arbeit</span>
+        <span class="due" th:if="${node.row().dueLabel() != null}"
+              th:classappend="'due-' + ${#strings.toLowerCase(node.row().timing().name())}"
+              th:text="${node.row().dueLabel()}">heute fällig</span>
+    </span>
+    <span class="tree-progress" th:if="${node.children().total() > 0}">
+        <span class="progress"><span th:style="|width: ${node.children().percent()}%|"></span></span>
+        <span class="count" th:text="${node.children().progress()}">2/5</span>
+    </span>
+</span>
+
+<!-- Antwort auf das Nachladen -->
+<th:block th:fragment="children">
+    <ul class="tree">
+        <th:block th:each="node : ${nodes}">
+            <li th:replace="~{todos/tree :: node(${node})}"></li>
+        </th:block>
+    </ul>
+    <p class="muted" th:if="${hiddenCount > 0}"
+       th:text="${hiddenCount == 1} ? '1 weitere Unteraufgabe, die du nicht sehen kannst.' : ${hiddenCount} + ' weitere Unteraufgaben, die du nicht sehen kannst.'">1 weitere</p>
+</th:block>
+
+</th:block>
+
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

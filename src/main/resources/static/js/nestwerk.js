@@ -301,6 +301,51 @@
         });
     }
 
+    /* --- ToDo-Board: Karten ziehen ändert den Status ------------------------ */
+
+    function initBoard() {
+        const board = document.querySelector("[data-board]");
+        if (!board || !window.Sortable) return;
+        const token = document.querySelector('meta[name="_csrf"]')?.content;
+        const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+        const updateCounts = () => board.querySelectorAll(".board-column").forEach(col => {
+            const count = col.querySelector(".count");
+            const list = col.querySelector("[data-board-column]");
+            if (count && list) count.textContent = list.children.length;
+        });
+        board.querySelectorAll("[data-board-column]").forEach(list => {
+            window.Sortable.create(list, {
+                group: "board",
+                animation: 150,
+                delay: 200,
+                delayOnTouchOnly: true,
+                filter: "select, option, a, button, input",
+                preventOnFilter: false,
+                onEnd: async evt => {
+                    if (evt.from === evt.to) return;
+                    const card = evt.item;
+                    const status = evt.to.dataset.boardColumn;
+                    const headers = { "HX-Request": "true", "Content-Type": "application/x-www-form-urlencoded" };
+                    if (token && header) headers[header] = token;
+                    try {
+                        const response = await fetch(`/todos/${card.dataset.todoId}/status`, {
+                            method: "POST", headers, body: new URLSearchParams({ status })
+                        });
+                        if (!response.ok) {
+                            throw new Error((await response.text()) || "Der Status konnte nicht geändert werden.");
+                        }
+                        const select = card.querySelector("select[name=status]");
+                        if (select) select.value = status;
+                    } catch (error) {
+                        evt.from.insertBefore(card, evt.from.children[evt.oldIndex] || null);
+                        showToast(error.message, "error");
+                    }
+                    updateCounts();
+                }
+            });
+        });
+    }
+
     /* --- Filterformulare: bei Änderung sofort absenden --------------------- */
 
     function initAutoSubmit() {
@@ -336,6 +381,7 @@
         initGreeting();
         initEventForm();
         initAutoSubmit();
+        initBoard();
         consumeToasts(document);
     });
 })();

@@ -64,22 +64,9 @@ public class TodoController {
     }
 
     @GetMapping
-    String list(@RequestParam(required = false) TodoFilter.Involvement involvement,
-                @RequestParam(required = false) String assignee,
-                @RequestParam(required = false) TodoStatus status,
-                @RequestParam(required = false) TodoTiming timing,
-                @RequestParam(required = false) TodoPriority priority,
-                @RequestParam(required = false) String tag,
-                @RequestParam(required = false) String q,
-                @RequestParam(defaultValue = "false") boolean closed,
-                Model model) {
+    String list(@ModelAttribute("params") TodoFilterParams params, Model model) {
         User viewer = requireModule();
-        AssigneeRef assigneeRef = null;
-        if (assignee != null && !assignee.isBlank()) {
-            assigneeRef = AssigneeRef.parse(assignee);
-        }
-        TodoFilter filter = new TodoFilter(involvement == null ? TodoFilter.Involvement.ALL : involvement,
-                assigneeRef, status, timing, priority, blankToNull(tag), blankToNull(q), closed);
+        TodoFilter filter = params.toFilter();
         TodoViews.Labels labels = views.labels(viewer);
         LocalDate today = query.today();
         List<RowGroup> groups = new ArrayList<>();
@@ -92,8 +79,80 @@ public class TodoController {
         }
         model.addAttribute("groups", groups);
         model.addAttribute("count", count);
+        addFilterAttributes(model, viewer, params, filter, labels, "list");
+        return "todos/list";
+    }
+
+    /** Spalten des Boards; Erledigt zeigt nur die letzten 14 Tage. */
+    public record BoardColumn(TodoStatus status, List<TodoViews.TodoRow> rows) {
+    }
+
+    static final int BOARD_DONE_DAYS = 14;
+
+    @GetMapping("/board")
+    String board(@ModelAttribute("params") TodoFilterParams params, Model model) {
+        User viewer = requireModule();
+        TodoFilter filter = params.toFilter().withIncludeClosed(true);
+        TodoViews.Labels labels = views.labels(viewer);
+        LocalDate today = query.today();
+        java.time.Instant doneSince = java.time.Instant.now().minus(java.time.Duration.ofDays(BOARD_DONE_DAYS));
+        java.util.Map<TodoStatus, List<TodoViews.TodoRow>> byStatus = new java.util.EnumMap<>(TodoStatus.class);
+        for (TodoStatus s : TodoStatus.values()) {
+            byStatus.put(s, new ArrayList<>());
+        }
+        query.list(viewer, filter).stream().flatMap(g -> g.todos().stream())
+                .filter(t -> t.getStatus() != TodoStatus.DONE || t.getCompletedAt() == null
+                        || t.getCompletedAt().isAfter(doneSince))
+                .sorted(TodoQuery.ORDER)
+                .forEach(t -> byStatus.get(t.getStatus()).add(views.row(t, viewer, labels, today)));
+        List<BoardColumn> columns = new ArrayList<>();
+        byStatus.forEach((status, rows) -> columns.add(new BoardColumn(status, rows)));
+        model.addAttribute("columns", columns);
+        model.addAttribute("statuses", TodoStatus.values());
+        addFilterAttributes(model, viewer, params, params.toFilter(), labels, "board");
+        return "todos/board";
+    }
+
+    /** Ein Knoten im Baum mit Fortschritt seiner Unteraufgaben. */
+    public record TreeNode(TodoViews.TodoRow row, TodoStructureService.Children children) {
+    }
+
+    @GetMapping("/tree")
+    String tree(@ModelAttribute("params") TodoFilterParams params, Model model) {
+        User viewer = requireModule();
+        TodoFilter filter = params.toFilter();
+        TodoViews.Labels labels = views.labels(viewer);
+        LocalDate today = query.today();
+        List<Todo> listed = query.list(viewer, filter).stream().flatMap(g -> g.todos().stream()).toList();
+        java.util.Set<Long> listedIds = new java.util.HashSet<>(listed.stream().map(Todo::getId).toList());
+        List<TreeNode> roots = listed.stream()
+                .filter(t -> t.getParentId() == null || !listedIds.contains(t.getParentId()))
+                .sorted(TodoQuery.ORDER)
+                .map(t -> new TreeNode(views.row(t, viewer, labels, today), structure.children(t.getId(), viewer)))
+                .toList();
+        model.addAttribute("roots", roots);
+        addFilterAttributes(model, viewer, params, filter, labels, "tree");
+        return "todos/tree";
+    }
+
+    @GetMapping("/{id}/children")
+    String children(@PathVariable Long id, Model model) {
+        User viewer = requireModule();
+        todos.get(id, viewer);
+        TodoStructureService.Children children = structure.children(id, viewer);
+        TodoViews.Labels labels = views.labels(viewer);
+        LocalDate today = query.today();
+        model.addAttribute("nodes", children.visible().stream()
+                .map(t -> new TreeNode(views.row(t, viewer, labels, today), structure.children(t.getId(), viewer)))
+                .toList());
+        model.addAttribute("hiddenCount", children.hiddenCount());
+        return "todos/tree :: children";
+    }
+
+    private void addFilterAttributes(Model model, User viewer, TodoFilterParams params, TodoFilter filter,
+                                     TodoViews.Labels labels, String view) {
         model.addAttribute("filter", filter);
-        model.addAttribute("assigneeKey", assigneeRef == null ? "" : assigneeRef.key());
+        model.addAttribute("assigneeKey", filter.assignee() == null ? "" : filter.assignee().key());
         model.addAttribute("labels", labels);
         model.addAttribute("tags", query.tags(viewer));
         model.addAttribute("canCreate", access.canCreate(viewer));
@@ -101,7 +160,9 @@ public class TodoController {
         model.addAttribute("statuses", TodoStatus.values());
         model.addAttribute("timings", TodoTiming.values());
         model.addAttribute("priorities", TodoPriority.values());
-        return "todos/list";
+        String qs = params.queryString();
+        model.addAttribute("viewQuery", qs.isEmpty() ? "" : "?" + qs);
+        model.addAttribute("view", view);
     }
 
     @GetMapping("/new")
@@ -225,6 +286,21 @@ public class TodoController {
         todos.take(id, requireModule());
         redirect.addFlashAttribute("success", "Du kümmerst dich darum.");
         return "redirect:/todos/" + id;
+    }
+
+    /** Board: Statuswechsel per htmx; 204 bei Erfolg, 409 mit Meldung, wenn er nicht erlaubt ist. */
+    @PostMapping(value = "/{id}/status", headers = "HX-Request=true")
+    @org.springframework.web.bind.annotation.ResponseBody
+    org.springframework.http.ResponseEntity<String> changeStatusInline(@PathVariable Long id,
+                                                                       @RequestParam TodoStatus status) {
+        try {
+            todos.changeStatus(id, status, requireModule());
+            return org.springframework.http.ResponseEntity.noContent().build();
+        } catch (AccessDeniedException | IllegalArgumentException e) {
+            return org.springframework.http.ResponseEntity.status(org.springframework.http.HttpStatus.CONFLICT)
+                    .contentType(new org.springframework.http.MediaType("text", "plain", java.nio.charset.StandardCharsets.UTF_8))
+                    .body("Keine Berechtigung, den Status dieses ToDos zu ändern.");
+        }
     }
 
     @PostMapping("/{id}/status")
