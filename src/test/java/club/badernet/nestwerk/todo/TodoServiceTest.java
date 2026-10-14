@@ -210,6 +210,19 @@ class TodoServiceTest {
     }
 
     @Test
+    void contactsTheActorCannotSeeCannotBeAssigned() {
+        Role ohneKontakte = roleService.create("Ohne Kontakte", null, Set.of());
+        acl.replaceRules(admin, ohneKontakte.getId(), Set.of(
+                new club.badernet.nestwerk.security.acl.AclRule("TODO", "VIEW", "ANY"),
+                new club.badernet.nestwerk.security.acl.AclRule("TODO", "CREATE", "ANY")));
+        User blind = userService.create("blind", "passwort1", Set.of(ohneKontakte.getId()));
+        Contact geheim = contacts.save(new Contact("Geheimer Kontakt", mama.getId()));
+
+        assertThatThrownBy(() -> service.create(assigned("X", CompletionMode.ANY, AssigneeRef.contact(geheim.getId())),
+                blind)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Zuständig");
+    }
+
+    @Test
     void notAssignedPersonCannotCheckEachTodo() {
         Todo t = service.create(assigned("Zimmer", CompletionMode.EACH, AssigneeRef.member(kidMember.getId())), mama);
 

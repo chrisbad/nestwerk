@@ -1,6 +1,7 @@
 package club.badernet.nestwerk.todo;
 
 import club.badernet.nestwerk.contact.ContactRepository;
+import club.badernet.nestwerk.contact.ContactService;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
 import club.badernet.nestwerk.role.RoleRepository;
@@ -30,15 +31,18 @@ public class TodoService {
     private final RoleRepository roles;
     private final ContactRepository contacts;
     private final UserRepository users;
+    private final ContactService contactService;
 
     public TodoService(TodoRepository todos, TodoAccess access, FamilyMemberRepository members,
-                       RoleRepository roles, ContactRepository contacts, UserRepository users) {
+                       RoleRepository roles, ContactRepository contacts, UserRepository users,
+                       ContactService contactService) {
         this.todos = todos;
         this.access = access;
         this.members = members;
         this.roles = roles;
         this.contacts = contacts;
         this.users = users;
+        this.contactService = contactService;
     }
 
     /** Liefert das ToDo, wenn der Betrachter es sehen darf; sonst wie „nicht vorhanden“. */
@@ -62,7 +66,7 @@ public class TodoService {
         Todo todo = new Todo(requireTitle(in.title()), actor.getId());
         applyContent(todo, in);
         todo.setPrivateTodo(in.privateTodo());
-        todo.replaceAssignees(validAssignees(in.assignees()));
+        todo.replaceAssignees(validAssignees(in.assignees(), actor, Set.of()));
         if (in.responsibleUserId() != null && !in.responsibleUserId().equals(actor.getId())) {
             if (!access.can(actor, "CHANGE_RESPONSIBLE", todo)) {
                 throw new AccessDeniedException("Keine Berechtigung, jemand anderen verantwortlich zu machen");
@@ -85,7 +89,7 @@ public class TodoService {
             throw new TodoConflictException(nameOf(todo.getUpdatedBy()));
         }
         String title = requireTitle(in.title());
-        Set<AssigneeRef> assignees = validAssignees(in.assignees());
+        Set<AssigneeRef> assignees = validAssignees(in.assignees(), actor, todo.assigneeRefs());
         boolean contentChanged = contentDiffers(todo, title, in);
         boolean assigneesChanged = !todo.assigneeRefs().equals(assignees)
                 || todo.getCompletionMode() != mode(in);
@@ -270,7 +274,11 @@ public class TodoService {
         return in.completionMode() == null ? CompletionMode.ANY : in.completionMode();
     }
 
-    private Set<AssigneeRef> validAssignees(Set<AssigneeRef> refs) {
+    /**
+     * Prüft die Zuständigen. Mitglieder und Rollen sind für alle sichtbar; neu hinzukommende Kontakte muss
+     * der Handelnde sehen dürfen, sonst ließen sich fremde Kontakte über erratene IDs einsehen.
+     */
+    private Set<AssigneeRef> validAssignees(Set<AssigneeRef> refs, User actor, Set<AssigneeRef> existing) {
         Set<AssigneeRef> valid = new LinkedHashSet<>();
         if (refs == null) {
             return valid;
@@ -279,7 +287,8 @@ public class TodoService {
             boolean exists = switch (ref.type()) {
                 case MEMBER -> members.existsById(ref.id());
                 case ROLE -> roles.existsById(ref.id());
-                case CONTACT -> contacts.existsById(ref.id());
+                case CONTACT -> existing.contains(ref) || contacts.findById(ref.id())
+                        .filter(c -> contactService.can(actor, "VIEW", c)).isPresent();
             };
             if (!exists) {
                 throw new IllegalArgumentException("Unbekannte Zuständigkeit ausgewählt.");
