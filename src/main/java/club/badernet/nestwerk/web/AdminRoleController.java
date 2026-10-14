@@ -29,8 +29,9 @@ public class AdminRoleController {
     }
 
     @GetMapping
-    String list(Model model) {
+    String list(Authentication actor, Model model) {
         model.addAttribute("roles", roleService.findAll());
+        model.addAttribute("grantable", permissions(actor));
         model.addAttribute("permissionsByModule", PermissionCatalog.byModule());
         return "admin/roles";
     }

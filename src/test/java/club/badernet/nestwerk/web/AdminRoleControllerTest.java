@@ -66,6 +66,24 @@ class AdminRoleControllerTest {
     }
 
     @Test
+    @WithMockUser(authorities = {"ACCESS_ROLE_MANAGE", "MEMBER_MANAGE"})
+    void disablesPermissionsTheActorDoesNotHave() throws Exception {
+        mockMvc.perform(get("/admin/roles"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("value=\"USER_MANAGE\" disabled")))
+                .andExpect(content().string(containsString("value=\"MEMBER_MANAGE\">")));
+    }
+
+    @Test
+    @WithMockUser(authorities = {"ACCESS_ROLE_MANAGE", "MEMBER_MANAGE"})
+    void locksRolesWithPermissionsBeyondOwn() throws Exception {
+        roles.save(new club.badernet.nestwerk.role.Role("Verwalter", null, java.util.Set.of("USER_MANAGE")));
+
+        mockMvc.perform(get("/admin/roles"))
+                .andExpect(content().string(containsString("Diese Rolle enthält Rechte, die du selbst nicht hast")));
+    }
+
+    @Test
     @WithMockUser(authorities = "ACCESS_ROLE_MANAGE")
     void roleManagerCannotGrantPermissionsBeyondOwn() throws Exception {
         mockMvc.perform(post("/admin/roles").with(csrf())

@@ -37,34 +37,39 @@
                 <p class="notice" th:if="${role.allPermissions}">
                     Diese Rolle hat automatisch alle Rechte, auch die künftiger Bereiche. Sie kann nicht geändert werden.
                 </p>
+                <p class="notice" th:if="${!role.allPermissions and !grantable.containsAll(role.effectivePermissionNames())}">
+                    Diese Rolle enthält Rechte, die du selbst nicht hast. Nur ein Administrator kann sie ändern oder löschen.
+                </p>
 
-                <form th:unless="${role.allPermissions}" th:action="@{/admin/roles/{id}(id=${role.id})}" method="post">
+                <form th:unless="${role.allPermissions}" th:with="locked=${!grantable.containsAll(role.effectivePermissionNames())}" th:action="@{/admin/roles/{id}(id=${role.id})}" method="post">
                     <div class="field-row">
                         <div class="field" th:unless="${role.systemRole}">
                             <label th:for="'name-' + ${role.id}">Name</label>
                             <input th:id="'name-' + ${role.id}" type="text" name="name" maxlength="100"
-                                   th:value="${role.name}" required>
+                                   th:value="${role.name}" th:disabled="${locked}" required>
                         </div>
                         <div class="field">
                             <label th:for="'desc-' + ${role.id}">Beschreibung</label>
                             <input th:id="'desc-' + ${role.id}" type="text" name="description" maxlength="255"
-                                   th:value="${role.description}">
+                                   th:value="${role.description}" th:disabled="${locked}">
                         </div>
                     </div>
-                    <fieldset class="field choices" th:each="entry : ${permissionsByModule}">
+                    <fieldset class="field choices" th:each="entry : ${permissionsByModule}" th:disabled="${locked}">
                         <legend th:text="${entry.key}">Modul</legend>
-                        <label class="choice" th:each="p : ${entry.value}">
+                        <label class="choice" th:each="p : ${entry.value}"
+                               th:title="${grantable.contains(p.name())} ? null : 'Dieses Recht hast du selbst nicht.'">
                             <input type="checkbox" name="permissions" th:value="${p.name()}"
+                                   th:disabled="${!grantable.contains(p.name())}"
                                    th:checked="${role.permissions.contains(p.name())}">
                             <span th:text="${p.label()}">Recht</span>
                         </label>
                     </fieldset>
-                    <div class="form-actions">
+                    <div class="form-actions" th:unless="${locked}">
                         <button type="submit" class="button">Änderungen speichern</button>
                     </div>
                 </form>
 
-                <form class="danger-zone" th:unless="${role.systemRole}"
+                <form class="danger-zone" th:unless="${role.systemRole or !grantable.containsAll(role.effectivePermissionNames())}"
                       th:action="@{/admin/roles/{id}/delete(id=${role.id})}" method="post"
                       th:attr="data-confirm=|Rolle „${role.name}“ löschen?|">
                     <button type="submit" class="button button-danger">Rolle löschen</button>
@@ -94,8 +99,10 @@
             </div>
             <fieldset class="field choices" th:each="entry : ${permissionsByModule}">
                 <legend th:text="${entry.key}">Modul</legend>
-                <label class="choice" th:each="p : ${entry.value}">
-                    <input type="checkbox" name="permissions" th:value="${p.name()}">
+                <label class="choice" th:each="p : ${entry.value}"
+                       th:title="${grantable.contains(p.name())} ? null : 'Dieses Recht hast du selbst nicht.'">
+                    <input type="checkbox" name="permissions" th:value="${p.name()}"
+                           th:disabled="${!grantable.contains(p.name())}">
                     <span th:text="${p.label()}">Recht</span>
                 </label>
             </fieldset>
