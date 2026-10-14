@@ -25,6 +25,7 @@
                    th:text="${cell.date.dayOfMonth}">1</a>
                 <div class="day-events">
                     <th:block th:each="o : ${cell.occurrences}"><a th:replace="~{calendar/fragments :: occurrence(${o})}"></a></th:block>
+                    <th:block th:each="t : ${todosByDay[cell.date]}"><a th:replace="~{calendar/fragments :: todo(${t})}"></a></th:block>
                 </div>
             </div>
         </div>

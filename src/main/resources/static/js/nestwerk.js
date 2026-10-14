@@ -392,6 +392,30 @@
         });
     }
 
+    /* --- Kalender: fällige ToDos ein- und ausblenden ------------------------- */
+
+    function initCalendarTodos() {
+        const KEY = "nestwerk-cal-todos";
+        const apply = () => {
+            const calendar = document.getElementById("calendar");
+            const toggle = document.querySelector("[data-toggle-todos]");
+            if (!calendar || !toggle) return;
+            let hidden = false;
+            try { hidden = localStorage.getItem(KEY) === "hidden"; } catch (e) { /* ohne Speicher */ }
+            calendar.classList.toggle("hide-todos", hidden);
+            toggle.setAttribute("aria-pressed", String(!hidden));
+        };
+        document.addEventListener("click", event => {
+            if (!event.target.closest("[data-toggle-todos]")) return;
+            const calendar = document.getElementById("calendar");
+            const hidden = !calendar.classList.contains("hide-todos");
+            try { localStorage.setItem(KEY, hidden ? "hidden" : "shown"); } catch (e) { /* ohne Speicher */ }
+            apply();
+        });
+        document.addEventListener("htmx:afterSwap", apply);
+        apply();
+    }
+
     /* --- Service Worker und Push ------------------------------------------ */
 
     function initPush() {
@@ -491,6 +515,7 @@
         initBoard();
         initCollaboration();
         initPush();
+        initCalendarTodos();
         consumeToasts(document);
     });
 })();

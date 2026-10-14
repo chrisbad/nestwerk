@@ -20,6 +20,11 @@
         </div>
     </div>
     <div class="cal-actions">
+        <button type="button" class="button button-ghost button-small cal-todo-toggle" th:if="${showTodos}"
+                data-toggle-todos aria-pressed="true" title="Fällige ToDos im Kalender ein- oder ausblenden">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></svg>
+            ToDos
+        </button>
         <nav class="segmented" aria-label="Ansicht" hx-boost="true" hx-target="#calendar" hx-select="#calendar" hx-swap="outerHTML">
             <a th:href="@{/calendar/month(date=${date})}" th:aria-current="${view == 'month'} ? 'page'">Monat</a>
             <a th:href="@{/calendar/week(date=${date})}" th:aria-current="${view == 'week'} ? 'page'">Woche</a>
@@ -40,6 +45,17 @@
         <span th:text="${entry.value.name}">Name</span>
     </li>
 </ul>
+
+<!-- Ein fälliges ToDo als Ganztags-Eintrag mit Häkchen-Symbol -->
+<a th:fragment="todo(t)" class="occ occ-allday occ-todo" th:href="@{/todos/{id}(id=${t.id})}"
+   th:classappend="'occ-todo-' + ${#strings.toLowerCase(t.priority.name())}">
+    <span class="occ-title">
+        <svg class="occ-lock" viewBox="0 0 24 24" role="img" aria-label="ToDo">
+            <rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>
+        </svg>
+        <span th:text="${t.title}">Steuer</span>
+    </span>
+</a>
 
 <!-- Ein Vorkommen als Eintrag; Farbe vom ersten zugewiesenen Mitglied -->
 <a th:fragment="occurrence(o)" class="occ"

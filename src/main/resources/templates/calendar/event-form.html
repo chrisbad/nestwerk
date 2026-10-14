@@ -50,7 +50,16 @@
         </form>
     </section>
 
+    <p class="notice" th:if="${fromTodo != null}">
+        Termin zum ToDo <a th:href="@{/todos/{id}(id=${fromTodo.id})}" th:text="${fromTodo.title}">Steuer</a>
+    </p>
+    <p class="notice" th:unless="${#lists.isEmpty(linkedTodos)}">
+        Gehört zu
+        <th:block th:each="t, it : ${linkedTodos}"><a th:href="@{/todos/{id}(id=${t.id})}" th:text="${t.title}">Steuer</a><span th:unless="${it.last}">, </span></th:block>
+    </p>
+
     <form class="sheet event-form" th:action="@{${action}}" method="post" th:object="${form}" data-event-form>
+        <input type="hidden" th:field="*{todoId}" th:if="${isNew}">
         <h2 class="series-heading" th:if="${occurrenceId != null and canEdit}">Ganze Serie</h2>
         <fieldset class="event-fields" th:disabled="${!isNew and !canEdit}">
             <div class="field">

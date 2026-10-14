@@ -108,6 +108,20 @@
             </form>
         </section>
 
+        <section class="sheet todo-section" th:if="${!#lists.isEmpty(linkedEvents) or canCreateEvent}">
+            <div class="todo-section-head">
+                <h2>Termine</h2>
+                <a class="button button-ghost button-small" th:if="${canCreateEvent}"
+                   th:href="@{/calendar/events/new(todo=${todo.id})}">Termin anlegen</a>
+            </div>
+            <ul class="link-list" th:unless="${#lists.isEmpty(linkedEvents)}">
+                <li th:each="e : ${linkedEvents}">
+                    <span class="link-label" th:text="${e.when}">18. Nov 2026, 09:00</span>
+                    <a th:href="@{/calendar/events/{id}(id=${e.id})}" th:text="${e.title}">Handwerker</a>
+                </li>
+            </ul>
+        </section>
+
         <section class="sheet todo-section" id="attachments" th:if="${!#lists.isEmpty(attachments) or canAttach}">
             <h2>Anhänge</h2>
             <div th:replace="~{todos/fragments :: attachments(${attachments}, '/todos/' + ${todo.id}, ${canAttach} ? '/todos/' + ${todo.id} + '/attachments' : null)}"></div>

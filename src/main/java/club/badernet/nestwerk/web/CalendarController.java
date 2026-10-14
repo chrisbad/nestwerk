@@ -10,6 +10,13 @@ import club.badernet.nestwerk.calendar.OccurrenceInput;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberService;
 import club.badernet.nestwerk.security.CurrentUser;
+import club.badernet.nestwerk.todo.AssigneeRef;
+import club.badernet.nestwerk.todo.Todo;
+import club.badernet.nestwerk.todo.TodoAccess;
+import club.badernet.nestwerk.todo.TodoEventLinks;
+import club.badernet.nestwerk.todo.TodoNotFoundException;
+import club.badernet.nestwerk.todo.TodoQuery;
+import club.badernet.nestwerk.todo.TodoService;
 import club.badernet.nestwerk.user.User;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,6 +39,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Controller
 @RequestMapping("/calendar")
@@ -44,13 +52,32 @@ public class CalendarController {
     private final FamilyMemberService members;
     private final CurrentUser currentUser;
     private final CalendarSettings settings;
+    private final TodoQuery todoQuery;
+    private final TodoAccess todoAccess;
+    private final TodoService todoService;
+    private final TodoEventLinks todoLinks;
 
     public CalendarController(CalendarEventService events, FamilyMemberService members,
-                              CurrentUser currentUser, CalendarSettings settings) {
+                              CurrentUser currentUser, CalendarSettings settings, TodoQuery todoQuery,
+                              TodoAccess todoAccess, TodoService todoService, TodoEventLinks todoLinks) {
         this.events = events;
         this.members = members;
         this.currentUser = currentUser;
         this.settings = settings;
+        this.todoQuery = todoQuery;
+        this.todoAccess = todoAccess;
+        this.todoService = todoService;
+        this.todoLinks = todoLinks;
+    }
+
+    /** Fällige ToDos des Zeitraums, wenn der Betrachter das ToDo-Modul nutzen darf. */
+    private Map<LocalDate, List<Todo>> addTodos(Model model, LocalDate from, LocalDate to) {
+        User viewer = currentUser.require();
+        boolean show = todoAccess.mayOpen(viewer.getUsername());
+        Map<LocalDate, List<Todo>> todos = show ? todoQuery.dueBetween(viewer, from, to) : Map.of();
+        model.addAttribute("showTodos", show);
+        model.addAttribute("todosByDay", todos);
+        return todos;
     }
 
     @GetMapping
@@ -75,6 +102,7 @@ public class CalendarController {
             weeks.add(week);
         }
         model.addAttribute("weeks", weeks);
+        addTodos(model, days.getFirst(), days.getLast());
         model.addAttribute("month", month);
         model.addAttribute("prev", month.minusMonths(1).atDay(1));
         model.addAttribute("next", month.plusMonths(1).atDay(1));
@@ -92,6 +120,7 @@ public class CalendarController {
         List<DayCell> cells = days.stream()
                 .map(d -> new DayCell(d, true, d.equals(today), byDay.get(d))).toList();
         model.addAttribute("days", cells);
+        addTodos(model, days.getFirst(), days.getLast());
         model.addAttribute("first", days.getFirst());
         model.addAttribute("last", days.getLast());
         model.addAttribute("prev", days.getFirst().minusWeeks(1));
@@ -105,9 +134,10 @@ public class CalendarController {
         LocalDate start = parseDate(from);
         List<LocalDate> days = start.datesUntil(start.plusDays(AGENDA_DAYS)).toList();
         Map<LocalDate, List<Occurrence>> byDay = load(days);
+        Map<LocalDate, List<Todo>> todos = addTodos(model, days.getFirst(), days.getLast());
         Map<LocalDate, List<Occurrence>> nonEmpty = new LinkedHashMap<>();
         byDay.forEach((d, l) -> {
-            if (!l.isEmpty()) {
+            if (!l.isEmpty() || todos.containsKey(d)) {
                 nonEmpty.put(d, l);
             }
         });
@@ -120,8 +150,20 @@ public class CalendarController {
     }
 
     @GetMapping("/events/new")
-    String newForm(@RequestParam(required = false) String date, Model model) {
-        model.addAttribute("form", EventForm.forNew(parseDate(date)));
+    String newForm(@RequestParam(required = false) String date, @RequestParam(required = false) Long todo,
+                   Model model) {
+        EventForm form = EventForm.forNew(parseDate(date));
+        if (todo != null) {
+            Todo t = todoService.get(todo, currentUser.require());
+            form = EventForm.forNew(t.getDueOn() != null ? t.getDueOn() : parseDate(date));
+            form.setTitle(t.getTitle());
+            form.setTodoId(t.getId());
+            Set<Long> memberIds = new java.util.HashSet<>();
+            t.assigneeRefs().stream().filter(r -> r.type() == AssigneeRef.Type.MEMBER).forEach(r -> memberIds.add(r.id()));
+            form.setMemberIds(memberIds);
+            model.addAttribute("fromTodo", t);
+        }
+        model.addAttribute("form", form);
         model.addAttribute("action", "/calendar/events");
         model.addAttribute("isNew", true);
         addFormData(model);
@@ -131,7 +173,12 @@ public class CalendarController {
     @PostMapping("/events")
     String create(@ModelAttribute("form") EventForm form, Model model, RedirectAttributes redirect) {
         try {
-            CalendarEvent created = events.create(form.toInput(), currentUser.require());
+            User actor = currentUser.require();
+            Todo fromTodo = form.getTodoId() == null ? null : todoService.get(form.getTodoId(), actor);
+            CalendarEvent created = events.create(form.toInput(), actor);
+            if (fromTodo != null) {
+                todoLinks.link(fromTodo.getId(), created.getId());
+            }
             redirect.addFlashAttribute("success", "Termin '" + created.getTitle() + "' wurde angelegt.");
             return "redirect:/calendar/month?date=" + form.getStartDate();
         } catch (IllegalArgumentException e) {
@@ -148,6 +195,7 @@ public class CalendarController {
         User viewer = currentUser.require();
         CalendarEvent event = events.get(id, viewer);
         model.addAttribute("form", EventForm.from(event));
+        model.addAttribute("linkedTodos", linkedTodos(id, viewer));
         model.addAttribute("event", event);
         model.addAttribute("action", "/calendar/events/" + id);
         model.addAttribute("isNew", false);
@@ -246,6 +294,19 @@ public class CalendarController {
         Instant from = days.getFirst().atStartOfDay(settings.zone()).toInstant();
         Instant to = days.getLast().plusDays(1).atStartOfDay(settings.zone()).toInstant();
         return CalendarGrid.groupByDay(events.findOccurrences(from, to, viewer), days);
+    }
+
+    /** Verknüpfte ToDos, die der Betrachter sehen darf. */
+    private List<Todo> linkedTodos(Long eventId, User viewer) {
+        List<Todo> result = new ArrayList<>();
+        for (Long todoId : todoLinks.todoIds(eventId)) {
+            try {
+                result.add(todoService.get(todoId, viewer));
+            } catch (TodoNotFoundException ignored) {
+                // unsichtbar oder gelöscht
+            }
+        }
+        return result;
     }
 
     private void addCommon(Model model, String view) {

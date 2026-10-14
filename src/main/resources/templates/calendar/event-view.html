@@ -37,6 +37,11 @@
             </th:block>
         </dl>
 
+        <p class="event-linked" th:unless="${#lists.isEmpty(linkedTodos)}">
+            Gehört zu
+            <th:block th:each="t, it : ${linkedTodos}"><a th:href="@{/todos/{id}(id=${t.id})}" th:text="${t.title}">Steuer</a><span th:unless="${it.last}">, </span></th:block>
+        </p>
+
         <div class="event-notes" th:if="${o.description != null}">
             <h2>Notizen</h2>
             <p th:text="${o.description}">Notizen</p>

@@ -57,13 +57,22 @@ public class TodoController {
     private final TodoHistoryFormatter historyFormatter;
     private final AttachmentService attachments;
     private final NotificationPreferences preferences;
+    private final club.badernet.nestwerk.todo.TodoEventLinks eventLinks;
+    private final club.badernet.nestwerk.calendar.CalendarEventService calendar;
+    private final club.badernet.nestwerk.security.PermissionCatalog permissions;
 
     public TodoController(TodoService todos, TodoQuery query, TodoAccess access, TodoViews views,
                           MarkdownRenderer markdown, CurrentUser currentUser, UserRepository users,
                           TodoStructureService structure, TodoCommentService comments,
                           TodoHistoryRepository history, TodoHistoryFormatter historyFormatter,
-                          AttachmentService attachments, NotificationPreferences preferences) {
+                          AttachmentService attachments, NotificationPreferences preferences,
+                          club.badernet.nestwerk.todo.TodoEventLinks eventLinks,
+                          club.badernet.nestwerk.calendar.CalendarEventService calendar,
+                          club.badernet.nestwerk.security.PermissionCatalog permissions) {
         this.preferences = preferences;
+        this.eventLinks = eventLinks;
+        this.calendar = calendar;
+        this.permissions = permissions;
         this.structure = structure;
         this.comments = comments;
         this.history = history;
@@ -291,6 +300,20 @@ public class TodoController {
         model.addAttribute("overridePush", preferences.choice(NotificationPreferences.Scope.TODO, id,
                 NotificationPreferences.ALL, Channel.PUSH));
         model.addAttribute("choices", NotificationPreferences.Choice.values());
+        // Verknüpfte Termine, soweit sichtbar
+        List<club.badernet.nestwerk.calendar.CalendarEvent> linkedEvents = new ArrayList<>();
+        for (Long eventId : eventLinks.eventIds(id)) {
+            try {
+                linkedEvents.add(calendar.get(eventId, viewer));
+            } catch (club.badernet.nestwerk.calendar.EventNotFoundException | AccessDeniedException ignored) {
+                // unsichtbar oder gelöscht
+            }
+        }
+        model.addAttribute("linkedEvents", linkedEvents.stream().map(e -> java.util.Map.of("id", e.getId(),
+                "title", e.getTitle(), "when", TIMESTAMP.format(e.getStartsAt().atZone(query.zone()))))
+                .toList());
+        model.addAttribute("canCreateEvent", permissions.effective(viewer)
+                .contains(club.badernet.nestwerk.calendar.CalendarPermission.CALENDAR_EVENT_CREATE.name()));
         model.addAttribute("canWatch", access.can(viewer, "WATCH", todo));
         boolean canManageWatchers = access.can(viewer, "MANAGE_WATCHERS", todo);
         model.addAttribute("canManageWatchers", canManageWatchers);

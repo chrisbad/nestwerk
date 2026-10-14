@@ -27,6 +27,7 @@ public class EventForm {
     private String rrule;
     private boolean privateEvent;
     private Set<Long> memberIds = new HashSet<>();
+    private Long todoId;
 
     public static EventForm forNew(LocalDate date) {
         EventForm f = new EventForm();
@@ -87,4 +88,12 @@ public class EventForm {
     public void setPrivateEvent(boolean privateEvent) { this.privateEvent = privateEvent; }
     public Set<Long> getMemberIds() { return memberIds; }
     public void setMemberIds(Set<Long> memberIds) { this.memberIds = memberIds == null ? new HashSet<>() : memberIds; }
+
+    public Long getTodoId() {
+        return todoId;
+    }
+
+    public void setTodoId(Long todoId) {
+        this.todoId = todoId;
+    }
 }

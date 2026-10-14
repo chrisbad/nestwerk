@@ -83,6 +83,17 @@ public class TodoQuery {
                 .toList();
     }
 
+    /** Offene, sichtbare ToDos mit „bis“ im Zeitraum (jeweils einschließlich), nach Datum gruppiert. */
+    @Transactional(readOnly = true)
+    public Map<LocalDate, List<Todo>> dueBetween(User viewer, LocalDate from, LocalDate to) {
+        Map<LocalDate, List<Todo>> result = new java.util.TreeMap<>();
+        load(viewer, TodoFilter.defaults()).stream()
+                .filter(t -> t.getDueOn() != null && !t.getDueOn().isBefore(from) && !t.getDueOn().isAfter(to))
+                .sorted(ORDER)
+                .forEach(t -> result.computeIfAbsent(t.getDueOn(), k -> new ArrayList<>()).add(t));
+        return result;
+    }
+
     /** Alle Schlagworte an ToDos, die der Betrachter sehen darf. */
     @Transactional(readOnly = true)
     public List<String> tags(User viewer) {

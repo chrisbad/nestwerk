@@ -19,6 +19,7 @@
             </h2>
             <div class="day-events">
                 <th:block th:each="o : ${cell.occurrences}"><a th:replace="~{calendar/fragments :: occurrence(${o})}"></a></th:block>
+                <th:block th:each="t : ${todosByDay[cell.date]}"><a th:replace="~{calendar/fragments :: todo(${t})}"></a></th:block>
                 <p class="day-empty" th:if="${cell.occurrences.isEmpty()}">Frei</p>
             </div>
         </section>

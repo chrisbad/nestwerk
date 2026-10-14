@@ -13,7 +13,7 @@
     <p class="cal-range" th:text="|${#temporals.format(from, 'd. MMMM')} bis ${#temporals.format(next.minusDays(1), 'd. MMMM yyyy')}|">Zeitraum</p>
 
     <div class="sheet sheet-empty" th:if="${agenda.isEmpty()}">
-        In diesem Zeitraum stehen keine Termine an.
+        In diesem Zeitraum steht nichts an.
     </div>
     <ol class="agenda" th:unless="${agenda.isEmpty()}">
         <li class="agenda-day" th:each="entry : ${agenda}" th:classappend="${entry.key == today} ? 'day-today'">
@@ -23,6 +23,7 @@
             </div>
             <div class="day-events">
                 <th:block th:each="o : ${entry.value}"><a th:replace="~{calendar/fragments :: occurrence(${o})}"></a></th:block>
+                <th:block th:each="t : ${todosByDay[entry.key]}"><a th:replace="~{calendar/fragments :: todo(${t})}"></a></th:block>
             </div>
         </li>
     </ol>
