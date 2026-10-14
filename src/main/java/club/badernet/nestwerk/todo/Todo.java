@@ -88,6 +88,18 @@ public class Todo {
     @Column(name = "completed_by")
     private Long completedBy;
 
+    @Column(name = "parent_id")
+    private Long parentId;
+
+    @Column(length = 500)
+    private String rrule;
+
+    @Column(name = "series_id")
+    private Long seriesId;
+
+    @Column(name = "successor_id")
+    private Long successorId;
+
     @Version
     private int version;
 
@@ -137,6 +149,10 @@ public class Todo {
     public Instant getCompletedAt() { return completedAt; }
     public Long getCompletedBy() { return completedBy; }
     public int getVersion() { return version; }
+    public Long getParentId() { return parentId; }
+    public String getRrule() { return rrule; }
+    public Long getSeriesId() { return seriesId; }
+    public Long getSuccessorId() { return successorId; }
 
     public Set<String> getTags() {
         return Set.copyOf(tags);
@@ -176,6 +192,10 @@ public class Todo {
     public void setCompletionMode(CompletionMode completionMode) { this.completionMode = completionMode; }
     public void setPrivateTodo(boolean privateTodo) { this.privateTodo = privateTodo; }
     public void setResponsibleUserId(Long responsibleUserId) { this.responsibleUserId = responsibleUserId; }
+    public void setParentId(Long parentId) { this.parentId = parentId; }
+    public void setRrule(String rrule) { this.rrule = rrule; }
+    void setSeriesId(Long seriesId) { this.seriesId = seriesId; }
+    void setSuccessorId(Long successorId) { this.successorId = successorId; }
 
     public void setTags(Collection<String> newTags) {
         tags.clear();
