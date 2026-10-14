@@ -70,6 +70,53 @@
                     </div>
                 </form>
 
+                <form class="acl" th:unless="${role.allPermissions}"
+                      th:with="aclLocked=${!actorIsAdmin and !actorRules.containsAll(roleRules[role.id])}"
+                      th:action="@{/admin/roles/{id}/acl(id=${role.id})}" method="post">
+                    <h3>Zugriffsregeln</h3>
+                    <p class="muted">Was Mitglieder dieser Rolle mit ToDos und Kontakten tun dürfen, je nach ihrer Beziehung zum Eintrag. „Alle“ schließt private Einträge nie ein.</p>
+                    <p class="notice" th:if="${aclLocked}">
+                        Diese Rolle hat Zugriffsregeln, die du selbst nicht hast. Nur ein Administrator kann sie ändern.
+                    </p>
+                    <div class="acl-preset" th:unless="${aclLocked}">
+                        <div class="field">
+                            <label th:for="'preset-' + ${role.id}">Vorlage</label>
+                            <select th:id="'preset-' + ${role.id}" name="preset">
+                                <option th:each="p : ${aclPresets}" th:value="${p.key()}" th:text="${p.label()}">Kind</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="button button-ghost"
+                                th:formaction="@{/admin/roles/{id}/acl/preset(id=${role.id})}">Vorlage übernehmen</button>
+                    </div>
+                    <div class="acl-scroll" th:each="type : ${aclMatrix}">
+                        <table class="acl-matrix">
+                            <caption th:text="${type.label()}">ToDos</caption>
+                            <thead>
+                            <tr>
+                                <th scope="col">Aktion</th>
+                                <th scope="col" th:each="rel : ${type.relations()}" th:text="${rel.label()}">Alle</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="action : ${type.actions()}">
+                                <th scope="row" th:text="${action.label()}">Ansehen</th>
+                                <td th:each="rel : ${type.relations()}"
+                                    th:with="ruleKey=${type.key() + ':' + action.key() + ':' + rel.key()}">
+                                    <input th:if="${type.allows(action.key(), rel.key())}" type="checkbox" name="rules"
+                                           th:value="${ruleKey}"
+                                           th:checked="${roleRules[role.id].contains(ruleKey)}"
+                                           th:disabled="${aclLocked or (!actorIsAdmin and !actorRules.contains(ruleKey))}"
+                                           th:attr="aria-label=${action.label() + ': ' + rel.label()}">
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="form-actions" th:unless="${aclLocked}">
+                        <button type="submit" class="button">Zugriffsregeln speichern</button>
+                    </div>
+                </form>
+
                 <form class="danger-zone" th:unless="${role.systemRole or !grantable.containsAll(@permissionCatalog.effective(role))}"
                       th:action="@{/admin/roles/{id}/delete(id=${role.id})}" method="post"
                       th:attr="data-confirm=|Rolle „${role.name}“ löschen?|">

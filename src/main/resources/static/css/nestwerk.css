@@ -1174,6 +1174,24 @@ a.day-num:hover { background: var(--sage); }
     .permission-row { grid-template-columns: 1fr; }
 }
 
+/* --- Zugriffsregeln (ACL-Matrix) ----------------------------------------- */
+
+.acl { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px dashed var(--line); display: grid; gap: 1rem; }
+.acl h3 { font-size: var(--step-1); margin: 0; }
+.acl > .muted { margin: -0.5rem 0 0; }
+.acl-preset { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; }
+.acl-preset .field { margin: 0; }
+.acl-scroll { overflow-x: auto; }
+.acl-matrix { width: 100%; min-width: 34rem; border-collapse: collapse; }
+.acl-matrix caption { text-align: left; font-weight: 700; padding-bottom: 0.4rem; }
+.acl-matrix th, .acl-matrix td { padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--line); }
+.acl-matrix thead th { font-size: var(--step--1); color: var(--ink-soft); font-weight: 600; text-align: center; }
+.acl-matrix thead th:first-child, .acl-matrix tbody th { text-align: left; }
+.acl-matrix tbody th { font-weight: 400; }
+.acl-matrix td { text-align: center; }
+.acl-matrix input { width: 1.05rem; height: 1.05rem; margin: 0; accent-color: var(--moss); }
+.acl-matrix input:disabled { opacity: 0.35; cursor: not-allowed; }
+
 /* --- Animationen --------------------------------------------------------- */
 
 @keyframes pop { from { opacity: 0; transform: scale(0.96); } }
