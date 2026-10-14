@@ -101,8 +101,11 @@ public class AclService {
                 + "WHERE role_id IN (:ids)", Map.of("ids", roleIds), RULE));
     }
 
-    /** Erlaubt, wenn eine Regel der Rollen des Benutzers für eine der vorliegenden Beziehungen passt. */
+    /** Administratoren immer; sonst, wenn eine Regel der Rollen des Benutzers für eine der vorliegenden Beziehungen passt. */
     public boolean permits(User user, String objectType, String action, Set<String> relations) {
+        if (user.isAdministrator()) {
+            return true;
+        }
         return grantedRelations(user, objectType, action).stream().anyMatch(relations::contains);
     }
 
