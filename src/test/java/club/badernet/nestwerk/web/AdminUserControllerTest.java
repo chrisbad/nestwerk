@@ -3,6 +3,8 @@ package club.badernet.nestwerk.web;
 import club.badernet.nestwerk.TestcontainersConfiguration;
 import club.badernet.nestwerk.role.Role;
 import club.badernet.nestwerk.role.RoleRepository;
+import club.badernet.nestwerk.security.acl.AclRule;
+import club.badernet.nestwerk.security.acl.AclService;
 import club.badernet.nestwerk.user.User;
 import club.badernet.nestwerk.user.UserRepository;
 import club.badernet.nestwerk.user.UserService;
@@ -38,6 +40,7 @@ class AdminUserControllerTest {
     @Autowired UserService userService;
     @Autowired UserRepository users;
     @Autowired RoleRepository roles;
+    @Autowired AclService acl;
 
     @Test
     void lastAdministratorCannotBeDisabled() throws Exception {
@@ -185,5 +188,19 @@ class AdminUserControllerTest {
 
         assertThat(users.findById(target.getId())).get().extracting(User::getPasswordHash).isEqualTo(before);
         assertThat(users.findById(target.getId())).get().extracting(User::isEnabled).isEqualTo(true);
+    }
+
+    @Test
+    void nonAdministratorCannotAssignRoleWithForeignAccessRules() throws Exception {
+        User chef = userService.createAdministrator("regelchef", "passwort1");
+        Role regeln = roles.save(new Role("Nur Regeln", null, Set.of()));
+        acl.replaceRules(chef, regeln.getId(), Set.of(new AclRule("TODO", "VIEW", "ANY")));
+
+        mockMvc.perform(post("/admin/users").with(csrf())
+                        .param("username", "regelkind").param("password", "passwort1")
+                        .param("roleIds", regeln.getId().toString()))
+                .andExpect(flash().attributeExists("error"));
+
+        assertThat(users.findByUsername("regelkind")).isEmpty();
     }
 }

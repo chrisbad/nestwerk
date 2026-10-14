@@ -1,6 +1,7 @@
 package club.badernet.nestwerk.web;
 
 import club.badernet.nestwerk.role.RoleRepository;
+import club.badernet.nestwerk.security.acl.AclService;
 import club.badernet.nestwerk.user.UserService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -25,10 +26,12 @@ public class AdminUserController {
 
     private final UserService userService;
     private final RoleRepository roleRepository;
+    private final AclService acl;
 
-    public AdminUserController(UserService userService, RoleRepository roleRepository) {
+    public AdminUserController(UserService userService, RoleRepository roleRepository, AclService acl) {
         this.userService = userService;
         this.roleRepository = roleRepository;
+        this.acl = acl;
     }
 
     @GetMapping
@@ -56,6 +59,7 @@ public class AdminUserController {
                 throw new IllegalArgumentException("Der Benutzername muss 1–100 Zeichen lang sein.");
             }
             userService.requireMayManage(permissions(actor), null, roles);
+            acl.requireMayAssign(actor.getName(), permissions(actor), null, roles);
             userService.create(name, password, roles);
         });
         String success = error == null ? "Benutzer '" + name + "' wurde angelegt." : null;
@@ -81,6 +85,7 @@ public class AdminUserController {
         Set<Long> roles = roleIds == null ? Set.of() : roleIds;
         return flash(redirect, "Rollen wurden gespeichert.", attempt(() -> {
             userService.requireMayManage(permissions(actor), id, roles);
+            acl.requireMayAssign(actor.getName(), permissions(actor), id, roles);
             userService.changeRoles(id, roles);
         }));
     }
@@ -90,6 +95,7 @@ public class AdminUserController {
                       Authentication actor, RedirectAttributes redirect) {
         return flash(redirect, enabled ? "Benutzer wurde aktiviert." : "Benutzer wurde deaktiviert.", attempt(() -> {
             userService.requireMayManage(permissions(actor), id, null);
+            acl.requireMayAssign(actor.getName(), permissions(actor), id, null);
             userService.setEnabled(id, enabled);
         }));
     }
@@ -99,6 +105,7 @@ public class AdminUserController {
                          Authentication actor, RedirectAttributes redirect) {
         return flash(redirect, "Passwort wurde zurückgesetzt.", attempt(() -> {
             userService.requireMayManage(permissions(actor), id, null);
+            acl.requireMayAssign(actor.getName(), permissions(actor), id, null);
             userService.resetPassword(id, password);
         }));
     }

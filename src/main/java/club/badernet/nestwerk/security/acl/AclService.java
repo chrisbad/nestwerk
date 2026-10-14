@@ -4,12 +4,14 @@ import club.badernet.nestwerk.role.Role;
 import club.badernet.nestwerk.role.RoleRepository;
 import club.badernet.nestwerk.security.PermissionCatalog;
 import club.badernet.nestwerk.user.User;
+import club.badernet.nestwerk.user.UserRepository;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -27,11 +29,14 @@ public class AclService {
     private final NamedParameterJdbcTemplate jdbc;
     private final RoleRepository roles;
     private final PermissionCatalog permissions;
+    private final UserRepository users;
 
-    public AclService(NamedParameterJdbcTemplate jdbc, RoleRepository roles, PermissionCatalog permissions) {
+    public AclService(NamedParameterJdbcTemplate jdbc, RoleRepository roles, PermissionCatalog permissions,
+                      UserRepository users) {
         this.jdbc = jdbc;
         this.roles = roles;
         this.permissions = permissions;
+        this.users = users;
     }
 
     @Transactional(readOnly = true)
@@ -117,5 +122,72 @@ public class AclService {
     public List<AclPreset> presets() {
         return jdbc.query("SELECT key, label FROM acl_presets ORDER BY sort_order",
                 (rs, i) -> new AclPreset(rs.getString("key"), rs.getString("label")));
+    }
+
+    @Transactional
+    public void replaceRules(User actor, Long roleId, Set<AclRule> rules) {
+        Role role = roles.findById(roleId).orElseThrow(() -> new IllegalArgumentException("Rolle nicht gefunden"));
+        if (role.isAllPermissions()) {
+            throw new IllegalArgumentException("Die Administrator-Rolle hat immer alle Zugriffsrechte.");
+        }
+        Set<AclRule> valid = cells();
+        for (AclRule rule : rules) {
+            if (!valid.contains(rule)) {
+                throw new IllegalArgumentException("Unbekannte Zugriffsregel: " + rule.key());
+            }
+        }
+        if (!actor.isAdministrator()) {
+            Set<AclRule> own = rulesOf(actor);
+            if (!own.containsAll(rulesOf(roleId))) {
+                throw new IllegalArgumentException("Diese Rolle hat Zugriffsregeln, die du selbst nicht hast.");
+            }
+            if (!own.containsAll(rules)) {
+                throw new IllegalArgumentException("Du kannst nur Zugriffsregeln vergeben, die du selbst hast.");
+            }
+        }
+        jdbc.update("DELETE FROM acl_rules WHERE role_id = :id", Map.of("id", roleId));
+        for (AclRule rule : rules) {
+            jdbc.update("INSERT INTO acl_rules (role_id, object_type, action, relation) VALUES (:id, :type, :action, :relation)",
+                    Map.of("id", roleId, "type", rule.objectType(), "action", rule.action(), "relation", rule.relation()));
+        }
+    }
+
+    @Transactional
+    public void applyPreset(User actor, Long roleId, String presetKey) {
+        boolean known = presets().stream().anyMatch(p -> p.key().equals(presetKey));
+        if (!known) {
+            throw new IllegalArgumentException("Unbekannte Vorlage: " + presetKey);
+        }
+        Set<AclRule> rules = new HashSet<>(jdbc.query(
+                "SELECT object_type, action, relation FROM acl_preset_rules WHERE preset_key = :key",
+                Map.of("key", presetKey), RULE));
+        replaceRules(actor, roleId, rules);
+    }
+
+    /**
+     * Ergänzt den Eskalationsschutz beim Zuweisen von Rollen: Nicht-Administratoren dürfen keine Rollen
+     * vergeben und keine Benutzer ändern, deren Zugriffsregeln über die eigenen hinausgehen.
+     */
+    @Transactional(readOnly = true)
+    public void requireMayAssign(String actorUsername, Collection<String> actorPermissions,
+                                 Long targetUserId, Set<Long> roleIds) {
+        if (permissions.isAdministrator(actorPermissions)) {
+            return;
+        }
+        Set<AclRule> own = users.findByUsername(actorUsername).map(this::rulesOf).orElseGet(HashSet::new);
+        if (targetUserId != null) {
+            Set<AclRule> target = users.findById(targetUserId).map(this::rulesOf).orElseGet(HashSet::new);
+            if (!own.containsAll(target)) {
+                throw new IllegalArgumentException(
+                        "Dieser Benutzer hat Zugriffsregeln, die du selbst nicht hast, und kann daher nicht geändert werden.");
+            }
+        }
+        if (roleIds != null) {
+            for (Long roleId : roleIds) {
+                if (!own.containsAll(rulesOf(roleId))) {
+                    throw new IllegalArgumentException("Eine der Rollen enthält Zugriffsregeln, die du selbst nicht hast.");
+                }
+            }
+        }
     }
 }
