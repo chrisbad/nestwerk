@@ -26,13 +26,15 @@ public class TodoCommentService {
     private final TodoService todos;
     private final TodoAccess access;
     private final UserRepository users;
+    private final TodoNotifier notifier;
 
     public TodoCommentService(TodoCommentRepository comments, TodoService todos, TodoAccess access,
-                              UserRepository users) {
+                              UserRepository users, TodoNotifier notifier) {
         this.comments = comments;
         this.todos = todos;
         this.access = access;
         this.users = users;
+        this.notifier = notifier;
     }
 
     @Transactional(readOnly = true)
@@ -47,7 +49,9 @@ public class TodoCommentService {
         if (!access.can(actor, "COMMENT", todo)) {
             throw new AccessDeniedException("Keine Berechtigung zum Kommentieren");
         }
-        return comments.save(new TodoComment(todoId, actor.getId(), requireBody(body)));
+        TodoComment comment = comments.save(new TodoComment(todoId, actor.getId(), requireBody(body)));
+        notifier.commented(todo, comment, mentioned(comment.getBody(), todo), actor);
+        return comment;
     }
 
     @Transactional

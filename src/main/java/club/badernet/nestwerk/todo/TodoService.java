@@ -38,11 +38,12 @@ public class TodoService {
     private final TodoRecurrence recurrence;
     private final Clock clock;
     private final TodoHistoryRecorder history;
+    private final TodoNotifier notifier;
 
     public TodoService(TodoRepository todos, TodoAccess access, FamilyMemberRepository members,
                        RoleRepository roles, ContactRepository contacts, UserRepository users,
                        ContactService contactService, TodoRecurrence recurrence, Clock clock,
-                       TodoHistoryRecorder history) {
+                       TodoHistoryRecorder history, TodoNotifier notifier) {
         this.todos = todos;
         this.access = access;
         this.members = members;
@@ -53,6 +54,7 @@ public class TodoService {
         this.recurrence = recurrence;
         this.clock = clock;
         this.history = history;
+        this.notifier = notifier;
     }
 
     /** Liefert das ToDo, wenn der Betrachter es sehen darf; sonst wie „nicht vorhanden“. */
@@ -87,6 +89,7 @@ public class TodoService {
         todo.markChanged(actor.getId());
         Todo saved = todos.save(todo);
         history.record(saved.getId(), actor.getId(), "CREATED", null, null);
+        notifier.assigned(saved, saved.assigneeRefs(), actor);
         return saved;
     }
 
@@ -127,9 +130,13 @@ public class TodoService {
             todo.setPrivateTodo(in.privateTodo());
         }
         if (assigneesChanged) {
+            Set<AssigneeRef> previous = todo.assigneeRefs();
             todo.setCompletionMode(mode(in));
             todo.replaceAssignees(assignees);
             syncCompletions(todo);
+            Set<AssigneeRef> added = new LinkedHashSet<>(assignees);
+            added.removeAll(previous);
+            notifier.assigned(todo, added, actor);
         }
         if (responsibleChanged) {
             todo.setResponsibleUserId(requireActiveUser(in.responsibleUserId()));
@@ -154,6 +161,7 @@ public class TodoService {
     private void recordStatus(Todo todo, User actor, TodoStatus before) {
         if (before != todo.getStatus()) {
             history.record(todo.getId(), actor.getId(), "STATUS", before.name(), todo.getStatus().name());
+            notifier.statusChanged(todo, before, actor);
         }
     }
 
