@@ -74,7 +74,7 @@
             <button type="submit" class="button">Speichern</button>
         </div>
     </form>
-    <form class="dialog-section" th:action="@{/admin/members/{id}/pin(id=${m.id})}" method="post">
+    <form class="dialog-section pin-form" th:action="@{/admin/members/{id}/pin(id=${m.id})}" method="post">
         <div class="field">
             <label th:for="'m-pin-' + ${m.id}">PIN fürs Wand-Tablet
                 <span class="hint" th:text="${m.hasPin()} ? '(eingerichtet; leer speichern entfernt sie)' : '(4 bis 8 Ziffern)'">hint</span></label>

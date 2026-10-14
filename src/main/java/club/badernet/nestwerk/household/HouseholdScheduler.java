@@ -4,7 +4,11 @@ import club.badernet.nestwerk.calendar.AbsenceChangedEvent;
 import club.badernet.nestwerk.notification.AppSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.event.EventListener;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -27,9 +31,12 @@ public class HouseholdScheduler {
     private final IcalImporter importer;
     private final AppSettings settings;
     private final Clock clock;
+    private final TransactionTemplate separate;
 
     public HouseholdScheduler(ChorePlanner planner, HouseholdReminders reminders, IcalImporter importer,
-                              AppSettings settings, Clock clock) {
+                              AppSettings settings, Clock clock, PlatformTransactionManager transactionManager) {
+        this.separate = new TransactionTemplate(transactionManager);
+        this.separate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.importer = importer;
         this.planner = planner;
         this.reminders = reminders;
@@ -58,8 +65,13 @@ public class HouseholdScheduler {
         }
     }
 
-    @EventListener
+    /** Nach dem Speichern des Termins in eigener Transaktion; ein Fehler hier darf den Termin nicht verhindern. */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void absenceChanged(AbsenceChangedEvent event) {
-        planner.reassignAbsent(planner.today());
+        try {
+            separate.executeWithoutResult(status -> planner.reassignAbsent(planner.today()));
+        } catch (RuntimeException e) {
+            log.error("Neuverteilung nach Abwesenheit (Termin {}) fehlgeschlagen", event.eventId(), e);
+        }
     }
 }

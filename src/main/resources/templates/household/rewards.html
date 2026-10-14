@@ -22,8 +22,10 @@
         <ul class="sheet credit-list">
             <li th:each="r : ${pending}">
                 <div class="credit-main">
-                    <span class="member-chip" th:with="m=${members[r.memberId]}" th:if="${m != null}"
-                          th:style="|--member-color: ${m.color}|" th:text="${m.name}">Lena</span>
+                    <th:block th:with="m=${members[r.memberId]}">
+                        <span class="member-chip" th:if="${m != null}"
+                              th:style="|--member-color: ${m.color}|" th:text="${m.name}">Lena</span>
+                    </th:block>
                     <strong th:text="${r.reward.title}">Kinoabend</strong>
                     <span class="muted" th:text="${r.costMinutes} + ' Min'">60 Min</span>
                     <span class="pending-actions">
@@ -105,8 +107,10 @@
         <ul class="sheet credit-list">
             <li th:each="r : ${recent}">
                 <div class="credit-main">
-                    <span class="member-chip" th:with="m=${members[r.memberId]}" th:if="${m != null}"
-                          th:style="|--member-color: ${m.color}|" th:text="${m.name}">Lena</span>
+                    <th:block th:with="m=${members[r.memberId]}">
+                        <span class="member-chip" th:if="${m != null}"
+                              th:style="|--member-color: ${m.color}|" th:text="${m.name}">Lena</span>
+                    </th:block>
                     <span th:text="${r.reward.title}">Kinoabend</span>
                     <span class="muted" th:text="${r.costMinutes} + ' Min'">60 Min</span>
                     <span class="badge" th:classappend="'redemption-' + ${#strings.toLowerCase(r.status.name())}"

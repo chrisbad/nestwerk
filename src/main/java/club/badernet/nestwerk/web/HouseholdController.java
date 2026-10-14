@@ -81,7 +81,7 @@ public class HouseholdController {
         List<WeekDay> days = new ArrayList<>();
         for (int i = 0; i < 7; i++) {
             LocalDate d = monday.plusDays(i);
-            days.add(new WeekDay(d, HouseholdViews.dayLabel(d, today), d.equals(today)));
+            days.add(new WeekDay(d, HouseholdViews.shortDay(d), d.equals(today)));
         }
         List<ChoreTask> inWeek = tasks.between(viewer, monday, monday.plusDays(6));
         Map<Long, List<ChoreTask>> byMember = new LinkedHashMap<>();

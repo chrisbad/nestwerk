@@ -81,6 +81,11 @@ public class HouseholdViews {
         return day.format(DAY);
     }
 
+    /** Wochentag und Datum, z. B. „Mi. 14.10.“ (Spaltenköpfe im Wochenplan). */
+    public static String shortDay(LocalDate day) {
+        return day.format(DAY);
+    }
+
     public static String longDay(LocalDate day) {
         return day.format(LONG_DAY);
     }

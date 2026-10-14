@@ -154,7 +154,9 @@ class HouseholdAccountControllerTest {
                         .param("approve", "true"))
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/household/rewards").with(user("mama")))
-                .andExpect(content().string(containsString("Warten auf Bestätigung")));
+                .andExpect(content().string(containsString("Warten auf Bestätigung")))
+                .andExpect(content().string(org.hamcrest.Matchers.matchesPattern(
+                        "(?s).*Warten auf Bestätigung.*class=\"member-chip\"[^>]*>Lena<.*Eis.*")));
         mockMvc.perform(post("/household/redemptions/{id}/decide", r.getId()).with(csrf()).with(user("mama"))
                         .param("approve", "true"))
                 .andExpect(flash().attributeExists("success"));

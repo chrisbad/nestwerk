@@ -1594,11 +1594,16 @@ form.inline { display: inline; margin: 0; }
 
 .household-page { max-width: 80rem; }
 .household-head { align-items: center; }
+.household-head > div { min-width: 0; }
+.household-head .segmented { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.household-head .segmented a { white-space: nowrap; }
 .household-actions { display: flex; justify-content: flex-end; margin: -0.75rem 0 1.25rem; }
 .household-hint { margin-top: 1.5rem; }
 .household-danger { gap: 0.75rem; margin-top: 1.5rem; }
+.event-main > .sheet + .sheet { margin-top: 1.25rem; }
+.event-main > .chore-section { margin-top: 2rem; }
 
-.week-nav { display: flex; align-items: center; gap: 0.5rem; margin: -0.75rem 0 1.25rem; }
+.plan-nav { display: flex; align-items: center; gap: 0.5rem; margin: -0.75rem 0 1.25rem; }
 
 .chore-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
 
@@ -1654,22 +1659,22 @@ form.inline { display: inline; margin: 0; }
 .effort-hard i { background: var(--honey); }
 
 .chore-overdue, .chore-section { margin-bottom: 1.75rem; }
-.chore-overdue h2, .chore-section h2, .week-daygroup h2, .chore-group h2 { font-size: var(--step-1); margin-bottom: 0.6rem; }
+.chore-overdue h2, .chore-section h2, .plan-daygroup h2, .chore-group h2 { font-size: var(--step-1); margin-bottom: 0.6rem; }
 .chore-section.is-overdue h2 { color: var(--brick); }
 .chore-overdue .chore-list { grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
 
-.week-grid { display: grid; gap: 0.35rem; }
-.week-row {
+.plan-grid { display: grid; gap: 0.35rem; }
+.plan-row {
     --member-color: var(--line);
     display: grid;
     grid-template-columns: 8.5rem repeat(7, minmax(0, 1fr));
     gap: 0.35rem;
     align-items: stretch;
 }
-.week-row-head { position: sticky; top: 0; z-index: 1; background: var(--bg); }
-.week-day { padding: 0.35rem 0.4rem; font-size: var(--step--1); font-weight: 650; color: var(--ink-soft); }
-.week-day.is-today { color: var(--ink); border-bottom: 3px solid var(--honey); }
-.week-who {
+.plan-row-head { position: sticky; top: 0; z-index: 1; background: var(--bg); }
+.plan-day { padding: 0.35rem 0.4rem; font-size: var(--step--1); font-weight: 650; color: var(--ink-soft); }
+.plan-day.is-today { color: var(--ink); border-bottom: 3px solid var(--honey); }
+.plan-who {
     display: grid;
     align-content: start;
     gap: 0.1rem;
@@ -1678,20 +1683,20 @@ form.inline { display: inline; margin: 0; }
     border-radius: var(--radius-field);
     background: color-mix(in srgb, var(--member-color) 14%, var(--surface));
 }
-.week-row-head .week-who { background: none; border: 0; }
-.week-row.is-open-row .week-who { background: var(--sage); border-left-style: dashed; }
-.week-who strong { font-family: var(--font-display); font-weight: 650; overflow-wrap: anywhere; }
-.week-who .muted { font-size: var(--step--1); }
-.week-cell { align-content: start; min-height: 3rem; padding: 0.25rem; border-radius: var(--radius-field); background: color-mix(in srgb, var(--surface) 55%, transparent); }
-.week-cell.is-today { background: var(--honey-soft); }
-.week-cell .chore-chip { padding: 0.35rem 0.4rem; gap: 0.35rem; border-left-width: 1px; }
-.week-cell .chore-check { width: 1.3rem; height: 1.3rem; }
-.week-cell .chore-title { font-size: var(--step--1); }
+.plan-row-head .plan-who { background: none; border: 0; }
+.plan-row.is-open-row .plan-who { background: var(--sage); border-left-style: dashed; }
+.plan-who strong { font-family: var(--font-display); font-weight: 650; overflow-wrap: anywhere; }
+.plan-who .muted { font-size: var(--step--1); }
+.plan-cell { align-content: start; min-height: 3rem; padding: 0.25rem; border-radius: var(--radius-field); background: color-mix(in srgb, var(--surface) 55%, transparent); }
+.plan-cell.is-today { background: var(--honey-soft); }
+.plan-cell .chore-chip { padding: 0.35rem 0.4rem; gap: 0.35rem; border-left-width: 1px; }
+.plan-cell .chore-check { width: 1.3rem; height: 1.3rem; }
+.plan-cell .chore-title { font-size: var(--step--1); }
 
-.week-days { display: none; }
-.week-daygroup { margin-bottom: 1.25rem; }
-.week-daygroup.is-today h2 { color: var(--moss); }
-.week-daygroup.is-today h2::after { content: ""; display: block; width: 2.5rem; height: 3px; margin-top: 0.2rem; background: var(--honey); border-radius: 2px; }
+.plan-days { display: none; }
+.plan-daygroup { margin-bottom: 1.25rem; }
+.plan-daygroup.is-today h2 { color: var(--moss); }
+.plan-daygroup.is-today h2::after { content: ""; display: block; width: 2.5rem; height: 3px; margin-top: 0.2rem; background: var(--honey); border-radius: 2px; }
 
 .chore-group { margin-bottom: 1.5rem; }
 .chore-rows { list-style: none; margin: 0; padding: 0.25rem 0; }
@@ -1719,6 +1724,8 @@ form.inline { display: inline; margin: 0; }
 .date-add { display: flex; flex-wrap: wrap; align-items: end; gap: 0.75rem; margin-top: 1rem; }
 .complete-form { display: grid; gap: 1rem; }
 .credit-line { display: block; }
+.pin-form { display: grid; gap: 0.75rem; justify-items: start; }
+.pin-form .field { width: 100%; }
 
 /* Auswertung */
 .stats-table-wrap { padding: 0.5rem 0; overflow-x: auto; margin-bottom: 2rem; }
@@ -1827,9 +1834,14 @@ form.inline { display: inline; margin: 0; }
 .tablet-pin { font-size: var(--step-2); letter-spacing: 0.3em; max-width: 12rem; }
 .tablet-hint { margin-top: 1.5rem; }
 
+@media (max-width: 40rem) {
+    .stats-table th, .stats-table td { padding: 0.5rem 0.45rem; }
+    .stats-table tbody th { min-width: 5.5rem; }
+    .stats-minutes { font-size: var(--step-0); }
+}
 @media (max-width: 56rem) {
-    .week-grid { display: none; }
-    .week-days { display: block; }
+    .plan-grid { display: none; }
+    .plan-days { display: block; }
 }
 
 /* --- Animationen --------------------------------------------------------- */

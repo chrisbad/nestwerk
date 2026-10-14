@@ -109,7 +109,7 @@ class HouseholdControllerTest {
         mockMvc.perform(get("/household").with(as("mama")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Spülmaschine ausräumen")))
-                .andExpect(content().string(containsString("week-grid")))
+                .andExpect(content().string(containsString("plan-grid")))
                 .andExpect(content().string(containsString("effort-hard")))
                 .andExpect(content().string(containsString("Lena")));
     }

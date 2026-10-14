@@ -9,7 +9,7 @@
     <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
     <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
 
-    <div class="week-nav">
+    <div class="plan-nav">
         <a class="icon-button" th:href="@{/household/stats(period=${period.key}, date=${period.previous})}" title="Zurück">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
             <span class="visually-hidden">Vorheriger Zeitraum</span>
