@@ -5,6 +5,7 @@ import club.badernet.nestwerk.role.Role;
 import club.badernet.nestwerk.user.User;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -83,5 +84,22 @@ public class PermissionCatalog {
 
     public boolean isAdministrator(Collection<String> permissions) {
         return permissions.containsAll(keys());
+    }
+
+    @Transactional
+    public void updateText(String key, String label, String description) {
+        String cleanLabel = label == null ? "" : label.trim();
+        if (cleanLabel.isEmpty() || cleanLabel.length() > 100) {
+            throw new IllegalArgumentException("Die Bezeichnung muss 1–100 Zeichen lang sein.");
+        }
+        String cleanDescription = description == null || description.isBlank() ? null : description.trim();
+        if (cleanDescription != null && cleanDescription.length() > 255) {
+            throw new IllegalArgumentException("Die Beschreibung darf höchstens 255 Zeichen lang sein.");
+        }
+        int updated = jdbc.update("UPDATE permissions SET label = ?, description = ? WHERE key = ?",
+                cleanLabel, cleanDescription, key);
+        if (updated == 0) {
+            throw new IllegalArgumentException("Recht nicht gefunden");
+        }
     }
 }

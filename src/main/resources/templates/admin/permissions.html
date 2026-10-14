@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Rechte')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='roles')}"></header>
+<main>
+    <a class="back-link" th:href="@{/admin/roles}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+        Zu den Rollen
+    </a>
+    <div class="page-head">
+        <div>
+            <h1>Rechte</h1>
+            <p>Bezeichnungen und Beschreibungen, wie sie in der Rollenverwaltung erscheinen.</p>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <div class="stack">
+        <section class="sheet permission-module" th:each="entry : ${permissionsByModule}">
+            <h2 th:text="${entry.key}">Modul</h2>
+            <form class="permission-row" th:each="p : ${entry.value}"
+                  th:action="@{/admin/permissions/{key}(key=${p.key()})}" method="post">
+                <span class="permission-key" th:text="${p.key()}">USER_MANAGE</span>
+                <div class="field">
+                    <label th:for="'label-' + ${p.key()}">Bezeichnung</label>
+                    <input th:id="'label-' + ${p.key()}" type="text" name="label" maxlength="100"
+                           th:value="${p.label()}" required>
+                </div>
+                <div class="field">
+                    <label th:for="'desc-' + ${p.key()}">Beschreibung <span class="hint">optional</span></label>
+                    <input th:id="'desc-' + ${p.key()}" type="text" name="description" maxlength="255"
+                           th:value="${p.description()}">
+                </div>
+                <button type="submit" class="button button-small">Speichern</button>
+            </form>
+        </section>
+    </div>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

@@ -1156,6 +1156,24 @@ a.day-num:hover { background: var(--sage); }
     .login-claim { font-size: var(--step-3); }
 }
 
+/* --- Rechtekatalog ------------------------------------------------------- */
+
+.permission-module { padding: clamp(1.25rem, 3vw, 2rem); display: grid; gap: 1rem; }
+.permission-module h2 { font-size: var(--step-1); margin: 0; }
+.permission-row {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr auto;
+    gap: 0.75rem;
+    align-items: end;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+}
+.permission-row .field { margin: 0; }
+.permission-key { grid-column: 1 / -1; font-size: var(--step--1); color: var(--ink-soft); }
+@media (max-width: 40rem) {
+    .permission-row { grid-template-columns: 1fr; }
+}
+
 /* --- Animationen --------------------------------------------------------- */
 
 @keyframes pop { from { opacity: 0; transform: scale(0.96); } }
