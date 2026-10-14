@@ -63,6 +63,22 @@
         </nav>
 
         <div class="nav-tools">
+            <div class="menu bell" data-menu>
+                <button type="button" class="icon-button bell-button" aria-expanded="false" aria-haspopup="true"
+                        title="Benachrichtigungen" data-menu-toggle>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>
+                    </svg>
+                    <span class="visually-hidden">Benachrichtigungen</span>
+                    <th:block th:with="count=${@notificationService.unreadCount(#authentication.name)}">
+                        <span th:replace="~{notifications/fragments :: count}"></span>
+                    </th:block>
+                </button>
+                <div class="menu-panel bell-panel" hidden data-menu-panel
+                     th:hx-get="@{/notifications/menu}" hx-trigger="intersect" hx-swap="innerHTML">
+                    <p class="muted bell-empty">Wird geladen …</p>
+                </div>
+            </div>
             <button type="button" class="icon-button" data-theme-toggle title="Farbschema wechseln">
                 <svg class="theme-icon theme-icon-system" viewBox="0 0 24 24" aria-hidden="true">
                     <circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" class="fill"/>
@@ -85,6 +101,9 @@
                 </button>
                 <div class="menu-panel" hidden data-menu-panel>
                     <p class="menu-label">Angemeldet als<br><strong sec:authentication="name">benutzer</strong></p>
+                    <a class="menu-item" th:href="@{/notifications}">Benachrichtigungen</a>
+                    <a class="menu-item" th:href="@{/admin/notifications}"
+                       sec:authorize="hasAuthority('NOTIFICATION_SETTINGS_MANAGE')">Benachrichtigungen einstellen</a>
                     <form th:action="@{/logout}" method="post">
                         <button type="submit" class="menu-item">Abmelden</button>
                     </form>

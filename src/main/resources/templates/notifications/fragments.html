@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Zähler an der Glocke; aktualisiert sich jede Minute selbst -->
+<span th:fragment="count" id="bell-count" class="bell-count" th:hidden="${count == 0}"
+      th:hx-get="@{/notifications/count}" hx-trigger="every 60s" hx-swap="outerHTML"
+      th:text="${count > 99} ? '99+' : ${count}">0</span>
+
+<!-- Inhalt des Glocken-Menüs -->
+<th:block th:fragment="menu">
+    <p class="menu-label">Benachrichtigungen</p>
+    <ul class="bell-list" th:unless="${#lists.isEmpty(items)}">
+        <li th:each="item : ${items}" th:classappend="${item.notification().unread} ? 'is-unread'">
+            <a th:href="@{/notifications/{id}/open(id=${item.notification().id})}">
+                <span class="bell-type" th:text="${item.notification().type.label()}">Bald fällig</span>
+                <strong th:text="${item.notification().title}">Steuer</strong>
+                <span class="muted" th:text="${item.when()}">14. Okt, 08:00</span>
+            </a>
+        </li>
+    </ul>
+    <p class="muted bell-empty" th:if="${#lists.isEmpty(items)}">Keine Benachrichtigungen.</p>
+    <a class="menu-item" th:href="@{/notifications}">Alle anzeigen</a>
+</th:block>
+
+</body>
+</html>

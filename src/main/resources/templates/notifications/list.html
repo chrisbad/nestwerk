@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Benachrichtigungen')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='notifications')}"></header>
+<main class="event-main">
+    <div class="page-head">
+        <div>
+            <h1>Benachrichtigungen</h1>
+            <p th:text="${unread == 0} ? 'Alles gelesen.' : (${unread == 1} ? '1 ungelesen' : ${unread} + ' ungelesen')">2 ungelesen</p>
+        </div>
+        <div class="page-actions">
+            <nav class="segmented" aria-label="Filter">
+                <a th:href="@{/notifications}" th:aria-current="${!onlyUnread} ? 'page'">Alle</a>
+                <a th:href="@{/notifications(filter='unread')}" th:aria-current="${onlyUnread} ? 'page'">Ungelesen</a>
+            </nav>
+            <form th:if="${unread > 0}" method="post" th:action="@{/notifications/read-all}">
+                <button type="submit" class="button button-ghost">Alle als gelesen markieren</button>
+            </form>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <div class="sheet sheet-empty" th:if="${#lists.isEmpty(items)}">
+        <th:block th:if="${onlyUnread}">Keine ungelesenen Benachrichtigungen.</th:block>
+        <th:block th:unless="${onlyUnread}">Noch keine Benachrichtigungen. Erinnerungen und Neuigkeiten zu deinen ToDos erscheinen hier.</th:block>
+    </div>
+
+    <ul class="notification-list" th:unless="${#lists.isEmpty(items)}">
+        <li th:each="item : ${items}" class="notification" th:with="n=${item.notification()}"
+            th:classappend="${n.unread} ? 'is-unread'">
+            <a class="notification-main" th:href="@{/notifications/{id}/open(id=${n.id})}">
+                <span class="notification-type" th:text="${n.type.label()}">Bald fällig</span>
+                <strong th:text="${n.title}">Steuer</strong>
+                <span th:if="${n.body != null}" th:text="${n.body}">Fällig bis …</span>
+            </a>
+            <span class="notification-when" th:text="${item.when()}">14. Okt, 08:00</span>
+            <div class="notification-actions" th:if="${n.type.name() == 'TODO_FOLLOW_UP' and item.todoId() != null}">
+                <form method="post" th:action="@{/todos/{id}/follow-up(id=${item.todoId()})}" th:each="a : ${ {'DONE','WEEK','MONTH','DISCARD'} }">
+                    <input type="hidden" name="action" th:value="${a}">
+                    <input type="hidden" name="back" value="/notifications">
+                    <button type="submit" class="button button-ghost button-small"
+                            th:text="${a == 'DONE'} ? 'Erledigt' : (${a == 'WEEK'} ? '+1 Woche' : (${a == 'MONTH'} ? '+1 Monat' : 'Verwerfen'))">Erledigt</button>
+                </form>
+            </div>
+        </li>
+    </ul>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

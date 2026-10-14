@@ -227,6 +227,28 @@ public class TodoService {
         return !ownCompletions(todo, user).isEmpty();
     }
 
+    // --- Wiedervorlage ------------------------------------------------------------
+
+    /** Aktionen aus der Wiedervorlage-Erinnerung. */
+    public enum FollowUpAction { DONE, WEEK, MONTH, DISCARD }
+
+    @Transactional
+    public void followUp(Long id, FollowUpAction action, User actor) {
+        switch (action) {
+            case DONE -> changeStatus(id, TodoStatus.DONE, actor);
+            case DISCARD -> changeStatus(id, TodoStatus.DISCARDED, actor);
+            case WEEK, MONTH -> {
+                Todo todo = get(id, actor);
+                require(actor, "EDIT", todo);
+                java.util.Map<String, String> before = TodoHistoryRecorder.snapshot(todo);
+                LocalDate today = LocalDate.now(clock);
+                todo.setFollowUpOn(action == FollowUpAction.WEEK ? today.plusWeeks(1) : today.plusMonths(1));
+                todo.markChanged(actor.getId());
+                history.recordChanges(todo, actor.getId(), before);
+            }
+        }
+    }
+
     // --- Beobachter -------------------------------------------------------------
 
     @Transactional

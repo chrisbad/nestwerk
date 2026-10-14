@@ -443,6 +443,19 @@ public class TodoController {
         return "redirect:/todos/" + id + "#timeline";
     }
 
+    @PostMapping("/{id}/follow-up")
+    String followUp(@PathVariable Long id, @RequestParam TodoService.FollowUpAction action,
+                    @RequestParam(required = false) String back, RedirectAttributes redirect) {
+        todos.followUp(id, action, requireModule());
+        redirect.addFlashAttribute("success", switch (action) {
+            case DONE -> "ToDo ist erledigt.";
+            case DISCARD -> "ToDo wurde verworfen.";
+            case WEEK -> "Wiedervorlage in einer Woche.";
+            case MONTH -> "Wiedervorlage in einem Monat.";
+        });
+        return "redirect:" + safeBack(back, "/todos/" + id);
+    }
+
     @PostMapping("/{id}/watch")
     String watch(@PathVariable Long id, RedirectAttributes redirect) {
         todos.watch(id, requireModule());

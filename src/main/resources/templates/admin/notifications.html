@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Benachrichtigungen einstellen')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='notifications')}"></header>
+<main class="event-main">
+    <div class="page-head">
+        <div>
+            <h1>Benachrichtigungen einstellen</h1>
+            <p>Wann Nestwerk an ToDos erinnert und über welche Wege.</p>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <section class="sheet event-form settings-section">
+        <h2>Erinnerungen</h2>
+        <form method="post" th:action="@{/admin/notifications/reminders}">
+            <div class="field-row">
+                <div class="field">
+                    <label for="hour">Uhrzeit der täglichen Erinnerung</label>
+                    <select id="hour" name="hour">
+                        <option th:each="h : ${#numbers.sequence(0, 23)}" th:value="${h}" th:text="${h} + ':00 Uhr'"
+                                th:selected="${h == hour}">8:00 Uhr</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label for="leadDays">Standard: Tage vor „bis“ erinnern</label>
+                    <input id="leadDays" type="number" name="leadDays" min="0" max="60" th:value="${leadDays}" required>
+                    <p class="hint">Gilt, wenn am ToDo nichts anderes eingestellt ist.</p>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="button">Speichern</button>
+            </div>
+        </form>
+    </section>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>
