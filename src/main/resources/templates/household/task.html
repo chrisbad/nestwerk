@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${task.chore.title})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='household')}"></header>
+<main class="event-main">
+    <a class="back-link" th:href="@{/household(week=${task.dueOn})}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+        Zum Wochenplan
+    </a>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <article class="sheet event-view">
+        <div class="detail-head">
+            <div>
+                <h1 th:text="${task.chore.title}">Spülmaschine</h1>
+                <p class="event-when" th:text="${dueLabel}">Montag, 13. Oktober</p>
+            </div>
+            <a class="button button-ghost" th:href="@{/household/chores/{id}(id=${task.chore.id})}">Zur Hausarbeit</a>
+        </div>
+
+        <p class="notice notice-error" th:if="${c.overdue}">Überfällig</p>
+
+        <dl class="event-facts">
+            <dt>Zuständig</dt>
+            <dd>
+                <span class="member-chip" th:if="${c.assignee != null}" th:style="|--member-color: ${c.assignee.color}|"
+                      th:text="${c.assignee.name}">Lena</span>
+                <span th:if="${c.assignee == null}">Offen – wer mag, nimmt sie</span>
+            </dd>
+            <dt>Aufwand</dt>
+            <dd>
+                <span th:text="${task.chore.minutes} + ' Minuten, ' + ${task.chore.effort.label()}">15 Minuten</span>
+                <span th:replace="~{household/fragments :: effort(${c.effort}, ${c.effortLabel})}"></span>
+            </dd>
+            <dt>Status</dt>
+            <dd th:text="${c.done} ? 'Erledigt' : 'Offen'">Offen</dd>
+            <th:block th:unless="${#lists.isEmpty(credits)}">
+                <dt>Gutgeschrieben</dt>
+                <dd>
+                    <span class="credit-line" th:each="cr : ${credits}">
+                        <span th:text="${allMembers[cr.memberId] != null} ? ${allMembers[cr.memberId].name} : 'Unbekannt'">Lena</span>:
+                        <span th:text="${cr.effectiveMinutes()} + ' Min'">15 Min</span>
+                        <span class="muted" th:if="${cr.corrected}" th:text="'(korrigiert: ' + ${cr.correctionReason} + ')'"></span>
+                    </span>
+                </dd>
+            </th:block>
+        </dl>
+
+        <div class="event-notes" th:if="${task.chore.description != null}" th:text="${task.chore.description}">Notiz</div>
+    </article>
+
+    <section class="sheet todo-section" th:if="${canCompleteHere}">
+        <h2>Erledigt?</h2>
+        <form method="post" th:action="@{/household/tasks/{id}/complete(id=${task.id})}" class="complete-form">
+            <input type="hidden" name="back" th:value="${back}">
+            <div class="field" th:if="${completeAny or ownMember == null}">
+                <label for="doer">Erledigt von</label>
+                <select id="doer" name="doer" class="input">
+                    <option th:each="m : ${allMembers.values()}" th:value="${m.id}" th:text="${m.name}"
+                            th:selected="${ownMember != null} ? ${m.id == ownMember} : ${m.id == task.assigneeMemberId}">Lena</option>
+                </select>
+            </div>
+            <fieldset class="field choices">
+                <legend>Mitgeholfen haben <span class="hint">jeder bekommt die vollen Minuten</span></legend>
+                <label class="choice choice-member" th:each="m : ${allMembers.values()}" th:style="|--member-color: ${m.color}|">
+                    <input type="checkbox" name="helpers" th:value="${m.id}">
+                    <span th:text="${m.name}">Tim</span>
+                </label>
+            </fieldset>
+            <div class="form-actions">
+                <button type="submit" class="button">Als erledigt abhaken</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="sheet todo-section" th:if="${c.canUndo}">
+        <h2>Erledigung zurücknehmen</h2>
+        <form method="post" th:action="@{/household/tasks/{id}/undo(id=${task.id})}">
+            <input type="hidden" name="back" th:value="${back}">
+            <p class="hint">Die Gutschriften werden entfernt und die Hausarbeit ist wieder offen.</p>
+            <div class="form-actions">
+                <button type="submit" class="button button-ghost">Rückgängig machen</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="sheet todo-section" th:if="${canAssign}">
+        <h2 th:text="${assignAny} ? 'Zuständigkeit ändern' : 'Abgeben oder übernehmen'">Zuständigkeit ändern</h2>
+        <form method="post" th:action="@{/household/tasks/{id}/assign(id=${task.id})}" class="inline-form">
+            <label class="field">
+                <span>Zuständig</span>
+                <select name="member" class="input">
+                    <option value="" th:if="${assignAny}">Offen (niemand)</option>
+                    <option th:each="m : ${allMembers.values()}"
+                            th:if="${assignAny or task.chore.memberIds.contains(m.id) or m.id == ownMember}"
+                            th:value="${m.id}" th:text="${m.name}" th:selected="${m.id == task.assigneeMemberId}">Lena</option>
+                </select>
+            </label>
+            <button type="submit" class="button button-ghost">Zuständigkeit speichern</button>
+        </form>
+    </section>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

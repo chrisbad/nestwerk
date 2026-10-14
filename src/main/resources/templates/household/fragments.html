@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Kopf mit Bereichsnavigation; erwartet ${tab} -->
+<div th:fragment="head(title, subtitle)" class="page-head household-head">
+    <div>
+        <h1 th:text="${title}">Putzplan</h1>
+        <p th:if="${subtitle != null}" th:text="${subtitle}">KW 42</p>
+    </div>
+    <nav class="segmented" aria-label="Haushalt">
+        <a th:href="@{/household}" th:aria-current="${tab == 'week'} ? 'page'">Wochenplan</a>
+        <a th:href="@{/household/today}" th:aria-current="${tab == 'today'} ? 'page'">Heute</a>
+        <a th:href="@{/household/chores}" th:aria-current="${tab == 'chores'} ? 'page'">Hausarbeiten</a>
+        <a th:href="@{/household/stats}" th:aria-current="${tab == 'stats'} ? 'page'">Auswertung</a>
+        <a th:href="@{/household/rewards}" th:aria-current="${tab == 'rewards'} ? 'page'">Belohnungen</a>
+    </nav>
+</div>
+
+<!-- Aufwand als ein bis drei Punkte -->
+<span th:fragment="effort(effort, label)" class="effort" th:classappend="'effort-' + ${effort}"
+      th:title="'Aufwand: ' + ${label}" role="img" th:aria-label="'Aufwand ' + ${label}">
+    <i></i><i></i><i></i>
+</span>
+
+<!-- Eine Aufgabe; erwartet ${c} (TaskChip), ${back}, optional ${showAssignee}, ${showDay}, ${toast} -->
+<li th:fragment="chip" class="chore-chip" th:id="|task-${c.id}|"
+    th:classappend="${(c.done ? ' is-done' : '') + (c.overdue ? ' is-overdue' : '')}"
+    th:style="${c.assignee != null} ? |--member-color: ${c.assignee.color}|">
+    <form th:if="${c.canComplete}" method="post" th:action="@{/household/tasks/{id}/complete(id=${c.id})}"
+          th:hx-post="@{/household/tasks/{id}/complete(id=${c.id})}" hx-target="closest li" hx-swap="outerHTML">
+        <input type="hidden" name="back" th:value="${back}">
+        <button type="submit" class="chore-check" th:title="'Als erledigt abhaken: ' + ${c.title}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.5 3.5 3.5 7.5-8"/></svg>
+            <span class="visually-hidden" th:text="'Erledigt: ' + ${c.title}">Erledigt</span>
+        </button>
+    </form>
+    <form th:if="${c.canUndo}" method="post" th:action="@{/household/tasks/{id}/undo(id=${c.id})}"
+          th:hx-post="@{/household/tasks/{id}/undo(id=${c.id})}" hx-target="closest li" hx-swap="outerHTML">
+        <input type="hidden" name="back" th:value="${back}">
+        <button type="submit" class="chore-check is-checked" th:title="'Rückgängig: ' + ${c.title}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.5 3.5 3.5 7.5-8"/></svg>
+            <span class="visually-hidden" th:text="'Rückgängig: ' + ${c.title}">Rückgängig</span>
+        </button>
+    </form>
+    <span th:unless="${c.canComplete or c.canUndo}" class="chore-check is-static" th:classappend="${c.done} ? 'is-checked'"
+          aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="m6.5 12.5 3.5 3.5 7.5-8"/></svg>
+    </span>
+    <a class="chore-body" th:href="@{/household/tasks/{id}(id=${c.id})}">
+        <span class="chore-title" th:text="${c.title}">Spülmaschine</span>
+        <span class="chore-meta">
+            <span th:if="${showDay != null and showDay}" th:text="${c.dayLabel}">heute</span>
+            <span th:if="${c.time != null}" th:text="${c.time}">19:00</span>
+            <span th:text="${c.minutes} + ' Min'">15 Min</span>
+            <span th:replace="~{household/fragments :: effort(${c.effort}, ${c.effortLabel})}"></span>
+            <span class="chore-who" th:if="${showAssignee != null and showAssignee}"
+                  th:text="${c.assignee != null} ? ${c.assignee.name} : 'offen'">Lena</span>
+        </span>
+    </a>
+    <p hidden th:if="${toast != null}" th:attr="data-toast=${toastType}" th:text="${toast}"></p>
+</li>
+
+</body>
+</html>

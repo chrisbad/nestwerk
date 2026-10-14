@@ -104,7 +104,7 @@ class AdminRoleAclTest {
                         .param("preset", "GAST"))
                 .andExpect(flash().attributeExists("success"));
 
-        assertThat(acl.rulesOf(kind.getId())).hasSize(2);
+        assertThat(acl.rulesOf(kind.getId())).hasSize(3);
     }
 
     @Test

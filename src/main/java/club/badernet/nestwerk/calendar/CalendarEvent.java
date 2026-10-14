@@ -58,6 +58,10 @@ public class CalendarEvent {
     @Column(name = "private_event", nullable = false)
     private boolean privateEvent;
 
+    /** Die teilnehmenden Mitglieder sind abwesend (z. B. Urlaub); der Putzplan überspringt sie. */
+    @Column(nullable = false)
+    private boolean absence;
+
     @Column(name = "created_by", nullable = false)
     private Long createdBy;
 
@@ -106,6 +110,7 @@ public class CalendarEvent {
     public String getTimezone() { return timezone; }
     public String getRrule() { return rrule; }
     public boolean isPrivateEvent() { return privateEvent; }
+    public boolean isAbsence() { return absence; }
     public Long getCreatedBy() { return createdBy; }
     public int getSequence() { return sequence; }
     public Instant getUpdatedAt() { return updatedAt; }
@@ -117,6 +122,7 @@ public class CalendarEvent {
     public void setLocation(String location) { this.location = location; }
     public void setRrule(String rrule) { this.rrule = rrule; }
     public void setPrivateEvent(boolean privateEvent) { this.privateEvent = privateEvent; }
+    public void setAbsence(boolean absence) { this.absence = absence; }
 
     public void setTimes(Instant startsAt, Instant endsAt, boolean allDay) {
         this.startsAt = startsAt;

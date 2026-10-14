@@ -10,7 +10,12 @@ public enum NotificationType {
     TODO_COMMENT("Neuer Kommentar", false),
     TODO_MENTION("Erwähnung", false),
     TODO_STATUS("Statuswechsel", false),
-    TODO_UNBLOCKED("Nicht mehr blockiert", false);
+    TODO_UNBLOCKED("Nicht mehr blockiert", false),
+    CHORE_DUE("Hausarbeit fällig", true),
+    CHORE_OVERDUE("Hausarbeit überfällig", true),
+    CHORE_ASSIGNED("Hausarbeit bekommen", false),
+    REWARD_REQUESTED("Belohnung beantragt", false),
+    REWARD_DECIDED("Belohnung entschieden", false);
 
     private final String label;
     private final boolean reminder;

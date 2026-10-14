@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Putzplan')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='household')}"></header>
+<main class="household-page">
+    <div th:replace="~{household/fragments :: head('Putzplan', ${'KW ' + weekNumber + ': ' + weekRange})}"></div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <div class="week-nav">
+        <a class="icon-button" th:href="@{/household(week=${monday.minusWeeks(1)})}" title="Vorige Woche">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+            <span class="visually-hidden">Vorige Woche</span>
+        </a>
+        <a class="button button-ghost button-small" th:href="@{/household}" th:unless="${isCurrentWeek}">Diese Woche</a>
+        <a class="icon-button" th:href="@{/household(week=${monday.plusWeeks(1)})}" title="Nächste Woche">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+            <span class="visually-hidden">Nächste Woche</span>
+        </a>
+    </div>
+
+    <section class="chore-overdue" th:unless="${#lists.isEmpty(overdue)}">
+        <h2>Noch offen von früher</h2>
+        <ul class="chore-list">
+            <th:block th:each="c : ${overdue}" th:with="showAssignee=true, showDay=true">
+                <li th:replace="~{household/fragments :: chip}"></li>
+            </th:block>
+        </ul>
+    </section>
+
+    <div class="week-grid" role="table" aria-label="Wochenplan nach Personen">
+        <div class="week-row week-row-head" role="row">
+            <span class="week-who" role="columnheader"><span class="visually-hidden">Person</span></span>
+            <span class="week-day" role="columnheader" th:each="d : ${days}" th:classappend="${d.today} ? 'is-today'"
+                  th:text="${d.label}">Mo 13.10.</span>
+        </div>
+        <div class="week-row" role="row" th:each="r : ${rows}"
+             th:style="${r.color != null} ? |--member-color: ${r.color}|" th:classappend="${r.color == null} ? 'is-open-row'">
+            <span class="week-who" role="rowheader">
+                <strong th:text="${r.label}">Lena</strong>
+                <span class="muted" th:if="${r.minutes > 0}" th:text="${r.minutes} + ' Min'">90 Min</span>
+            </span>
+            <ul class="week-cell chore-list" role="cell" th:each="cell, it : ${r.cells}"
+                th:classappend="${days[it.index].today} ? 'is-today'">
+                <th:block th:each="c : ${cell}">
+                    <li th:replace="~{household/fragments :: chip}"></li>
+                </th:block>
+            </ul>
+        </div>
+    </div>
+
+    <div class="week-days">
+        <section class="week-daygroup" th:each="g : ${byDay}" th:classappend="${g.day.today} ? 'is-today'">
+            <h2 th:text="${g.day.label}">heute</h2>
+            <ul class="chore-list" th:unless="${#lists.isEmpty(g.chips)}">
+                <th:block th:each="c : ${g.chips}" th:with="showAssignee=true">
+                    <li th:replace="~{household/fragments :: chip}"></li>
+                </th:block>
+            </ul>
+            <p class="muted" th:if="${#lists.isEmpty(g.chips)}">Nichts geplant.</p>
+        </section>
+    </div>
+
+    <p class="sheet sheet-empty" th:if="${#lists.isEmpty(rows)}">
+        Noch keine Familienmitglieder. Lege sie unter „Mitglieder“ an, dann kannst du Hausarbeiten verteilen.
+    </p>
+    <p class="hint household-hint">Geplant wird drei Wochen im Voraus.</p>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

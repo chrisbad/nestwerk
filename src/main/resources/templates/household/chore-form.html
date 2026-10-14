@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${isNew} ? 'Neue Hausarbeit' : 'Hausarbeit bearbeiten')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='household')}"></header>
+<main class="event-main">
+    <a class="back-link" th:href="${isNew} ? @{/household/chores} : @{/household/chores/{id}(id=${chore.id})}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+        Zurück
+    </a>
+    <h1 th:text="${isNew} ? 'Neue Hausarbeit' : 'Hausarbeit bearbeiten'">Neue Hausarbeit</h1>
+
+    <p class="notice notice-error" role="alert" th:if="${error}" th:text="${error}">Fehler</p>
+
+    <form class="sheet event-form" th:action="@{${action}}" method="post" th:object="${form}" data-event-form
+          data-chore-form>
+        <fieldset class="event-fields">
+            <div class="field">
+                <label for="title">Titel</label>
+                <input id="title" class="input-title" type="text" th:field="*{title}" maxlength="150" required
+                       placeholder="z. B. Spülmaschine ausräumen">
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="area">Bereich <span class="hint">optional</span></label>
+                    <input id="area" class="input" type="text" th:field="*{area}" maxlength="100"
+                           placeholder="Küche, Bad, Garten …">
+                </div>
+                <div class="field">
+                    <label for="minutes">Dauer in Minuten</label>
+                    <input id="minutes" class="input" type="number" min="1" max="600" th:field="*{minutes}" required>
+                </div>
+            </div>
+
+            <fieldset class="field choices">
+                <legend>Aufwand</legend>
+                <label class="choice" th:each="e : ${efforts}">
+                    <input type="radio" th:field="*{effort}" th:value="${e}">
+                    <span th:text="${e.label()}">leicht</span>
+                </label>
+            </fieldset>
+
+            <div class="field">
+                <label for="description">Beschreibung <span class="hint">optional</span></label>
+                <textarea id="description" th:field="*{description}" rows="3" maxlength="2000"
+                          placeholder="Was gehört dazu?"></textarea>
+            </div>
+        </fieldset>
+
+        <fieldset class="event-fields">
+            <fieldset class="field choices">
+                <legend>Wann ist sie fällig?</legend>
+                <label class="choice" th:each="k : ${kinds}">
+                    <input type="radio" th:field="*{kind}" th:value="${k}" data-chore-kind>
+                    <span th:text="${k.label()}">Regelmäßig</span>
+                </label>
+            </fieldset>
+
+            <div class="kind-section" data-kind-section="RECURRING">
+                <div class="field">
+                    <label for="repeat">Wie oft</label>
+                    <select id="repeat" data-repeat-select>
+                        <option value="FREQ=DAILY">Täglich</option>
+                        <option value="FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR">Werktags</option>
+                        <option value="FREQ=WEEKLY;BYDAY=SA,SU">Am Wochenende</option>
+                        <option value="FREQ=WEEKLY">Wöchentlich (am Wochentag des Starts)</option>
+                        <option value="FREQ=WEEKLY;INTERVAL=2">Alle 2 Wochen</option>
+                        <option value="FREQ=MONTHLY">Monatlich</option>
+                        <option value="custom">Benutzerdefiniert …</option>
+                    </select>
+                    <input type="text" class="rrule-input" th:field="*{rrule}" maxlength="500" data-rrule-input
+                           placeholder="z. B. FREQ=WEEKLY;BYDAY=MO,TH" aria-label="Wiederholungsregel (iCal-RRULE)">
+                    <p class="hint rrule-hint" data-rrule-hint>Regel im iCal-Format (RRULE), z. B. FREQ=WEEKLY;BYDAY=MO,TH für montags und donnerstags.</p>
+                </div>
+            </div>
+
+            <div class="kind-section" data-kind-section="INTERVAL">
+                <div class="field">
+                    <label for="intervalDays">Wieder fällig nach … Tagen</label>
+                    <input id="intervalDays" class="input" type="number" min="1" max="365" th:field="*{intervalDays}">
+                    <p class="hint">Gezählt ab dem Tag, an dem sie zuletzt erledigt wurde.</p>
+                </div>
+            </div>
+
+            <div class="field-row kind-section" data-kind-section="RECURRING INTERVAL">
+                <div class="field">
+                    <label for="startsOn">Ab</label>
+                    <input id="startsOn" class="input" type="date" th:field="*{startsOn}">
+                </div>
+                <div class="field">
+                    <label for="dueTime">Uhrzeit <span class="hint">optional</span></label>
+                    <input id="dueTime" class="input" type="time" th:field="*{dueTime}">
+                </div>
+            </div>
+
+            <p class="hint kind-section" data-kind-section="DATES">
+                Die Termine trägst du nach dem Speichern auf der Seite der Hausarbeit ein.
+            </p>
+        </fieldset>
+
+        <fieldset class="event-fields">
+            <fieldset class="field choices">
+                <legend>Wer bekommt sie?</legend>
+                <label class="choice" th:each="d : ${distributions}">
+                    <input type="radio" th:field="*{distribution}" th:value="${d}">
+                    <span th:text="${d.label()}">Reihum</span>
+                </label>
+            </fieldset>
+            <p class="hint">
+                Reihum geht in der Reihenfolge der Auswahl weiter; ausgleichend bekommt sie, wer in den letzten vier
+                Wochen am wenigsten Zeit eingebracht hat. Abwesende (Häkchen „Abwesend“ im Kalender) werden übersprungen.
+            </p>
+            <fieldset class="field choices" th:unless="${#lists.isEmpty(allMembers)}" data-member-picker
+                      th:attr="data-initial-order=${#strings.listJoin(form.memberIds, ',')}">
+                <legend>Mitglieder <span class="hint">in der Reihenfolge, in der du sie antippst</span></legend>
+                <label class="choice choice-member" th:each="m : ${allMembers}" th:style="|--member-color: ${m.color}|">
+                    <input type="checkbox" name="memberIds" th:value="${m.id}"
+                           th:checked="${form.memberIds.contains(m.id)}" data-member-order>
+                    <span th:text="${m.name}">Name</span>
+                    <span class="order-badge" aria-hidden="true"></span>
+                </label>
+            </fieldset>
+        </fieldset>
+
+        <div class="form-actions">
+            <a class="button button-ghost" th:href="${isNew} ? @{/household/chores} : @{/household/chores/{id}(id=${chore.id})}">Abbrechen</a>
+            <button type="submit" class="button" th:text="${isNew} ? 'Hausarbeit anlegen' : 'Änderungen speichern'">Speichern</button>
+        </div>
+    </form>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

@@ -26,6 +26,7 @@ public class EventForm {
     private LocalTime endTime;
     private String rrule;
     private boolean privateEvent;
+    private boolean absence;
     private Set<Long> memberIds = new HashSet<>();
     private Long todoId;
 
@@ -57,13 +58,14 @@ public class EventForm {
         }
         f.rrule = e.getRrule();
         f.privateEvent = e.isPrivateEvent();
+        f.absence = e.isAbsence();
         f.memberIds = new HashSet<>(e.getMemberIds());
         return f;
     }
 
     public EventInput toInput() {
         return new EventInput(title, description, location, startDate, startTime, endDate, endTime,
-                allDay, rrule, privateEvent, memberIds);
+                allDay, rrule, privateEvent, memberIds, absence);
     }
 
     public String getTitle() { return title; }
@@ -86,6 +88,8 @@ public class EventForm {
     public void setRrule(String rrule) { this.rrule = rrule; }
     public boolean isPrivateEvent() { return privateEvent; }
     public void setPrivateEvent(boolean privateEvent) { this.privateEvent = privateEvent; }
+    public boolean isAbsence() { return absence; }
+    public void setAbsence(boolean absence) { this.absence = absence; }
     public Set<Long> getMemberIds() { return memberIds; }
     public void setMemberIds(Set<Long> memberIds) { this.memberIds = memberIds == null ? new HashSet<>() : memberIds; }
 

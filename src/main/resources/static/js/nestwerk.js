@@ -301,6 +301,48 @@
         });
     }
 
+    /* --- Hausarbeit-Formular: Abschnitte je Art, Reihenfolge der Mitglieder --- */
+
+    function initChoreForm() {
+        const form = document.querySelector("[data-chore-form]");
+        if (!form) return;
+        const sections = form.querySelectorAll("[data-kind-section]");
+        const syncKind = () => {
+            const kind = form.querySelector("[data-chore-kind]:checked")?.value;
+            sections.forEach(s => { s.hidden = !s.dataset.kindSection.split(" ").includes(kind); });
+        };
+        form.querySelectorAll("[data-chore-kind]").forEach(r => r.addEventListener("change", syncKind));
+        syncKind();
+
+        // Reihenfolge für „reihum“: in der Reihenfolge des Antippens
+        const picker = form.querySelector("[data-member-picker]");
+        if (!picker) return;
+        const boxes = [...picker.querySelectorAll("[data-member-order]")];
+        let order = (picker.dataset.initialOrder || "").split(",").filter(Boolean);
+        boxes.forEach(b => { if (b.checked && !order.includes(b.value)) order.push(b.value); });
+        order = order.filter(id => boxes.some(b => b.value === id && b.checked));
+        const render = () => boxes.forEach(b => {
+            const badge = b.parentElement.querySelector(".order-badge");
+            if (badge) badge.textContent = b.checked ? String(order.indexOf(b.value) + 1) : "";
+        });
+        boxes.forEach(b => b.addEventListener("change", () => {
+            order = order.filter(id => id !== b.value);
+            if (b.checked) order.push(b.value);
+            render();
+        }));
+        render();
+        form.addEventListener("submit", () => {
+            boxes.forEach(b => b.removeAttribute("name"));
+            order.forEach(id => {
+                const hidden = document.createElement("input");
+                hidden.type = "hidden";
+                hidden.name = "memberIds";
+                hidden.value = id;
+                form.appendChild(hidden);
+            });
+        });
+    }
+
     /* --- ToDo-Board: Karten ziehen ändert den Status ------------------------ */
 
     function initBoard() {
@@ -511,6 +553,7 @@
         initHtmx();
         initGreeting();
         initEventForm();
+        initChoreForm();
         initAutoSubmit();
         initBoard();
         initCollaboration();

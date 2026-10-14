@@ -12,6 +12,8 @@ public interface CalendarEventRepository extends JpaRepository<CalendarEvent, Lo
 
     Optional<CalendarEvent> findByUid(String uid);
 
+    List<CalendarEvent> findAllByAbsenceTrue();
+
     /**
      * Kandidaten für ein Zeitfenster: Einzeltermine, die das Fenster berühren, und alle Serien,
      * die vor Fensterende beginnen. Private Termine anderer Benutzer sind bereits herausgefiltert.

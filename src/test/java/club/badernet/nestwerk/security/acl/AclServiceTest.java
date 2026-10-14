@@ -35,10 +35,10 @@ class AclServiceTest {
     }
 
     @Test
-    void matrixListsTodoAndContactActions() {
+    void matrixListsTodoContactAndChoreActions() {
         List<AclObjectType> matrix = acl.matrix();
 
-        assertThat(matrix).extracting(AclObjectType::key).containsExactly("TODO", "CONTACT");
+        assertThat(matrix).extracting(AclObjectType::key).containsExactly("TODO", "CONTACT", "CHORE");
         assertThat(matrix.get(0).actions()).hasSize(14);
         assertThat(matrix.get(0).relations()).extracting(AclRelation::key)
                 .containsExactly("ANY", "RESPONSIBLE", "ASSIGNED", "WATCHING", "CREATOR");
