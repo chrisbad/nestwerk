@@ -12,8 +12,13 @@
 
     <p class="notice notice-error" role="alert" th:if="${error}" th:text="${error}">Fehler</p>
 
-    <form class="sheet event-form" th:action="@{${action}}" method="post" th:object="${form}">
+    <p class="notice" th:if="${parent != null}">
+        Unteraufgabe von <a th:href="@{/todos/{id}(id=${parent.id})}" th:text="${parent.title}">Keller</a>
+    </p>
+
+    <form class="sheet event-form" th:action="@{${action}}" method="post" th:object="${form}" data-event-form>
         <input type="hidden" th:field="*{version}" th:unless="${isNew}">
+        <input type="hidden" th:field="*{parentId}" th:if="${isNew}">
 
         <fieldset class="event-fields" th:disabled="${!canContent}">
             <div class="field">
@@ -53,6 +58,23 @@
                     <label for="remindDaysBefore">Erinnern, Tage vor „bis“ <span class="hint">optional</span></label>
                     <input id="remindDaysBefore" type="number" min="0" max="365" th:field="*{remindDaysBefore}">
                 </div>
+            </div>
+
+            <div class="field">
+                <label for="repeat">Wiederholung</label>
+                <select id="repeat" data-repeat-select>
+                    <option value="">Keine</option>
+                    <option value="FREQ=DAILY">Täglich</option>
+                    <option value="FREQ=WEEKLY">Wöchentlich</option>
+                    <option value="FREQ=WEEKLY;INTERVAL=2">Alle 2 Wochen</option>
+                    <option value="FREQ=MONTHLY">Monatlich</option>
+                    <option value="FREQ=MONTHLY;INTERVAL=6">Halbjährlich</option>
+                    <option value="FREQ=YEARLY">Jährlich</option>
+                    <option value="custom">Benutzerdefiniert …</option>
+                </select>
+                <input type="text" class="rrule-input" th:field="*{rrule}" maxlength="500" data-rrule-input
+                       placeholder="z. B. FREQ=YEARLY;BYMONTH=4,10" aria-label="Wiederholungsregel (iCal-RRULE)">
+                <p class="hint rrule-hint" data-rrule-hint>Regel im iCal-Format (RRULE). Beim Erledigen entsteht das nächste ToDo.</p>
             </div>
 
             <div class="field">

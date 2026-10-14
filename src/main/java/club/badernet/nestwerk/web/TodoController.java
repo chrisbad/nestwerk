@@ -7,6 +7,9 @@ import club.badernet.nestwerk.todo.TodoAccess;
 import club.badernet.nestwerk.todo.TodoConflictException;
 import club.badernet.nestwerk.todo.TodoFilter;
 import club.badernet.nestwerk.todo.TodoGroup;
+import club.badernet.nestwerk.todo.TodoLinkType;
+import club.badernet.nestwerk.todo.TodoNotFoundException;
+import club.badernet.nestwerk.todo.TodoStructureService;
 import club.badernet.nestwerk.todo.TodoPriority;
 import club.badernet.nestwerk.todo.TodoQuery;
 import club.badernet.nestwerk.todo.TodoService;
@@ -41,9 +44,12 @@ public class TodoController {
     private final MarkdownRenderer markdown;
     private final CurrentUser currentUser;
     private final UserRepository users;
+    private final TodoStructureService structure;
 
     public TodoController(TodoService todos, TodoQuery query, TodoAccess access, TodoViews views,
-                          MarkdownRenderer markdown, CurrentUser currentUser, UserRepository users) {
+                          MarkdownRenderer markdown, CurrentUser currentUser, UserRepository users,
+                          TodoStructureService structure) {
+        this.structure = structure;
         this.todos = todos;
         this.query = query;
         this.access = access;
@@ -99,13 +105,16 @@ public class TodoController {
     }
 
     @GetMapping("/new")
-    String newForm(Model model) {
+    String newForm(@RequestParam(required = false) Long parent, Model model) {
         User viewer = requireModule();
         if (!access.canCreate(viewer)) {
             throw new AccessDeniedException("Keine Berechtigung zum Anlegen von ToDos");
         }
         TodoForm form = new TodoForm();
         form.setResponsibleUserId(viewer.getId());
+        if (parent != null) {
+            form.setParentId(todos.get(parent, viewer).getId());
+        }
         prepareForm(model, viewer, form, null);
         return "todos/form";
     }
@@ -114,7 +123,8 @@ public class TodoController {
     String create(@ModelAttribute("form") TodoForm form, Model model, RedirectAttributes redirect) {
         User actor = requireModule();
         try {
-            Todo todo = todos.create(form.toInput(), actor);
+            Todo todo = form.getParentId() == null ? todos.create(form.toInput(), actor)
+                    : structure.createChild(form.getParentId(), form.toInput(), actor);
             redirect.addFlashAttribute("success", "ToDo wurde angelegt.");
             return "redirect:/todos/" + todo.getId();
         } catch (IllegalArgumentException e) {
@@ -142,6 +152,20 @@ public class TodoController {
         model.addAttribute("availableFromLabel", TodoViews.longDate(todo.getAvailableFrom()));
         model.addAttribute("dueOnLabel", TodoViews.longDate(todo.getDueOn()));
         model.addAttribute("followUpLabel", TodoViews.longDate(todo.getFollowUpOn()));
+        model.addAttribute("repeatLabel", TodoViews.repeatLabel(todo.getRrule()));
+        TodoStructureService.Children children = structure.children(id, viewer);
+        model.addAttribute("children", children);
+        model.addAttribute("childRows", children.visible().stream()
+                .map(t -> views.row(t, viewer, labels, query.today())).toList());
+        model.addAttribute("ancestors", structure.ancestors(id, viewer));
+        model.addAttribute("links", structure.links(id, viewer));
+        model.addAttribute("descendantCount", structure.descendantCount(id));
+        boolean canLink = access.can(viewer, "LINK", todo);
+        model.addAttribute("canLink", canLink);
+        model.addAttribute("canAddChild", canLink && access.canCreate(viewer));
+        model.addAttribute("linkTypes", TodoLinkType.values());
+        model.addAttribute("linkCandidates", canLink ? query.list(viewer, TodoFilter.defaults()).stream()
+                .flatMap(g -> g.todos().stream()).filter(t -> !t.getId().equals(id)).limit(300).toList() : List.of());
         return "todos/detail";
     }
 
@@ -210,6 +234,43 @@ public class TodoController {
         return "redirect:/todos/" + id;
     }
 
+    @PostMapping("/{id}/links")
+    String addLink(@PathVariable Long id, @RequestParam String type, @RequestParam(required = false) String target,
+                   RedirectAttributes redirect) {
+        User actor = requireModule();
+        Long targetId = parseTarget(target);
+        try {
+            if (targetId == null) {
+                throw new IllegalArgumentException("Bitte ein ToDo aus der Vorschlagsliste wählen.");
+            }
+            if ("PARENT".equals(type)) {
+                structure.moveTo(id, targetId, actor);
+                redirect.addFlashAttribute("success", "ToDo wurde untergeordnet.");
+            } else {
+                structure.link(id, targetId, TodoLinkType.valueOf(type), actor);
+                redirect.addFlashAttribute("success", "Verknüpfung wurde angelegt.");
+            }
+        } catch (IllegalArgumentException | TodoNotFoundException e) {
+            redirect.addFlashAttribute("error", e instanceof TodoNotFoundException
+                    ? "Dieses ToDo gibt es nicht." : e.getMessage());
+        }
+        return "redirect:/todos/" + id;
+    }
+
+    @PostMapping("/{id}/links/{linkId}/delete")
+    String removeLink(@PathVariable Long id, @PathVariable Long linkId, RedirectAttributes redirect) {
+        structure.unlink(linkId, requireModule());
+        redirect.addFlashAttribute("success", "Verknüpfung wurde gelöst.");
+        return "redirect:/todos/" + id;
+    }
+
+    @PostMapping("/{id}/detach")
+    String detach(@PathVariable Long id, RedirectAttributes redirect) {
+        structure.moveTo(id, null, requireModule());
+        redirect.addFlashAttribute("success", "ToDo steht jetzt auf oberster Ebene.");
+        return "redirect:/todos/" + id;
+    }
+
     @PostMapping("/{id}/delete")
     String delete(@PathVariable Long id, RedirectAttributes redirect) {
         todos.delete(id, requireModule());
@@ -257,6 +318,7 @@ public class TodoController {
         model.addAttribute("canAssign", isNew || access.can(viewer, "ASSIGN", todo));
         model.addAttribute("canResponsible", access.can(viewer, "CHANGE_RESPONSIBLE", probe));
         model.addAttribute("canPrivate", access.canCreatePrivate(viewer) || (!isNew && todo.isPrivateTodo()));
+        model.addAttribute("parent", isNew && form.getParentId() != null ? todos.get(form.getParentId(), viewer) : null);
     }
 
     private User requireModule() {
@@ -265,6 +327,15 @@ public class TodoController {
             throw new AccessDeniedException("Keine Berechtigung für ToDos");
         }
         return user;
+    }
+
+    /** Liest „#12 Titel“ oder „12“; sonst {@code null}. */
+    static Long parseTarget(String target) {
+        if (target == null) {
+            return null;
+        }
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("^\\s*#?(\\d{1,18})\\b").matcher(target);
+        return m.find() ? Long.valueOf(m.group(1)) : null;
     }
 
     /** Nur lokale Pfade als Rücksprung zulassen. */

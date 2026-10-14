@@ -108,27 +108,41 @@
     function initConfirm() {
         const dialog = document.getElementById("confirm-dialog");
         if (!dialog) return;
-        let pending = null;
-        document.addEventListener("submit", event => {
-            const form = event.target;
-            if (!form.matches("form[data-confirm]") || form.dataset.confirmed === "true") return;
-            event.preventDefault();
-            pending = form;
+        const ok = dialog.querySelector("[data-confirm-ok]");
+        const defaultLabel = ok.textContent;
+        let onConfirm = null;
+        const ask = (form, proceed) => {
+            onConfirm = proceed;
             dialog.querySelector("[data-confirm-text]").textContent = form.dataset.confirm;
-            const ok = dialog.querySelector("[data-confirm-ok]");
-            if (form.dataset.confirmLabel) ok.textContent = form.dataset.confirmLabel;
+            ok.textContent = form.dataset.confirmLabel || defaultLabel;
             dialog.showModal();
             ok.focus();
+        };
+        // Klassische Formulare
+        document.addEventListener("submit", event => {
+            const form = event.target;
+            if (!form.matches("form[data-confirm]") || form.hasAttribute("hx-post")
+                || form.dataset.confirmed === "true") return;
+            event.preventDefault();
+            ask(form, () => {
+                form.dataset.confirmed = "true";
+                form.requestSubmit();
+            });
         });
-        dialog.querySelector("[data-confirm-ok]").addEventListener("click", () => {
-            if (!pending) return;
-            pending.dataset.confirmed = "true";
+        // htmx-Formulare: htmx fragt vor jeder Anfrage nach
+        document.addEventListener("htmx:confirm", event => {
+            const form = event.detail.elt;
+            if (!form.matches || !form.matches("form[data-confirm]")) return;
+            event.preventDefault();
+            ask(form, () => event.detail.issueRequest(true));
+        });
+        ok.addEventListener("click", () => {
+            const proceed = onConfirm;
+            onConfirm = null;
             dialog.close();
-            pending.requestSubmit();
+            if (proceed) proceed();
         });
-        dialog.addEventListener("close", () => {
-            if (pending && pending.dataset.confirmed !== "true") pending = null;
-        });
+        dialog.addEventListener("close", () => { onConfirm = null; });
     }
 
     /* --- Passwort anzeigen ----------------------------------------------- */

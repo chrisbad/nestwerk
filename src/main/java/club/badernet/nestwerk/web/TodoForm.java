@@ -32,6 +32,8 @@ public class TodoForm {
     private List<String> assignees = new ArrayList<>();
     private Long responsibleUserId;
     private Integer version;
+    private String rrule;
+    private Long parentId;
 
     public static TodoForm from(Todo t) {
         TodoForm f = new TodoForm();
@@ -48,6 +50,8 @@ public class TodoForm {
         f.assignees = new ArrayList<>(t.assigneeRefs().stream().map(AssigneeRef::key).toList());
         f.responsibleUserId = t.getResponsibleUserId();
         f.version = t.getVersion();
+        f.rrule = t.getRrule();
+        f.parentId = t.getParentId();
         return f;
     }
 
@@ -67,7 +71,7 @@ public class TodoForm {
             }
         }
         return new TodoInput(title, description, priority, availableFrom, dueOn, followUpOn, remindDaysBefore,
-                privateTodo, completionMode, tagSet, refs, responsibleUserId);
+                privateTodo, completionMode, tagSet, refs, responsibleUserId, rrule);
     }
 
     /** Übernimmt Felder, die der Benutzer nicht ändern darf (im Formular gesperrt und daher nicht gesendet). */
@@ -81,6 +85,7 @@ public class TodoForm {
         remindDaysBefore = t.getRemindDaysBefore();
         privateTodo = t.isPrivateTodo();
         tags = String.join(", ", t.getTags());
+        rrule = t.getRrule();
     }
 
     public void keepAssigneesOf(Todo t) {
@@ -122,4 +127,8 @@ public class TodoForm {
     public void setResponsibleUserId(Long responsibleUserId) { this.responsibleUserId = responsibleUserId; }
     public Integer getVersion() { return version; }
     public void setVersion(Integer version) { this.version = version; }
+    public String getRrule() { return rrule; }
+    public void setRrule(String rrule) { this.rrule = rrule; }
+    public Long getParentId() { return parentId; }
+    public void setParentId(Long parentId) { this.parentId = parentId; }
 }

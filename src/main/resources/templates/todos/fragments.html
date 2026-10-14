@@ -9,7 +9,9 @@
     <form class="todo-check" th:if="${row.canCheck()}" method="post"
           th:action="@{/todos/{id}/{a}(id=${row.todo().id}, a=${action})}"
           th:hx-post="@{/todos/{id}/{a}(id=${row.todo().id}, a=${action})}"
-          th:hx-target="'#todo-' + ${row.todo().id}" hx-swap="outerHTML">
+          th:hx-target="'#todo-' + ${row.todo().id}" hx-swap="outerHTML"
+          th:data-confirm="${!row.checked() and row.blockedWarning() != null} ? ${row.blockedWarning()}"
+          th:data-confirm-label="${!row.checked() and row.blockedWarning() != null} ? 'Trotzdem erledigen'">
         <input type="hidden" name="back" th:value="${back} ?: '/todos'">
         <button type="submit" class="check" th:aria-pressed="${row.checked()}"
                 th:title="${row.checked()} ? 'Wieder öffnen' : 'Abhaken'">
@@ -34,6 +36,14 @@
                   th:classappend="'due-' + ${#strings.toLowerCase(row.timing().name())}"
                   th:text="${row.dueLabel()}">heute fällig</span>
             <span class="pill" th:if="${row.progress() != null}" th:text="${row.progress()}">2 von 3</span>
+            <span class="pill pill-blocked" th:if="${row.blockedWarning() != null}">blockiert</span>
+            <span class="pill" th:if="${row.childProgress() != null}" th:title="'Unteraufgaben erledigt: ' + ${row.childProgress()}">
+                <svg class="pill-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4v12a2 2 0 0 0 2 2h10M14 14l4 4-4 4"/></svg>
+                <span th:text="${row.childProgress()}">3/5</span>
+            </span>
+            <svg th:if="${row.todo().rrule != null}" class="occ-lock" viewBox="0 0 24 24" role="img" aria-label="Wiederkehrend">
+                <path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/>
+            </svg>
             <svg th:if="${row.todo().privateTodo}" class="occ-lock" viewBox="0 0 24 24" role="img" aria-label="Privat">
                 <rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
             </svg>

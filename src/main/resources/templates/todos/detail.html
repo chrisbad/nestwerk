@@ -12,6 +12,14 @@
     <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
     <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
 
+    <nav class="breadcrumb" aria-label="Übergeordnete ToDos" th:unless="${#lists.isEmpty(ancestors)}">
+        <th:block th:each="a, it : ${ancestors}">
+            <a th:href="@{/todos/{id}(id=${a.id})}" th:text="${a.title}">Haus</a>
+            <span aria-hidden="true">›</span>
+        </th:block>
+        <span th:text="${todo.title}" aria-current="page">Bad</span>
+    </nav>
+
     <div class="todo-detail-head">
         <ul class="todo-list todo-list-single">
             <th:block th:with="back='/todos/' + ${todo.id}">
@@ -37,11 +45,69 @@
     </div>
 
     <div class="todo-detail">
+        <div class="todo-detail-main">
         <article class="sheet todo-description">
             <h2 class="visually-hidden">Beschreibung</h2>
             <div class="prose" th:if="${!#strings.isEmpty(descriptionHtml)}" th:utext="${descriptionHtml}"></div>
             <p class="muted" th:if="${#strings.isEmpty(descriptionHtml)}">Keine Beschreibung.</p>
         </article>
+
+        <section class="sheet todo-section" th:if="${children.total() > 0 or canAddChild}">
+            <div class="todo-section-head">
+                <h2>Unteraufgaben
+                    <span class="count" th:if="${children.total() > 0}" th:text="${children.progress()}">3/5</span>
+                </h2>
+                <a class="button button-ghost button-small" th:if="${canAddChild}"
+                   th:href="@{/todos/new(parent=${todo.id})}">Unteraufgabe hinzufügen</a>
+            </div>
+            <div class="progress" th:if="${children.total() > 0}" role="progressbar"
+                 th:aria-valuenow="${children.percent()}" aria-valuemin="0" aria-valuemax="100">
+                <span th:style="|width: ${children.percent()}%|"></span>
+            </div>
+            <ul class="todo-list" th:unless="${#lists.isEmpty(childRows)}">
+                <th:block th:each="row : ${childRows}" th:with="back='/todos/' + ${todo.id}">
+                    <li th:replace="~{todos/fragments :: row}"></li>
+                </th:block>
+            </ul>
+            <p class="muted" th:if="${children.hiddenCount() > 0}"
+               th:text="${children.hiddenCount() == 1} ? '1 weitere Unteraufgabe, die du nicht sehen kannst.' : ${children.hiddenCount()} + ' weitere Unteraufgaben, die du nicht sehen kannst.'">1 weitere</p>
+        </section>
+
+        <section class="sheet todo-section" th:if="${!#lists.isEmpty(links) or canLink}">
+            <h2>Verknüpfungen</h2>
+            <ul class="link-list" th:unless="${#lists.isEmpty(links)}">
+                <li th:each="l : ${links}">
+                    <span class="link-label" th:text="${l.label()}">blockiert</span>
+                    <a th:href="@{/todos/{id}(id=${l.other().id})}" th:text="${l.other().title}"
+                       th:classappend="${l.other().closed} ? 'is-closed'">Estrich</a>
+                    <form th:if="${canLink}" method="post"
+                          th:action="@{/todos/{id}/links/{link}/delete(id=${todo.id}, link=${l.linkId()})}">
+                        <button type="submit" class="icon-button" title="Verknüpfung lösen">
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                            <span class="visually-hidden">Verknüpfung lösen</span>
+                        </button>
+                    </form>
+                </li>
+            </ul>
+            <form class="link-form" th:if="${canLink}" method="post" th:action="@{/todos/{id}/links(id=${todo.id})}">
+                <label class="visually-hidden" for="link-type">Art der Verknüpfung</label>
+                <select id="link-type" name="type">
+                    <option th:each="t : ${linkTypes}" th:value="${t.name()}" th:text="'Dieses ToDo ' + ${t.outgoing()}">blockiert</option>
+                    <option value="PARENT">Dieses ToDo ist Unteraufgabe von</option>
+                </select>
+                <label class="visually-hidden" for="link-target">Ziel-ToDo</label>
+                <input id="link-target" class="input" type="text" name="target" list="link-candidates"
+                       placeholder="ToDo suchen …" autocomplete="off">
+                <datalist id="link-candidates">
+                    <option th:each="c : ${linkCandidates}" th:value="'#' + ${c.id} + ' ' + ${c.title}"></option>
+                </datalist>
+                <button type="submit" class="button button-small">Verknüpfen</button>
+            </form>
+            <form th:if="${canLink and todo.parentId != null}" method="post" th:action="@{/todos/{id}/detach(id=${todo.id})}">
+                <button type="submit" class="button button-ghost button-small">Aus übergeordnetem ToDo lösen</button>
+            </form>
+        </section>
+        </div>
 
         <aside class="sheet todo-facts">
             <dl class="event-facts">
@@ -81,6 +147,10 @@
                     <dt>Wiedervorlage</dt>
                     <dd th:text="${followUpLabel}">Montag</dd>
                 </th:block>
+                <th:block th:if="${repeatLabel != null}">
+                    <dt>Wiederholung</dt>
+                    <dd th:text="${repeatLabel}">Jährlich</dd>
+                </th:block>
                 <th:block th:if="${todo.remindDaysBefore != null}">
                     <dt>Erinnern</dt>
                     <dd th:text="${todo.remindDaysBefore == 0} ? 'Am Fälligkeitstag' : ${todo.remindDaysBefore} + ' Tage vorher'">2 Tage vorher</dd>
@@ -104,7 +174,7 @@
     </div>
 
     <form class="danger-zone" th:if="${canDelete}" th:action="@{/todos/{id}/delete(id=${todo.id})}" method="post"
-          th:attr="data-confirm=|„${todo.title}“ löschen?|">
+          th:attr="data-confirm=${descendantCount > 0} ? |„${todo.title}“ samt ${descendantCount} Unteraufgabe(n) löschen?| : |„${todo.title}“ löschen?|">
         <button type="submit" class="button button-danger">ToDo löschen</button>
     </form>
 </main>

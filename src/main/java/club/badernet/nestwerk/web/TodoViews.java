@@ -14,6 +14,7 @@ import club.badernet.nestwerk.todo.TodoAccess;
 import club.badernet.nestwerk.todo.TodoCompletion;
 import club.badernet.nestwerk.todo.TodoService;
 import club.badernet.nestwerk.todo.TodoStatus;
+import club.badernet.nestwerk.todo.TodoStructureService;
 import club.badernet.nestwerk.todo.TodoTiming;
 import club.badernet.nestwerk.user.User;
 import club.badernet.nestwerk.user.UserRepository;
@@ -42,7 +43,8 @@ public class TodoViews {
 
     /** Eine Zeile in Liste, Kachel oder Board. */
     public record TodoRow(Todo todo, TodoTiming timing, String dueLabel, List<AssigneeView> assignees,
-                          boolean canCheck, boolean checked, String progress) {
+                          boolean canCheck, boolean checked, String progress, String childProgress,
+                          String blockedWarning) {
     }
 
     /** Namensverzeichnis für einen Betrachter; fremde, unsichtbare Kontakte werden maskiert. */
@@ -105,9 +107,11 @@ public class TodoViews {
     private final UserRepository users;
     private final TodoAccess access;
     private final TodoService todoService;
+    private final TodoStructureService structure;
 
     public TodoViews(FamilyMemberRepository members, RoleRepository roles, ContactRepository contacts,
-                     ContactService contactService, UserRepository users, TodoAccess access, TodoService todoService) {
+                     ContactService contactService, UserRepository users, TodoAccess access, TodoService todoService,
+                     TodoStructureService structure) {
         this.members = members;
         this.roles = roles;
         this.contacts = contacts;
@@ -115,6 +119,7 @@ public class TodoViews {
         this.users = users;
         this.access = access;
         this.todoService = todoService;
+        this.structure = structure;
     }
 
     @Transactional(readOnly = true)
@@ -138,7 +143,10 @@ public class TodoViews {
         boolean checked = mustCheck ? todoService.hasCheckedOwn(todo, viewer) : todo.getStatus() == TodoStatus.DONE;
         String progress = each ? todo.completedCount() + " von " + todo.getCompletions().size() : null;
         TodoTiming timing = TodoTiming.of(todo, today);
-        return new TodoRow(todo, timing, dueLabel(todo, timing, today), assignees, canCheck, checked, progress);
+        String childProgress = structure.children(todo.getId(), viewer).progress();
+        String blocked = todo.isClosed() ? null : structure.openBlockers(todo, viewer).warning();
+        return new TodoRow(todo, timing, dueLabel(todo, timing, today), assignees, canCheck, checked, progress,
+                childProgress, blocked);
     }
 
     public List<String> completionLines(Todo todo, Labels labels) {
@@ -164,6 +172,18 @@ public class TodoViews {
         if (days < 0) return "seit " + (-days) + " Tagen überfällig";
         if (days < 7) return "in " + days + " Tagen fällig";
         return "bis " + SHORT.format(todo.getDueOn());
+    }
+
+    private static final Map<String, String> RULES = Map.of(
+            "FREQ=DAILY", "Täglich",
+            "FREQ=WEEKLY", "Wöchentlich",
+            "FREQ=WEEKLY;INTERVAL=2", "Alle 2 Wochen",
+            "FREQ=MONTHLY", "Monatlich",
+            "FREQ=MONTHLY;INTERVAL=6", "Halbjährlich",
+            "FREQ=YEARLY", "Jährlich");
+
+    public static String repeatLabel(String rrule) {
+        return rrule == null ? null : RULES.getOrDefault(rrule, "Eigene Regel: " + rrule);
     }
 
     public static String longDate(LocalDate date) {
