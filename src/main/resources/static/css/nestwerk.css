@@ -439,6 +439,8 @@ fieldset.field legend { padding: 0; margin-bottom: 0.35rem; font-weight: 600; }
 .choice input { width: 1.05rem; height: 1.05rem; margin: 0; accent-color: var(--moss); }
 .choice:has(input:checked) { border-color: var(--moss); background: var(--sage); }
 .choice:has(input:focus-visible) { outline: 3px solid var(--honey); outline-offset: 2px; }
+.choice:has(input:disabled) { opacity: 0.5; cursor: not-allowed; border-style: dashed; }
+.choice:has(input:disabled):hover { border-color: var(--line); }
 
 .badges { display: inline-flex; flex-wrap: wrap; gap: 0.35rem; }
 .muted { color: var(--ink-soft); }
@@ -1015,6 +1017,33 @@ a.day-num:hover { background: var(--sage); }
 .occurrence-panel form { display: grid; gap: 1rem; }
 .occurrence-panel .form-actions { margin-top: 0; }
 .event-main > .danger-zone { margin-top: 1.25rem; border-top: 0; padding-top: 0; }
+
+/* Lese-Ansicht für Termine, die man nicht bearbeiten darf */
+.event-view { padding: clamp(1.25rem, 3vw, 2rem); }
+.event-view h1 { margin: 0 0 0.35rem; overflow-wrap: anywhere; }
+.event-when { color: var(--ink-soft); font-size: var(--step-1); margin: 0 0 1.5rem; }
+.event-facts {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.6rem 1.25rem;
+    margin: 0;
+}
+.event-facts dt { color: var(--ink-soft); }
+.event-facts dd { margin: 0; overflow-wrap: anywhere; }
+.event-members { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.member-chip {
+    padding: 0.1rem 0.6rem;
+    border: 1px solid var(--member-color);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--member-color) 16%, var(--surface));
+}
+.event-notes { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--line); }
+.event-notes h2 { font-size: var(--step-0); color: var(--ink-soft); margin-bottom: 0.4rem; }
+.event-notes p { white-space: pre-line; overflow-wrap: anywhere; margin: 0; }
+@media (max-width: 40rem) {
+    .event-facts { grid-template-columns: 1fr; gap: 0.15rem; }
+    .event-facts dd + dt { margin-top: 0.6rem; }
+}
 
 /* --- Dialog -------------------------------------------------------------- */
 

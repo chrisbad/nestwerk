@@ -106,6 +106,39 @@ class CalendarEditTests {
     }
 
     @Test
+    void foreignEventIsShownReadOnly() throws Exception {
+        Role readOnly = roleService.create("Lesend", null, Set.of("CALENDAR_VIEW"));
+        userService.create("leser", "passwort1", Set.of(readOnly.getId()));
+        mockMvc.perform(post("/calendar/events").with(csrf()).with(editor())
+                .param("title", "Elternabend").param("location", "Aula").param("rrule", "FREQ=WEEKLY")
+                .param("startDate", "2026-10-12").param("startTime", "19:00")
+                .param("endDate", "2026-10-12").param("endTime", "21:00"));
+        CalendarEvent e = repository.findAll().stream()
+                .filter(x -> x.getTitle().equals("Elternabend")).findFirst().orElseThrow();
+
+        mockMvc.perform(get("/calendar/events/{id}", e.getId())
+                        .with(user("leser").authorities(new SimpleGrantedAuthority("CALENDAR_VIEW"))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Montag, 12. Oktober 2026, 19:00–21:00 Uhr")))
+                .andExpect(content().string(containsString("Wöchentlich")))
+                .andExpect(content().string(containsString("Aula")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("data-event-form"))));
+    }
+
+    @Test
+    void ownEventIsShownAsForm() throws Exception {
+        mockMvc.perform(post("/calendar/events").with(csrf()).with(editor())
+                .param("title", "Eigener")
+                .param("startDate", "2026-10-12").param("startTime", "19:00")
+                .param("endDate", "2026-10-12").param("endTime", "21:00"));
+        CalendarEvent e = repository.findAll().stream()
+                .filter(x -> x.getTitle().equals("Eigener")).findFirst().orElseThrow();
+
+        mockMvc.perform(get("/calendar/events/{id}", e.getId()).with(editor()))
+                .andExpect(content().string(containsString("data-event-form")));
+    }
+
+    @Test
     void deleteRemovesEvent() throws Exception {
         mockMvc.perform(post("/calendar/events").with(csrf()).with(editor())
                 .param("title", "Weg damit")

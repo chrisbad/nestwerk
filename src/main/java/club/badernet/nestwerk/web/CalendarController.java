@@ -154,13 +154,19 @@ public class CalendarController {
         model.addAttribute("canEdit", events.canEdit(event, viewer));
         model.addAttribute("canDelete", events.canDelete(event, viewer));
         model.addAttribute("recurring", event.getRrule() != null);
+        Occurrence shown = null;
         if (occurrence != null && event.getRrule() != null) {
             model.addAttribute("occurrenceId", occurrence);
-            events.findOccurrences(occurrence.minusSeconds(1), occurrence.plusSeconds(86_400L * 31), viewer)
+            shown = events.findOccurrences(occurrence.minusSeconds(1), occurrence.plusSeconds(86_400L * 31), viewer)
                     .stream().filter(o -> o.eventId().equals(id) && o.recurrenceId().equals(occurrence))
-                    .findFirst().ifPresent(o -> model.addAttribute("occurrence", o));
+                    .findFirst().orElse(null);
+            model.addAttribute("occurrence", shown);
         }
         addFormData(model);
+        if (!events.canEdit(event, viewer)) {
+            model.addAttribute("details", EventDetails.of(shown != null ? shown : seriesStart(event), event.getRrule()));
+            return "calendar/event-view";
+        }
         return "calendar/event-form";
     }
 
@@ -222,6 +228,13 @@ public class CalendarController {
             redirect.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/calendar/month";
+    }
+
+    private Occurrence seriesStart(CalendarEvent event) {
+        return new Occurrence(event.getId(), event.getUid(), event.getStartsAt(), event.getTitle(),
+                event.getDescription(), event.getLocation(), event.getStartsAt().atZone(settings.zone()),
+                event.getEndsAt().atZone(settings.zone()), event.isAllDay(), event.isPrivateEvent(),
+                event.getRrule() != null, event.getCreatedBy(), event.getMemberIds());
     }
 
     private void addFormData(Model model) {
