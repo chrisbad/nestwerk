@@ -74,6 +74,15 @@
             <button type="submit" class="button">Speichern</button>
         </div>
     </form>
+    <form class="dialog-section" th:action="@{/admin/members/{id}/pin(id=${m.id})}" method="post">
+        <div class="field">
+            <label th:for="'m-pin-' + ${m.id}">PIN fürs Wand-Tablet
+                <span class="hint" th:text="${m.hasPin()} ? '(eingerichtet; leer speichern entfernt sie)' : '(4 bis 8 Ziffern)'">hint</span></label>
+            <input th:id="'m-pin-' + ${m.id}" type="password" name="pin" inputmode="numeric" pattern="\d{4,8}"
+                   maxlength="8" autocomplete="new-password">
+        </div>
+        <button type="submit" class="button button-ghost">PIN speichern</button>
+    </form>
     <form class="dialog-section dialog-section-last" th:action="@{/admin/members/{id}/delete(id=${m.id})}" method="post"
           th:attr="data-confirm=|„${m.name}“ löschen?|">
         <p class="muted">Zugewiesene Termine bleiben erhalten.</p>

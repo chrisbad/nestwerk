@@ -73,6 +73,51 @@
             </label>
             <button type="submit" class="button button-ghost">Termin hinzufügen</button>
         </form>
+
+        <details class="ical-import" th:if="${canEdit}" th:open="${chore.icalUrl != null}">
+            <summary>Aus einem Kalender übernehmen (z. B. Abfuhrkalender)</summary>
+            <p class="notice" th:if="${chore.icalUrl != null}">
+                Abo: <span class="ical-url" th:text="${chore.icalUrl}">https://…</span>, wird täglich aktualisiert.
+            </p>
+            <form method="post" enctype="multipart/form-data" class="ical-form"
+                  th:action="@{/household/chores/{id}/ical(id=${chore.id})}">
+                <div class="field">
+                    <label for="ical-url">Abo-Adresse <span class="hint">https:// oder webcal://</span></label>
+                    <input id="ical-url" class="input" type="url" name="url" maxlength="500" th:value="${chore.icalUrl}"
+                           placeholder="https://gemeinde.example/abfuhr.ics">
+                </div>
+                <div class="field">
+                    <label for="ical-file">… oder Datei <span class="hint">.ics, höchstens 1 MB, ohne Abo</span></label>
+                    <input id="ical-file" class="input" type="file" name="file" accept=".ics,text/calendar">
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="ical-filter">Nur Termine mit <span class="hint">z. B. „Gelb“</span></label>
+                        <input id="ical-filter" class="input" type="text" name="filter" maxlength="100"
+                               th:value="${chore.icalFilter}">
+                    </div>
+                    <div class="field">
+                        <label for="ical-days">Fällig</label>
+                        <select id="ical-days" class="input" name="daysBefore">
+                            <option value="0" th:selected="${chore.icalDaysBefore == 0}">am Tag selbst</option>
+                            <option value="1" th:selected="${chore.icalDaysBefore == 1}">am Vortag</option>
+                            <option value="2" th:selected="${chore.icalDaysBefore == 2}">2 Tage vorher</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="ical-time">Uhrzeit <span class="hint">optional</span></label>
+                        <input id="ical-time" class="input" type="time" name="time" th:value="${chore.icalTime}">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="button">Termine übernehmen</button>
+                </div>
+            </form>
+            <form th:if="${chore.icalUrl != null}" method="post"
+                  th:action="@{/household/chores/{id}/ical/unsubscribe(id=${chore.id})}">
+                <button type="submit" class="button button-ghost button-small">Abo beenden</button>
+            </form>
+        </details>
     </section>
 
     <section class="sheet todo-section">

@@ -9,6 +9,7 @@ import club.badernet.nestwerk.household.ChoreTask;
 import club.badernet.nestwerk.household.ChoreTaskService;
 import club.badernet.nestwerk.household.Distribution;
 import club.badernet.nestwerk.household.HouseholdAccess;
+import club.badernet.nestwerk.household.IcalImporter;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.security.CurrentUser;
 import club.badernet.nestwerk.user.User;
@@ -59,9 +60,11 @@ public class HouseholdController {
     private final HouseholdAccess access;
     private final HouseholdViews views;
     private final CurrentUser currentUser;
+    private final IcalImporter importer;
 
     public HouseholdController(ChoreService chores, ChoreTaskService tasks, HouseholdAccess access,
-                               HouseholdViews views, CurrentUser currentUser) {
+                               HouseholdViews views, CurrentUser currentUser, IcalImporter importer) {
+        this.importer = importer;
         this.chores = chores;
         this.tasks = tasks;
         this.access = access;
@@ -270,6 +273,40 @@ public class HouseholdController {
     String removeDate(@PathVariable Long id, @PathVariable Long dateId, RedirectAttributes redirect) {
         chores.removeDate(id, dateId, requireModule());
         redirect.addFlashAttribute("success", "Termin wurde entfernt.");
+        return "redirect:/household/chores/" + id + "#dates";
+    }
+
+    @PostMapping("/chores/{id}/ical")
+    String importIcal(@PathVariable Long id,
+                      @RequestParam(name = "file", required = false) org.springframework.web.multipart.MultipartFile file,
+                      @RequestParam(required = false) String url, @RequestParam(required = false) String filter,
+                      @RequestParam(defaultValue = "0") int daysBefore,
+                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime time,
+                      RedirectAttributes redirect) {
+        User actor = requireModule();
+        try {
+            IcalImporter.Result result;
+            if (url != null && !url.isBlank()) {
+                result = importer.subscribe(id, url, filter, daysBefore, time, actor);
+            } else {
+                result = importer.importFile(id, file == null ? null : file.getBytes(), filter, daysBefore, time, actor);
+            }
+            redirect.addFlashAttribute("success", result.total() == 0
+                    ? "Im Kalender wurden keine passenden künftigen Termine gefunden."
+                    : result.total() + " Termine übernommen (" + result.added() + " neu, " + result.moved()
+                    + " verschoben, " + result.removed() + " entfernt).");
+        } catch (IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+        } catch (java.io.IOException e) {
+            redirect.addFlashAttribute("error", "Die Datei konnte nicht gelesen werden.");
+        }
+        return "redirect:/household/chores/" + id + "#dates";
+    }
+
+    @PostMapping("/chores/{id}/ical/unsubscribe")
+    String unsubscribe(@PathVariable Long id, RedirectAttributes redirect) {
+        importer.unsubscribe(id, requireModule());
+        redirect.addFlashAttribute("success", "Das Kalender-Abo wurde beendet. Die übernommenen Termine bleiben.");
         return "redirect:/household/chores/" + id + "#dates";
     }
 

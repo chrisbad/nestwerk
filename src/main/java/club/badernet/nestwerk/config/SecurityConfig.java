@@ -20,6 +20,8 @@ public class SecurityConfig {
                         .requestMatchers("/login", "/error", "/actuator/health/**",
                                 "/css/**", "/js/**", "/fonts/**", "/favicon.svg", "/icons/**",
                                 "/sw.js", "/manifest.webmanifest").permitAll()
+                        // Wand-Tablet: eigene Prüfung über das Geräte-Cookie im TabletController
+                        .requestMatchers("/tablet", "/tablet/**").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(form -> form.loginPage("/login").permitAll())
                 .logout(Customizer.withDefaults());

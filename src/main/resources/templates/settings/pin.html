@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('PIN fürs Tablet')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='pin')}"></header>
+<main class="event-main">
+    <div class="page-head">
+        <div>
+            <h1>PIN fürs Tablet</h1>
+            <p>Mit dieser PIN hakst du am Wand-Tablet Hausarbeiten ab, ohne dich anzumelden.</p>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <p class="notice" th:if="${member == null}">
+        Dein Konto ist mit keinem Familienmitglied verknüpft. Ein Administrator kann das unter „Mitglieder“ erledigen.
+    </p>
+
+    <section class="sheet event-form settings-section" th:if="${member != null}">
+        <h2 th:text="${member.name}">Lena</h2>
+        <p class="muted" th:text="${member.hasPin()} ? 'Eine PIN ist eingerichtet.' : 'Noch keine PIN eingerichtet.'">Status</p>
+        <form method="post" th:action="@{/settings/pin}" class="inline-form">
+            <div class="field">
+                <label for="pin">Neue PIN <span class="hint">4 bis 8 Ziffern; leer lassen, um sie zu entfernen</span></label>
+                <input id="pin" class="input" type="password" name="pin" inputmode="numeric" pattern="\d{4,8}"
+                       maxlength="8" autocomplete="new-password">
+            </div>
+            <button type="submit" class="button">Speichern</button>
+        </form>
+    </section>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

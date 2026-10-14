@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Putzplan')}"></head>
+<body class="tablet-body">
+<main class="tablet-board" data-tablet>
+    <header class="tablet-head">
+        <div>
+            <h1>Putzplan</h1>
+            <p th:text="${todayLabel}">Montag, 13. Oktober</p>
+        </div>
+        <a class="button button-ghost" th:href="@{/tablet}">Aktualisieren</a>
+    </header>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <div class="tablet-columns">
+        <section class="tablet-column" th:each="col : ${columns}"
+                 th:style="${col.color() != null} ? |--member-color: ${col.color()}|">
+            <h2 th:text="${col.name()}">Lena</h2>
+            <p class="muted" th:if="${#lists.isEmpty(col.cards())}">Nichts zu tun.</p>
+            <ul class="tablet-cards">
+                <li class="tablet-card" th:each="c : ${col.cards()}"
+                    th:classappend="${(c.done() ? ' is-done' : '') + (c.overdue() ? ' is-overdue' : '')}">
+                    <button type="button" class="tablet-card-button" th:disabled="${c.done()}"
+                            th:attr="data-open-dialog='tablet-done-' + ${c.id()}">
+                        <span class="tablet-card-title" th:text="${c.title()}">Müll</span>
+                        <span class="tablet-card-meta">
+                            <span th:text="${c.dayLabel()}">heute</span>
+                            <span th:if="${c.time() != null}" th:text="${c.time()}">19:00</span>
+                            <span th:text="${c.minutes()} + ' Min'">5 Min</span>
+                            <span th:replace="~{household/fragments :: effort(${c.effort()}, ${c.effortLabel()})}"></span>
+                        </span>
+                    </button>
+                </li>
+            </ul>
+        </section>
+    </div>
+    <p class="hint tablet-hint" th:if="${#lists.isEmpty(members)}">
+        Noch hat niemand eine PIN. Jedes Mitglied richtet sie unter „PIN fürs Tablet“ ein.
+    </p>
+</main>
+
+<th:block th:each="col : ${columns}">
+    <dialog class="dialog tablet-dialog" th:each="c : ${col.cards()}" th:unless="${c.done()}"
+            th:id="'tablet-done-' + ${c.id()}">
+        <form method="post" th:action="@{/tablet/tasks/{id}/complete(id=${c.id()})}">
+            <div class="dialog-head">
+                <h2 th:text="${c.title()}">Müll</h2>
+                <button type="button" class="icon-button" data-close-dialog>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                    <span class="visually-hidden">Schließen</span>
+                </button>
+            </div>
+            <div class="dialog-body">
+                <fieldset class="field choices tablet-who">
+                    <legend>Wer hat es erledigt?</legend>
+                    <label class="choice choice-member" th:each="m : ${members}" th:style="|--member-color: ${m.color}|">
+                        <input type="radio" name="member" th:value="${m.id}" required>
+                        <span th:text="${m.name}">Lena</span>
+                    </label>
+                </fieldset>
+                <label class="field">
+                    <span>PIN</span>
+                    <input class="input tablet-pin" type="password" name="pin" inputmode="numeric" pattern="\d{4,8}"
+                           maxlength="8" autocomplete="off" required>
+                </label>
+            </div>
+            <div class="dialog-foot">
+                <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+                <button type="submit" class="button">Erledigt</button>
+            </div>
+        </form>
+    </dialog>
+</th:block>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

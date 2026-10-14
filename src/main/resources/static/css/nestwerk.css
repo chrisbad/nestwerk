@@ -1773,6 +1773,60 @@ form.inline { display: inline; margin: 0; }
 .redemption-approved { background: var(--sage); }
 .redemption-rejected { background: var(--brick-soft); }
 
+/* iCal-Import */
+.ical-import { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px dashed var(--line); }
+.ical-import summary { cursor: pointer; color: var(--moss); font-weight: 600; }
+.ical-form { display: grid; gap: 1rem; margin-top: 1rem; }
+.ical-url { overflow-wrap: anywhere; }
+
+/* Geräte und PIN */
+.pairing-code { padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; border: 2px solid var(--honey); }
+.pairing-value { font-family: var(--font-display); font-size: var(--step-4); font-weight: 700; letter-spacing: 0.12em; margin: 0.25rem 0 0.5rem; }
+
+/* Wand-Tablet: große Ziele, keine Navigation */
+.tablet-body { background: var(--bg); }
+.tablet-pair { max-width: 28rem; margin: 0 auto; padding: 3rem 1rem; display: grid; gap: 1rem; }
+.tablet-brand { margin-bottom: 1rem; }
+.tablet-pair-form { display: grid; gap: 1rem; padding: 1.5rem; }
+.tablet-code { font-family: var(--font-display); font-size: var(--step-2); letter-spacing: 0.1em; text-transform: uppercase; }
+.tablet-board { max-width: none; padding: 1.25rem; }
+.tablet-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
+.tablet-head h1 { font-size: var(--step-3); }
+.tablet-head p { color: var(--ink-soft); }
+.tablet-columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; align-items: start; }
+.tablet-column {
+    --member-color: var(--line);
+    padding: 0.9rem;
+    border-radius: var(--radius-panel);
+    border-top: 6px solid var(--member-color);
+    background: color-mix(in srgb, var(--member-color) 10%, var(--surface));
+}
+.tablet-column h2 { font-size: var(--step-2); margin-bottom: 0.6rem; }
+.tablet-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.tablet-card-button {
+    width: 100%;
+    display: grid;
+    gap: 0.3rem;
+    padding: 1rem;
+    min-height: 4.5rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.tablet-card-button:hover { border-color: var(--moss); }
+.tablet-card-title { font-size: var(--step-1); font-weight: 650; }
+.tablet-card-meta { display: flex; flex-wrap: wrap; gap: 0.3rem 0.6rem; align-items: center; color: var(--ink-soft); }
+.tablet-card.is-overdue .tablet-card-button { border-color: var(--brick); background: var(--brick-soft); }
+.tablet-card.is-done .tablet-card-button { opacity: 0.55; cursor: default; }
+.tablet-card.is-done .tablet-card-title { text-decoration: line-through; }
+.tablet-who .choice { font-size: var(--step-1); padding: 0.6rem 1rem; }
+.tablet-pin { font-size: var(--step-2); letter-spacing: 0.3em; max-width: 12rem; }
+.tablet-hint { margin-top: 1.5rem; }
+
 @media (max-width: 56rem) {
     .week-grid { display: none; }
     .week-days { display: block; }

@@ -24,6 +24,10 @@ public class FamilyMember {
     @Column(name = "user_id", unique = true)
     private Long userId;
 
+    /** PIN fürs Wand-Tablet (BCrypt); {@code null} = am Tablet nicht abhaken. */
+    @Column(name = "pin_hash", length = 100)
+    private String pinHash;
+
     protected FamilyMember() {
     }
 
@@ -47,6 +51,18 @@ public class FamilyMember {
 
     public Long getUserId() {
         return userId;
+    }
+
+    public String getPinHash() {
+        return pinHash;
+    }
+
+    public boolean hasPin() {
+        return pinHash != null;
+    }
+
+    public void setPinHash(String pinHash) {
+        this.pinHash = pinHash;
     }
 
     public void change(String name, String color, Long userId) {

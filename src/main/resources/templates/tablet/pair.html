@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Tablet koppeln')}"></head>
+<body class="tablet-body">
+<main class="tablet-pair">
+    <div class="brand tablet-brand">
+        <svg th:replace="~{fragments/layout :: nestmark}"></svg>
+        <span>Nestwerk</span>
+    </div>
+    <h1>Tablet koppeln</h1>
+    <p>Gib den Code ein, den du unter „Wand-Tablets“ erzeugt hast.</p>
+    <p class="notice notice-error" role="alert" th:if="${error}" th:text="${error}">Fehler</p>
+    <form method="post" th:action="@{/tablet/pair}" class="sheet tablet-pair-form">
+        <label class="field">
+            <span>Code</span>
+            <input class="input tablet-code" type="text" name="code" maxlength="12" autocomplete="off"
+                   autocapitalize="characters" spellcheck="false" required autofocus placeholder="ABCD 2345">
+        </label>
+        <button type="submit" class="button">Koppeln</button>
+    </form>
+</main>
+</body>
+</html>

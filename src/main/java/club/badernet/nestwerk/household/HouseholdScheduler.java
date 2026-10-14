@@ -24,10 +24,13 @@ public class HouseholdScheduler {
 
     private final ChorePlanner planner;
     private final HouseholdReminders reminders;
+    private final IcalImporter importer;
     private final AppSettings settings;
     private final Clock clock;
 
-    public HouseholdScheduler(ChorePlanner planner, HouseholdReminders reminders, AppSettings settings, Clock clock) {
+    public HouseholdScheduler(ChorePlanner planner, HouseholdReminders reminders, IcalImporter importer,
+                              AppSettings settings, Clock clock) {
+        this.importer = importer;
         this.planner = planner;
         this.reminders = reminders;
         this.settings = settings;
@@ -41,6 +44,7 @@ public class HouseholdScheduler {
         try {
             boolean plannedToday = settings.get(LAST_PLAN).map(LocalDate::parse).filter(today::equals).isPresent();
             if (!plannedToday) {
+                importer.syncAll();
                 planner.planAll(today);
                 settings.set(LAST_PLAN, today.toString());
             }
