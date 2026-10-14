@@ -21,4 +21,6 @@ public interface ChoreTaskRepository extends JpaRepository<ChoreTask, Long> {
     List<ChoreTask> findAllByStatusAndDueOnLessThanEqual(ChoreTaskStatus status, LocalDate day);
 
     List<ChoreTask> findAllByStatusAndDueOnGreaterThanEqual(ChoreTaskStatus status, LocalDate day);
+
+    List<ChoreTask> findAllByStatusAndDueOnAndNotifiedDueFalse(ChoreTaskStatus status, LocalDate day);
 }

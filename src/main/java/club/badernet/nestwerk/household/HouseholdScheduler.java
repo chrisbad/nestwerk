@@ -13,8 +13,8 @@ import java.time.LocalDate;
 import java.time.ZonedDateTime;
 
 /**
- * Zeitplaner des Putzplans: plant einmal am Tag die nächsten drei Wochen und verteilt nach Änderungen an
- * Abwesenheiten neu.
+ * Zeitplaner des Putzplans: plant einmal am Tag die nächsten drei Wochen, erinnert minütlich an fällige
+ * Hausarbeiten und verteilt nach Änderungen an Abwesenheiten neu.
  */
 @Component
 public class HouseholdScheduler {
@@ -23,11 +23,13 @@ public class HouseholdScheduler {
     private static final Logger log = LoggerFactory.getLogger(HouseholdScheduler.class);
 
     private final ChorePlanner planner;
+    private final HouseholdReminders reminders;
     private final AppSettings settings;
     private final Clock clock;
 
-    public HouseholdScheduler(ChorePlanner planner, AppSettings settings, Clock clock) {
+    public HouseholdScheduler(ChorePlanner planner, HouseholdReminders reminders, AppSettings settings, Clock clock) {
         this.planner = planner;
+        this.reminders = reminders;
         this.settings = settings;
         this.clock = clock;
     }
@@ -44,6 +46,11 @@ public class HouseholdScheduler {
             }
         } catch (RuntimeException e) {
             log.error("Planung des Putzplans für {} fehlgeschlagen", today, e);
+        }
+        try {
+            reminders.run(now);
+        } catch (RuntimeException e) {
+            log.error("Erinnerungen zum Putzplan fehlgeschlagen", e);
         }
     }
 

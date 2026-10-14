@@ -1720,6 +1720,59 @@ form.inline { display: inline; margin: 0; }
 .complete-form { display: grid; gap: 1rem; }
 .credit-line { display: block; }
 
+/* Auswertung */
+.stats-table-wrap { padding: 0.5rem 0; overflow-x: auto; margin-bottom: 2rem; }
+.stats-table { width: 100%; border-collapse: collapse; }
+.stats-table th, .stats-table td { padding: 0.6rem 1rem; text-align: left; }
+.stats-table thead th { font-size: var(--step--1); font-weight: 650; color: var(--ink-soft); border-bottom: 1px solid var(--line); }
+.stats-table tbody tr + tr th, .stats-table tbody tr + tr td { border-top: 1px solid var(--line); }
+.stats-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.stats-table tbody th { min-width: 10rem; }
+.stats-name { display: block; font-weight: 650; }
+.stats-bar { display: block; height: 0.4rem; margin-top: 0.35rem; border-radius: 999px; background: var(--sage); overflow: hidden; }
+.stats-bar i { display: block; height: 100%; background: var(--member-color); border-radius: 999px; }
+.stats-minutes { font-family: var(--font-display); font-size: var(--step-1); font-weight: 650; }
+.stats-table .is-late { color: var(--brick); font-weight: 700; }
+
+.credit-list { list-style: none; margin: 0; padding: 0.25rem 0; }
+.credit-list li { padding: 0.65rem 1.25rem; }
+.credit-list li + li { border-top: 1px solid var(--line); }
+.credit-main { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.75rem; }
+.credit-minutes { margin-left: auto; font-variant-numeric: tabular-nums; }
+.credit-correct { margin-top: 0.4rem; }
+.credit-correct summary { cursor: pointer; color: var(--moss); font-size: var(--step--1); }
+.credit-correct form { margin-top: 0.6rem; }
+.credit-reason { flex: 1 1 16rem; }
+.pending-actions { display: inline-flex; gap: 0.5rem; margin-left: auto; }
+.pending-actions form { margin: 0; }
+
+/* Belohnungen */
+.balances { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 0.75rem; margin-bottom: 2rem; }
+.balance {
+    display: grid;
+    padding: 0.9rem 1rem;
+    border-radius: var(--radius-panel);
+    border-top: 5px solid var(--member-color);
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--line);
+}
+.balance-name { font-weight: 650; }
+.balance-value { font-family: var(--font-display); font-size: var(--step-3); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.balance-unit { color: var(--ink-soft); font-size: var(--step--1); }
+.reward-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: 0.75rem; }
+.reward { display: grid; gap: 0.5rem; align-content: start; padding: 1rem 1.15rem; }
+.reward.is-inactive { opacity: 0.6; }
+.reward-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; }
+.reward-head h3 { font-size: var(--step-1); }
+.reward-cost { flex: none; padding: 0.1rem 0.6rem; border-radius: 999px; background: var(--honey-soft); font-weight: 650; font-variant-numeric: tabular-nums; }
+.reward-redeem { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.reward-redeem .field { flex: 1 1 8rem; }
+.reward-edit summary { cursor: pointer; color: var(--moss); font-size: var(--step--1); }
+.reward-form { display: grid; gap: 0.75rem; margin-top: 0.6rem; }
+.reward-new { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); align-items: end; padding: 1.15rem; }
+.redemption-approved { background: var(--sage); }
+.redemption-rejected { background: var(--brick-soft); }
+
 @media (max-width: 56rem) {
     .week-grid { display: none; }
     .week-days { display: block; }

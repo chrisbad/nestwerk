@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Belohnungen')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='household')}"></header>
+<main class="household-page">
+    <div th:replace="~{household/fragments :: head('Belohnungen', 'Erledigte Minuten sammeln und einlösen')}"></div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <section class="balances" th:unless="${#lists.isEmpty(accounts)}" aria-label="Kontostände">
+        <div class="balance" th:each="m : ${accounts}" th:style="|--member-color: ${m.color}|">
+            <span class="balance-name" th:text="${m.name}">Lena</span>
+            <strong class="balance-value" th:text="${balances.getOrDefault(m.id, 0)}">120</strong>
+            <span class="balance-unit">Minuten</span>
+        </div>
+    </section>
+
+    <section class="chore-section" th:unless="${#lists.isEmpty(pending)}">
+        <h2>Warten auf Bestätigung</h2>
+        <ul class="sheet credit-list">
+            <li th:each="r : ${pending}">
+                <div class="credit-main">
+                    <span class="member-chip" th:with="m=${members[r.memberId]}" th:if="${m != null}"
+                          th:style="|--member-color: ${m.color}|" th:text="${m.name}">Lena</span>
+                    <strong th:text="${r.reward.title}">Kinoabend</strong>
+                    <span class="muted" th:text="${r.costMinutes} + ' Min'">60 Min</span>
+                    <span class="pending-actions">
+                        <form method="post" th:action="@{/household/redemptions/{id}/decide(id=${r.id})}">
+                            <input type="hidden" name="approve" value="true">
+                            <button type="submit" class="button button-small">Bestätigen</button>
+                        </form>
+                        <form method="post" th:action="@{/household/redemptions/{id}/decide(id=${r.id})}">
+                            <input type="hidden" name="approve" value="false">
+                            <button type="submit" class="button button-ghost button-small">Ablehnen</button>
+                        </form>
+                    </span>
+                </div>
+            </li>
+        </ul>
+    </section>
+
+    <section class="chore-section">
+        <h2>Belohnungen</h2>
+        <p class="sheet sheet-empty" th:if="${#lists.isEmpty(rewards)}">
+            Noch keine Belohnungen.
+            <th:block th:if="${canManage}">Lege unten die erste an, zum Beispiel „Kinoabend“ für 300 Minuten.</th:block>
+        </p>
+        <ul class="reward-grid" th:unless="${#lists.isEmpty(rewards)}">
+            <li class="sheet reward" th:each="rw : ${rewards}" th:classappend="${!rw.active} ? 'is-inactive'">
+                <div class="reward-head">
+                    <h3 th:text="${rw.title}">Kinoabend</h3>
+                    <span class="reward-cost" th:text="${rw.costMinutes} + ' Min'">300 Min</span>
+                </div>
+                <p class="muted" th:if="${rw.description != null}" th:text="${rw.description}">Mit Popcorn</p>
+                <p class="hint" th:unless="${rw.active}">Deaktiviert</p>
+                <form th:if="${rw.active and (forOthers or ownMember != null)}" method="post"
+                      th:action="@{/household/rewards/{id}/redeem(id=${rw.id})}" class="reward-redeem">
+                    <label class="field" th:if="${forOthers}">
+                        <span class="visually-hidden">Für</span>
+                        <select name="member" class="input">
+                            <option th:each="m : ${members.values()}" th:value="${m.id}" th:text="${m.name}"
+                                    th:selected="${m.id == ownMember}">Lena</option>
+                        </select>
+                    </label>
+                    <button type="submit" class="button button-small"
+                            th:disabled="${!forOthers and ownBalance < rw.costMinutes}">Einlösen</button>
+                    <span class="hint" th:if="${!forOthers and ownBalance < rw.costMinutes}"
+                          th:text="'Noch ' + ${rw.costMinutes - ownBalance} + ' Minuten'">Noch 30 Minuten</span>
+                </form>
+                <details th:if="${canManage}" class="reward-edit">
+                    <summary>Bearbeiten</summary>
+                    <form method="post" th:action="@{/household/rewards/{id}(id=${rw.id})}" class="reward-form">
+                        <label class="field"><span>Titel</span>
+                            <input class="input" type="text" name="title" maxlength="100" th:value="${rw.title}" required></label>
+                        <label class="field"><span>Preis in Minuten</span>
+                            <input class="input" type="number" name="cost" min="1" max="100000" th:value="${rw.costMinutes}" required></label>
+                        <label class="field"><span>Beschreibung</span>
+                            <input class="input" type="text" name="description" maxlength="500" th:value="${rw.description}"></label>
+                        <label class="choice"><input type="checkbox" name="active" value="true" th:checked="${rw.active}">
+                            <span>Aktiv</span></label>
+                        <button type="submit" class="button button-ghost button-small">Speichern</button>
+                    </form>
+                </details>
+            </li>
+        </ul>
+    </section>
+
+    <section class="chore-section" th:if="${canManage}">
+        <h2>Neue Belohnung</h2>
+        <form method="post" th:action="@{/household/rewards}" class="sheet reward-form reward-new">
+            <label class="field"><span>Titel</span>
+                <input class="input" type="text" name="title" maxlength="100" required placeholder="z. B. Kinoabend"></label>
+            <label class="field"><span>Preis in Minuten</span>
+                <input class="input" type="number" name="cost" min="1" max="100000" required value="60"></label>
+            <label class="field"><span>Beschreibung <span class="hint">optional</span></span>
+                <input class="input" type="text" name="description" maxlength="500"></label>
+            <button type="submit" class="button">Belohnung anlegen</button>
+        </form>
+    </section>
+
+    <section class="chore-section" th:unless="${#lists.isEmpty(recent)}">
+        <h2>Verlauf</h2>
+        <ul class="sheet credit-list">
+            <li th:each="r : ${recent}">
+                <div class="credit-main">
+                    <span class="member-chip" th:with="m=${members[r.memberId]}" th:if="${m != null}"
+                          th:style="|--member-color: ${m.color}|" th:text="${m.name}">Lena</span>
+                    <span th:text="${r.reward.title}">Kinoabend</span>
+                    <span class="muted" th:text="${r.costMinutes} + ' Min'">60 Min</span>
+                    <span class="badge" th:classappend="'redemption-' + ${#strings.toLowerCase(r.status.name())}"
+                          th:text="${r.status.label()}">beantragt</span>
+                </div>
+            </li>
+        </ul>
+    </section>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

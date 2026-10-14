@@ -13,7 +13,8 @@
         <a th:href="@{/household/today}" th:aria-current="${tab == 'today'} ? 'page'">Heute</a>
         <a th:href="@{/household/chores}" th:aria-current="${tab == 'chores'} ? 'page'">Hausarbeiten</a>
         <a th:href="@{/household/stats}" th:aria-current="${tab == 'stats'} ? 'page'">Auswertung</a>
-        <a th:href="@{/household/rewards}" th:aria-current="${tab == 'rewards'} ? 'page'">Belohnungen</a>
+        <a th:href="@{/household/rewards}" th:if="${@rewardService.mayOpen(#authentication.name)}"
+           th:aria-current="${tab == 'rewards'} ? 'page'">Belohnungen</a>
     </nav>
 </div>
 
