@@ -1293,7 +1293,7 @@ a.day-num:hover { background: var(--sage); }
 .prio-low { color: var(--ink-soft); }
 .prio-high { color: var(--honey-strong, #a46d0d); }
 .prio-urgent { color: var(--brick); }
-.pill { padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--sage); color: var(--ink); }
+.pill { display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap; padding: 0.05rem 0.5rem; border-radius: 999px; background: var(--sage); color: var(--ink); }
 .pill-progress { background: var(--honey-soft); }
 .due-overdue { color: var(--brick); font-weight: 650; }
 .due-due_soon { color: var(--ink); font-weight: 600; }
@@ -1363,7 +1363,7 @@ a.tag:hover { text-decoration: underline; }
 .link-form select { padding: 0.45rem 0.6rem; border: 1px solid var(--line); border-radius: var(--radius-field); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--step--1); }
 .link-form .input { flex: 1 1 12rem; }
 .pill-blocked { background: var(--brick-soft); color: var(--brick); }
-.pill-icon { width: 0.85rem; height: 0.85rem; fill: none; stroke: currentColor; stroke-width: 2; vertical-align: -0.1rem; }
+.pill-icon { flex: none; width: 0.85rem; height: 0.85rem; fill: none; stroke: currentColor; stroke-width: 2; }
 
 /* Board */
 .todos-board-page { max-width: 86rem; }
