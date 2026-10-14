@@ -8,10 +8,10 @@ public record TodoFilter(Involvement involvement, AssigneeRef assignee, TodoStat
                          TodoPriority priority, String tag, String text, boolean includeClosed) {
 
     public enum Involvement {
-        ALL("Alle"),
-        MINE("Meine"),
-        RESPONSIBLE("Verantwortet"),
-        WATCHING("Beobachtet");
+        ALL("Alle ToDos"),
+        MINE("Meine ToDos"),
+        RESPONSIBLE("Von mir verantwortet"),
+        WATCHING("Von mir beobachtet");
 
         private final String label;
 

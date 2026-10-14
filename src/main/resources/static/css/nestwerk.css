@@ -579,7 +579,7 @@ fieldset.field legend { padding: 0; margin-bottom: 0.35rem; font-weight: 600; }
 .area:hover { border-color: var(--moss); }
 .area-feature { background: var(--moss); border-color: var(--moss); color: var(--on-moss); }
 .area-feature:hover { background: var(--moss-strong); }
-.area-feature p { color: color-mix(in srgb, var(--on-moss) 75%, transparent); }
+.area.area-feature p { color: color-mix(in srgb, var(--on-moss) 75%, transparent); }
 .area-feature .area-icon { background: color-mix(in srgb, var(--on-moss) 16%, transparent); color: var(--on-moss); }
 .area-icon {
     grid-row: span 2;
@@ -1338,6 +1338,7 @@ a.tag:hover { text-decoration: underline; }
 .prose ul, .prose ol { padding-left: 1.4rem; }
 .prose pre { overflow-x: auto; padding: 0.75rem; border-radius: var(--radius-field); background: var(--sage); }
 .prose blockquote { margin: 0; padding-left: 1rem; border-left: 3px solid var(--line); color: var(--ink-soft); }
+.event-form > fieldset + fieldset { margin-top: 1.25rem; }
 .assign-fields { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px dashed var(--line); }
 .assign-fields h2, .contact-todos h2 { font-size: var(--step-1); margin: 0; }
 .contact-todos { margin-top: 1rem; padding: clamp(1.25rem, 3vw, 1.75rem); }
