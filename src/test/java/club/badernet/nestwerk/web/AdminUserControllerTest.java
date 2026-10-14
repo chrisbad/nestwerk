@@ -161,7 +161,8 @@ class AdminUserControllerTest {
     @Test
     @WithMockUser(authorities = {"USER_MANAGE", "ACCESS_ROLE_MANAGE", "MEMBER_MANAGE",
             "CALENDAR_VIEW", "CALENDAR_EVENT_CREATE", "CALENDAR_EVENT_EDIT_OWN", "CALENDAR_EVENT_EDIT_ALL",
-            "CALENDAR_EVENT_DELETE_OWN", "CALENDAR_EVENT_DELETE_ALL", "CALENDAR_PRIVATE_CREATE"})
+            "CALENDAR_EVENT_DELETE_OWN", "CALENDAR_EVENT_DELETE_ALL", "CALENDAR_PRIVATE_CREATE",
+            "NOTIFICATION_SETTINGS_MANAGE"})
     void administratorCanCreateAdministrator() throws Exception {
         mockMvc.perform(post("/admin/users").with(csrf())
                         .param("username", "zweiter-admin")
