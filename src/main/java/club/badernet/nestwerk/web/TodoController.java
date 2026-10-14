@@ -312,7 +312,7 @@ public class TodoController {
         model.addAttribute("linkedEvents", linkedEvents.stream().map(e -> java.util.Map.of("id", e.getId(),
                 "title", e.getTitle(), "when", TIMESTAMP.format(e.getStartsAt().atZone(query.zone()))))
                 .toList());
-        model.addAttribute("canCreateEvent", permissions.effective(viewer)
+        model.addAttribute("canCreateEvent", access.can(viewer, "LINK", todo) && permissions.effective(viewer)
                 .contains(club.badernet.nestwerk.calendar.CalendarPermission.CALENDAR_EVENT_CREATE.name()));
         model.addAttribute("canWatch", access.can(viewer, "WATCH", todo));
         boolean canManageWatchers = access.can(viewer, "MANAGE_WATCHERS", todo);

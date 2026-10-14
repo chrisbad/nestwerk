@@ -154,7 +154,7 @@ public class CalendarController {
                    Model model) {
         EventForm form = EventForm.forNew(parseDate(date));
         if (todo != null) {
-            Todo t = todoService.get(todo, currentUser.require());
+            Todo t = linkableTodo(todo, currentUser.require());
             form = EventForm.forNew(t.getDueOn() != null ? t.getDueOn() : parseDate(date));
             form.setTitle(t.getTitle());
             form.setTodoId(t.getId());
@@ -174,7 +174,7 @@ public class CalendarController {
     String create(@ModelAttribute("form") EventForm form, Model model, RedirectAttributes redirect) {
         try {
             User actor = currentUser.require();
-            Todo fromTodo = form.getTodoId() == null ? null : todoService.get(form.getTodoId(), actor);
+            Todo fromTodo = form.getTodoId() == null ? null : linkableTodo(form.getTodoId(), actor);
             CalendarEvent created = events.create(form.toInput(), actor);
             if (fromTodo != null) {
                 todoLinks.link(fromTodo.getId(), created.getId());
@@ -294,6 +294,16 @@ public class CalendarController {
         Instant from = days.getFirst().atStartOfDay(settings.zone()).toInstant();
         Instant to = days.getLast().plusDays(1).atStartOfDay(settings.zone()).toInstant();
         return CalendarGrid.groupByDay(events.findOccurrences(from, to, viewer), days);
+    }
+
+    /** ToDo, an das der Benutzer einen Termin hängen darf (ACL-Aktion {@code LINK}). */
+    private Todo linkableTodo(Long todoId, User actor) {
+        Todo todo = todoService.get(todoId, actor);
+        if (!todoAccess.can(actor, "LINK", todo)) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Keine Berechtigung, einen Termin mit diesem ToDo zu verknüpfen");
+        }
+        return todo;
     }
 
     /** Verknüpfte ToDos, die der Betrachter sehen darf. */

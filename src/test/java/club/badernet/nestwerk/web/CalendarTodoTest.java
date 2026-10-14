@@ -123,6 +123,25 @@ class CalendarTodoTest {
     }
 
     @Test
+    void linkingEventToTodoNeedsLinkRight() throws Exception {
+        Todo t = todo("Mamas ToDo", DAY, false);
+
+        mockMvc.perform(get("/calendar/events/new").param("todo", t.getId().toString()).with(as("papa")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/calendar/events").with(csrf()).with(as("papa"))
+                        .param("title", "Untergeschoben").param("todoId", t.getId().toString())
+                        .param("startDate", DAY.toString()).param("startTime", "09:00")
+                        .param("endDate", DAY.toString()).param("endTime", "10:00"))
+                .andExpect(status().isForbidden());
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM todo_event_links WHERE todo_id = ?", Integer.class,
+                t.getId())).isZero();
+        assertThat(events.findAll()).noneMatch(e -> e.getTitle().equals("Untergeschoben"));
+        mockMvc.perform(get("/todos/{id}", t.getId()).with(as("papa")))
+                .andExpect(content().string(not(containsString("/calendar/events/new?todo="))));
+    }
+
+    @Test
     void invisibleTodoCannotBeUsedForEvent() throws Exception {
         Todo secret = todo("Geheim", DAY, true);
 
