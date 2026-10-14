@@ -1,6 +1,7 @@
 HELP.md
 .env
 /data/
+.playwright-mcp/
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
