@@ -10,7 +10,20 @@
         <h1><span data-greeting>Hallo</span>, <span sec:authentication="name">benutzer</span>.</h1>
     </section>
 
-    <ul class="areas" sec:authorize="hasAnyAuthority('CALENDAR_VIEW', 'USER_MANAGE', 'ACCESS_ROLE_MANAGE', 'MEMBER_MANAGE')">
+    <section class="home-todos" th:if="${showTodos}">
+        <div class="home-todos-head">
+            <h2>Meine ToDos</h2>
+            <a th:href="@{/todos(involvement='MINE')}">Alle meine ToDos</a>
+        </div>
+        <ul class="todo-list" th:unless="${#lists.isEmpty(myTodos)}">
+            <th:block th:each="row : ${myTodos}" th:with="back='/'">
+                <li th:replace="~{todos/fragments :: row}"></li>
+            </th:block>
+        </ul>
+        <p class="sheet sheet-empty" th:if="${#lists.isEmpty(myTodos)}">Gerade ist nichts fällig. Schön.</p>
+    </section>
+
+    <ul class="areas" th:if="${showTodos or showContacts or #authorization.expression('hasAnyAuthority(''CALENDAR_VIEW'', ''USER_MANAGE'', ''ACCESS_ROLE_MANAGE'', ''MEMBER_MANAGE'')')}">
         <li sec:authorize="hasAuthority('CALENDAR_VIEW')">
             <a class="area area-feature" th:href="@{/calendar}">
                 <span class="area-icon">
@@ -20,6 +33,28 @@
                 </span>
                 <h2>Kalender</h2>
                 <p>Termine der ganzen Familie</p>
+            </a>
+        </li>
+        <li th:if="${showTodos}">
+            <a class="area" th:href="@{/todos}">
+                <span class="area-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>
+                    </svg>
+                </span>
+                <h2>ToDos</h2>
+                <p>Was irgendwann erledigt werden muss</p>
+            </a>
+        </li>
+        <li th:if="${showContacts}">
+            <a class="area" th:href="@{/contacts}">
+                <span class="area-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="4" y="3.5" width="16" height="17" rx="2.5"/><circle cx="12" cy="10" r="2.6"/><path d="M7.8 16.5a4.2 4.2 0 0 1 8.4 0"/>
+                    </svg>
+                </span>
+                <h2>Kontakte</h2>
+                <p>Handwerker, Schule und andere</p>
             </a>
         </li>
         <li sec:authorize="hasAuthority('MEMBER_MANAGE')">
@@ -57,7 +92,7 @@
             </a>
         </li>
     </ul>
-    <p class="empty-home" sec:authorize="!hasAnyAuthority('CALENDAR_VIEW', 'USER_MANAGE', 'ACCESS_ROLE_MANAGE', 'MEMBER_MANAGE')">
+    <p class="empty-home" th:unless="${showTodos or showContacts or #authorization.expression('hasAnyAuthority(''CALENDAR_VIEW'', ''USER_MANAGE'', ''ACCESS_ROLE_MANAGE'', ''MEMBER_MANAGE'')')}">
         Für dein Konto sind noch keine Bereiche freigegeben. Ein Administrator kann dir eine Rolle zuweisen.
     </p>
 </main>
