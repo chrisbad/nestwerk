@@ -19,6 +19,11 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.DateTimeException;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeParseException;
+import java.util.Arrays;
+import java.util.Locale;
 import java.util.function.Function;
 
 /**
@@ -73,6 +78,39 @@ public class Tools {
         } catch (RuntimeException e) {
             log.warn("MCP-Tool fehlgeschlagen", e);
             throw new ToolException("Interner Fehler. Details stehen im Server-Log.");
+        }
+    }
+
+    static LocalDate date(String value, String name) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(value.trim());
+        } catch (DateTimeParseException e) {
+            throw new ToolException(name + ": Datum im Format JJJJ-MM-TT erwartet, nicht „" + value + "“.");
+        }
+    }
+
+    static LocalTime time(String value, String name) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalTime.parse(value.trim());
+        } catch (DateTimeParseException e) {
+            throw new ToolException(name + ": Uhrzeit im Format HH:MM erwartet, nicht „" + value + "“.");
+        }
+    }
+
+    static <E extends Enum<E>> E enumValue(Class<E> type, String value, String name) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Enum.valueOf(type, value.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new ToolException(name + ": erlaubt sind " + Arrays.toString(type.getEnumConstants()) + ".");
         }
     }
 

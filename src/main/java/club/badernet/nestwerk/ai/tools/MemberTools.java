@@ -33,7 +33,9 @@ public class MemberTools {
     }
 
     @McpTool(name = "whoami", description = "Zeigt, in wessen Namen die KI handelt: Benutzer, verknüpftes "
-            + "Familienmitglied und Rechte.", annotations = @McpTool.McpAnnotations(readOnlyHint = true))
+            + "Familienmitglied und Rechte.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false,
+                    openWorldHint = false))
     public Me whoami(McpTransportContext context) {
         return tools.read(context, user -> {
             FamilyMember member = members.findByUserId(user.getId()).orElse(null);
@@ -45,7 +47,7 @@ public class MemberTools {
 
     @McpTool(name = "list_members", description = "Listet alle Familienmitglieder mit ID. Die IDs werden für "
             + "Termin-Teilnehmer, ToDo-Zuständige und Helfer bei Hausarbeiten gebraucht.",
-            annotations = @McpTool.McpAnnotations(readOnlyHint = true))
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
     public List<Member> listMembers(McpTransportContext context) {
         return tools.read(context, user -> members.findAllByOrderByNameAsc().stream()
                 .map(m -> new Member(m.getId(), m.getName(), m.getUserId() != null)).toList());

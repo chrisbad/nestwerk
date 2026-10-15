@@ -74,7 +74,14 @@ class McpEndpointTest {
                 .andExpect(jsonPath("$.result.serverInfo.name").value("nestwerk"));
         rpc(token, "tools/list", "{}")
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.result.tools[*].name").value(hasItems("whoami", "list_members")));
+                .andExpect(jsonPath("$.result.tools[*].name").value(hasItems("whoami", "list_members",
+                        "today_overview", "list_events", "get_event", "create_event", "update_event", "list_todos",
+                        "get_todo", "create_todo", "update_todo", "set_todo_status", "check_todo", "uncheck_todo",
+                        "add_todo_comment", "list_chore_tasks", "my_chore_tasks", "complete_chore_task",
+                        "undo_chore_task", "search_contacts", "get_contact", "list_notifications",
+                        "mark_notifications_read")))
+                .andExpect(jsonPath("$.result.tools[?(@.name == 'list_todos')].annotations.destructiveHint")
+                        .value(org.hamcrest.Matchers.contains(false)));
     }
 
     @Test
@@ -83,6 +90,17 @@ class McpEndpointTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.isError").value(false))
                 .andExpect(jsonPath("$.result.content[0].text").value(containsString("\"username\":\"mama\"")));
+    }
+
+    @Test
+    void serviceErrorsBecomeToolErrors() throws Exception {
+        rpc(token, "tools/call", "{\"name\":\"get_todo\",\"arguments\":{\"todoId\":999999}}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.isError").value(true))
+                .andExpect(jsonPath("$.result.content[0].text").value(containsString("ToDo nicht gefunden")));
+        rpc(token, "tools/call", "{\"name\":\"list_events\",\"arguments\":{\"from\":\"2030-01-01\"}}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.isError").value(false));
     }
 
     @Test
