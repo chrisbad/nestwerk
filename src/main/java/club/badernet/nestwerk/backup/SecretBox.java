@@ -12,8 +12,11 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
@@ -98,7 +101,14 @@ public class SecretBox {
             byte[] generated = new byte[32];
             RANDOM.nextBytes(generated);
             byte[] text = Base64.getEncoder().encode(generated);
-            Files.write(keyFile, text);
+            // sofort nur für den Besitzer lesbar anlegen (nicht erst nach dem Schreiben einschränken)
+            if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+                Files.createFile(keyFile, PosixFilePermissions.asFileAttribute(
+                        PosixFilePermissions.fromString("rw-------")));
+            } else {
+                Files.createFile(keyFile);
+            }
+            Files.write(keyFile, text, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
             log.warn("NESTWERK_SECRET_KEY ist nicht gesetzt; Schlüssel wurde in {} erzeugt", keyFile);
             return text;
         } catch (IOException e) {
