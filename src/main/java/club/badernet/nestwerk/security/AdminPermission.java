@@ -5,5 +5,6 @@ public enum AdminPermission implements Permission {
     ACCESS_ROLE_MANAGE,
     MEMBER_MANAGE,
     NOTIFICATION_SETTINGS_MANAGE,
-    HOUSEHOLD_DEVICE_MANAGE
+    HOUSEHOLD_DEVICE_MANAGE,
+    AI_ACCESS
 }
