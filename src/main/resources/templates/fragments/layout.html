@@ -116,6 +116,8 @@
                        sec:authorize="hasAuthority('NOTIFICATION_SETTINGS_MANAGE')">Benachrichtigungen einstellen</a>
                     <a class="menu-item" th:href="@{/admin/devices}"
                        sec:authorize="hasAuthority('HOUSEHOLD_DEVICE_MANAGE')">Wand-Tablets</a>
+                    <a class="menu-item" th:href="@{/admin/backup}"
+                       sec:authorize="hasAuthority('BACKUP_MANAGE')">Sicherungen</a>
                     <form th:action="@{/logout}" method="post">
                         <button type="submit" class="menu-item">Abmelden</button>
                     </form>

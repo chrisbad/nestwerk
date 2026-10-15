@@ -37,6 +37,8 @@
                 Benutzername oder Passwort ist falsch.
             </p>
             <p class="notice" role="status" th:if="${param.logout}">Du wurdest abgemeldet.</p>
+            <p class="notice" role="status" th:if="${param.restored}">Die Sicherung wurde wiederhergestellt.
+                Bitte melde dich neu an – es gelten die Zugangsdaten aus der Sicherung.</p>
 
             <div class="field">
                 <label for="username">Benutzername</label>

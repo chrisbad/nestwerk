@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Sicherungen')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='backup')}"></header>
+<main class="event-main">
+    <div class="page-head">
+        <div>
+            <h1>Sicherungen</h1>
+            <p>Eine Sicherung enthält alle Daten und Anhänge. Mit ihr stellst du einen alten Stand wieder her oder
+                ziehst Nestwerk auf einen anderen Server um.</p>
+        </div>
+        <form method="post" th:action="@{/admin/backup/run}">
+            <button type="submit" class="button" th:disabled="${busy}">Jetzt sichern</button>
+        </form>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <section class="chore-section">
+        <h2>Vorhandene Sicherungen</h2>
+        <p class="muted" th:if="${#lists.isEmpty(files)}">Noch keine Sicherung vorhanden.</p>
+        <div class="sheet" th:unless="${#lists.isEmpty(files)}">
+            <table class="table">
+                <thead>
+                <tr><th scope="col">Datei</th><th scope="col">Erstellt</th><th scope="col">Größe</th>
+                    <th scope="col"><span class="visually-hidden">Aktionen</span></th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="f, it : ${files}">
+                    <td class="backup-name" th:text="${f.name}">nestwerk-20261016-020000.zip</td>
+                    <td th:text="${f.modified}">16.10.2026, 02:00</td>
+                    <td th:text="${f.size}">3,2 MB</td>
+                    <td class="cell-actions">
+                        <a class="button button-ghost button-small"
+                           th:href="@{/admin/backup/files/{n}(n=${f.name})}">Herunterladen</a>
+                        <button type="button" class="button button-ghost button-small"
+                                th:attr="data-open-dialog='restore-' + ${it.index}">Wiederherstellen</button>
+                        <form method="post" th:action="@{/admin/backup/files/{n}/delete(n=${f.name})}"
+                              th:attr="data-confirm=|Sicherung ${f.name} löschen?|">
+                            <button type="submit" class="button button-danger button-small">Löschen</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="muted backup-dir">Ablage auf dem Server: <code th:text="${directory}">/data/backups</code></p>
+    </section>
+
+    <section class="sheet event-form settings-section">
+        <h2>Sicherung hochladen</h2>
+        <p>Zum Beispiel vom alten Server. Die Datei wird vollständig geprüft und erscheint dann in der Liste oben;
+            wiederhergestellt wird erst auf ausdrücklichen Wunsch.</p>
+        <form class="inline-form" data-raw-upload th:attr="data-upload-url=@{/admin/backup/upload}">
+            <div class="field">
+                <label for="backup-file">Sicherungsdatei (.zip)</label>
+                <input id="backup-file" class="input" type="file" accept=".zip,application/zip" required>
+            </div>
+            <button type="submit" class="button">Hochladen</button>
+            <progress hidden max="100" value="0" data-upload-progress></progress>
+        </form>
+    </section>
+
+    <section class="chore-section" id="backup-status" th:fragment="status"
+             th:attr="hx-get=${busy} ? @{/admin/backup/status} : null"
+             th:attrappend="hx-trigger=${busy} ? 'every 2s' : null" hx-swap="outerHTML">
+        <h2>Verlauf <span class="badge" th:if="${busy}">Sicherung läuft …</span></h2>
+        <p class="muted" th:if="${#lists.isEmpty(runs)}">Noch keine Läufe.</p>
+        <ul class="sheet credit-list" th:unless="${#lists.isEmpty(runs)}">
+            <li th:each="r : ${runs}">
+                <div class="credit-main">
+                    <strong th:text="${r.started}">16.10.2026, 02:00</strong>
+                    <span th:text="${r.kind}">geplant</span>
+                    <span class="badge" th:classappend="'run-' + ${r.statusKey}" th:text="${r.status}">erfolgreich</span>
+                    <span class="muted backup-name" th:if="${r.file != null}" th:text="${r.file}">datei</span>
+                </div>
+                <p class="muted run-message" th:if="${r.message != null}" th:text="${r.message}">12 Tabellen …</p>
+            </li>
+        </ul>
+    </section>
+
+    <dialog th:each="f, it : ${files}" th:id="'restore-' + ${it.index}" class="dialog"
+            th:attr="aria-labelledby='restore-title-' + ${it.index}">
+        <div class="dialog-head">
+            <h2 th:id="'restore-title-' + ${it.index}">Wiederherstellen</h2>
+            <button type="button" class="icon-button" data-close-dialog>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span class="visually-hidden">Schließen</span>
+            </button>
+        </div>
+        <form class="dialog-section dialog-section-last" method="post"
+              th:action="@{/admin/backup/files/{n}/restore(n=${f.name})}">
+            <p><strong>Alle aktuellen Daten werden durch den Stand der Sicherung ersetzt.</strong> Vorher legt Nestwerk
+                automatisch eine Sicherheitskopie an. Danach melden sich alle neu an.</p>
+            <div class="field">
+                <label th:for="'confirm-' + ${it.index}">Zum Bestätigen den Dateinamen eintippen:
+                    <code th:text="${f.name}">datei</code></label>
+                <input th:id="'confirm-' + ${it.index}" class="input" type="text" name="confirm" required
+                       autocomplete="off" th:attr="pattern=${#strings.replace(f.name, '.', '\.')}">
+            </div>
+            <div class="dialog-foot">
+                <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+                <button type="submit" class="button button-danger">Wiederherstellen</button>
+            </div>
+        </form>
+    </dialog>
+</main>
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>
