@@ -1815,6 +1815,13 @@ form.inline { display: inline; margin: 0; }
 .run-failed { background: var(--brick-soft); }
 .run-warning { background: var(--honey-soft); }
 .cell-actions form { display: inline; }
+.backup-heading { margin: 2rem 0 0.75rem; }
+.backup-form { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: flex-end; }
+.backup-form .field-wide, .backup-form .field-switch { flex-basis: 100%; }
+.backup-form .field { min-width: 12rem; }
+.backup-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.backup-test { margin-top: 0.75rem; }
+.input-narrow { max-width: 7rem; }
 
 /* KI-Zugänge */
 .copy-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }

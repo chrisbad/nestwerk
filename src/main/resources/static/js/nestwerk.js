@@ -195,6 +195,8 @@
             const token = document.querySelector('meta[name="_csrf"]')?.content;
             const header = document.querySelector('meta[name="_csrf_header"]')?.content;
             if (token && header) xhr.setRequestHeader(header, token);
+            const passphrase = form.querySelector("[data-upload-passphrase]")?.value;
+            if (passphrase) xhr.setRequestHeader("X-Backup-Passphrase", encodeURIComponent(passphrase));
             xhr.upload.addEventListener("progress", e => {
                 if (e.lengthComputable) progress.value = Math.round(e.loaded * 100 / e.total);
             });

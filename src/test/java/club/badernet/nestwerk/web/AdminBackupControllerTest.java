@@ -3,6 +3,7 @@ package club.badernet.nestwerk.web;
 import club.badernet.nestwerk.TestcontainersConfiguration;
 import club.badernet.nestwerk.backup.BackupRun;
 import club.badernet.nestwerk.backup.BackupService;
+import club.badernet.nestwerk.backup.BackupSettings;
 import club.badernet.nestwerk.user.User;
 import club.badernet.nestwerk.user.UserRepository;
 import club.badernet.nestwerk.user.UserService;
@@ -18,6 +19,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
+import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,12 +40,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = {"nestwerk.admin.password=test-admin-pw",
         "nestwerk.attachments.dir=target/backup-test/attachments",
-        "nestwerk.backup.dir=target/backup-test/backups"})
+        "nestwerk.backup.dir=target/backup-test/backups",
+        "nestwerk.backup.external-dir=target/backup-test/external"})
 @AutoConfigureMockMvc
 class AdminBackupControllerTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired BackupService backups;
+    @Autowired BackupSettings settings;
     @Autowired UserService userService;
     @Autowired UserRepository users;
     @Autowired JdbcTemplate jdbc;
@@ -113,6 +118,49 @@ class AdminBackupControllerTest {
                         .param("confirm", run.getFileName()))
                 .andExpect(redirectedUrl("/login?restored"));
         assertThat(jdbc.queryForList("SELECT value FROM app_settings WHERE key = 'test.marker'")).isEmpty();
+    }
+
+    @Test
+    void savesSettingsAndValidatesInput() throws Exception {
+        mockMvc.perform(post("/admin/backup/settings/schedule").with(csrf()).with(chef())
+                        .param("enabled", "true").param("frequency", "WEEKLY").param("weekday", "SATURDAY")
+                        .param("time", "03:15"))
+                .andExpect(flash().attributeExists("success"));
+        assertThat(settings.schedule()).isEqualTo(new BackupSettings.Schedule(true, BackupSettings.Frequency.WEEKLY,
+                DayOfWeek.SATURDAY, LocalTime.of(3, 15)));
+        mockMvc.perform(get("/admin/backup").with(chef()))
+                .andExpect(content().string(containsString("Nächste Sicherung: ")));
+
+        mockMvc.perform(post("/admin/backup/settings/webdav").with(csrf()).with(chef())
+                        .param("enabled", "true").param("url", "ftp://falsch"))
+                .andExpect(flash().attribute("error", containsString("https://")));
+        mockMvc.perform(post("/admin/backup/settings/webdav").with(csrf()).with(chef())
+                        .param("url", "https://cloud.example.org/remote.php/dav/files/anna/Nestwerk")
+                        .param("user", "anna").param("password", "app-passwort"))
+                .andExpect(flash().attributeExists("success"));
+        assertThat(settings.webDav().url()).endsWith("/Nestwerk/");
+        assertThat(settings.webDav().hasPassword()).isTrue();
+        assertThat(jdbc.queryForObject("SELECT value FROM app_settings WHERE key = 'backup.webdav.password'",
+                String.class)).startsWith("v1:").doesNotContain("app-passwort");
+
+        mockMvc.perform(post("/admin/backup/settings/encryption").with(csrf()).with(chef()).param("enabled", "true"))
+                .andExpect(flash().attribute("error", containsString("Passphrase")));
+        settings.updateSchedule(new BackupSettings.Schedule(false, BackupSettings.Frequency.DAILY, DayOfWeek.SUNDAY,
+                LocalTime.of(2, 30)), java.time.Instant.now());
+    }
+
+    @Test
+    void homeWarnsManagersAboutMissingBackups() throws Exception {
+        jdbc.update("DELETE FROM backup_runs");
+
+        mockMvc.perform(get("/").with(chef()))
+                .andExpect(content().string(containsString("Es gibt noch keine Sicherung.")));
+        mockMvc.perform(get("/").with(user("ohnerecht")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("Sicherung"))));
+
+        backups.backupNow(BackupRun.Kind.MANUAL, admin);
+        mockMvc.perform(get("/").with(chef()))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("Es gibt noch keine"))));
     }
 
     @Test

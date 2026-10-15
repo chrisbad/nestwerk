@@ -25,6 +25,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -52,10 +53,14 @@ public class BackupService {
     private static final Logger log = LoggerFactory.getLogger(BackupService.class);
     private static final Pattern FILE = Pattern.compile("nestwerk-[a-z0-9-]{1,80}\\.zip");
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
+    static final int STALE_DAYS = 3;
     static final long MAX_UPLOAD = 20L * 1024 * 1024 * 1024;
 
     private final BackupWriter writer;
     private final RestoreService restorer;
+    private final BackupDistributor distributor;
+    private final BackupNotifier notifier;
+    private final BackupSettings settings;
     private final BackupRunRepository runs;
     private final UserRepository users;
     private final PermissionCatalog permissions;
@@ -70,11 +75,15 @@ public class BackupService {
         return t;
     });
 
-    public BackupService(BackupWriter writer, RestoreService restorer, BackupRunRepository runs,
+    public BackupService(BackupWriter writer, RestoreService restorer, BackupDistributor distributor,
+                         BackupNotifier notifier, BackupSettings settings, BackupRunRepository runs,
                          UserRepository users, PermissionCatalog permissions, TransactionTemplate tx,
                          JsonMapper json, Clock clock, @Value("${nestwerk.backup.dir:./data/backups}") String dir) {
         this.writer = writer;
         this.restorer = restorer;
+        this.distributor = distributor;
+        this.notifier = notifier;
+        this.settings = settings;
         this.runs = runs;
         this.users = users;
         this.permissions = permissions;
@@ -205,17 +214,45 @@ public class BackupService {
             Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE);
             long size = Files.size(target);
             Manifest m = result.manifest();
-            String message = m.tables().size() + " Tabellen, " + m.rowCount() + " Zeilen, " + m.attachmentCount()
-                    + " Anhänge" + (result.warnings().isEmpty() ? "" : ". " + String.join("; ", result.warnings()));
-            BackupRun.Status status = result.warnings().isEmpty() ? BackupRun.Status.SUCCESS
-                    : BackupRun.Status.WARNING;
+            List<String> notes = new ArrayList<>(List.of(m.tables().size() + " Tabellen, " + m.rowCount()
+                    + " Zeilen, " + m.attachmentCount() + " Anhänge"));
+            notes.addAll(result.warnings());
+            boolean problem = !result.warnings().isEmpty();
+            if (run.getKind() != BackupRun.Kind.PRE_RESTORE) {
+                BackupDistributor.Outcome outcome = distributor.distribute(target, name);
+                notes.addAll(outcome.notes());
+                outcome.failures().forEach(f -> notes.add("Fehler – " + f));
+                problem |= !outcome.failures().isEmpty();
+                int pruned = pruneLocal();
+                if (pruned > 0) {
+                    notes.add("Lokal " + pruned + " alte entfernt");
+                }
+            }
+            String message = String.join(". ", notes);
             log.info("Sicherung {} angelegt: {}", name, message);
-            return finish(run, status, name, size, message);
+            BackupRun done = finish(run, problem ? BackupRun.Status.WARNING : BackupRun.Status.SUCCESS, name, size,
+                    message);
+            notifier.finished(done);
+            return done;
         } catch (IOException | RuntimeException e) {
             log.error("Sicherung fehlgeschlagen", e);
             deleteQuietly(temp);
-            return finish(run, BackupRun.Status.FAILED, null, null, describe(e));
+            BackupRun failed = finish(run, BackupRun.Status.FAILED, null, null, describe(e));
+            notifier.finished(failed);
+            return failed;
         }
+    }
+
+    /** Lokale Sicherungen nach der Aufbewahrungsregel löschen; hochgeladene bleiben. */
+    private int pruneLocal() {
+        List<Retention.Item> items = listFiles().stream().map(f -> new Retention.Item(f.name(), f.modified()))
+                .toList();
+        int removed = 0;
+        for (String name : Retention.toDelete(items, settings.retention(), clock.getZone())) {
+            deleteQuietly(dir.resolve(name));
+            removed++;
+        }
+        return removed;
     }
 
     private BackupRun finish(BackupRun run, BackupRun.Status status, String file, Long size, String message) {
@@ -238,33 +275,62 @@ public class BackupService {
 
     /** Übernimmt eine hochgeladene Sicherung ins Verzeichnis, nachdem sie vollständig geprüft wurde. */
     public String upload(InputStream content, User actor) {
+        return upload(content, null, actor);
+    }
+
+    /**
+     * Wie {@link #upload(InputStream, User)}; eine verschlüsselte Kopie ({@code .zip.enc}) wird mit der angegebenen
+     * oder sonst der gespeicherten Passphrase entschlüsselt und unverschlüsselt abgelegt.
+     */
+    public String upload(InputStream content, String passphrase, User actor) {
         requireManage(actor);
         Path temp = null;
+        Path plain = null;
         try {
             Files.createDirectories(dir);
             temp = Files.createTempFile(dir, ".upload-", ".tmp");
-            try (OutputStream out = Files.newOutputStream(temp)) {
-                byte[] buffer = new byte[64 * 1024];
-                long total = 0;
-                int n;
-                while ((n = content.read(buffer)) > 0) {
-                    total += n;
-                    if (total > MAX_UPLOAD) {
-                        throw new InvalidBackupException("Die Datei ist zu groß.");
-                    }
-                    out.write(buffer, 0, n);
-                }
+            copyLimited(content, temp);
+            byte[] head;
+            try (InputStream in = Files.newInputStream(temp)) {
+                head = in.readNBytes(BackupCrypto.MAGIC.length);
             }
-            try (BackupArchive archive = BackupArchive.open(temp, json)) {
-                archive.verify();
+            Path archive = temp;
+            if (BackupCrypto.isEncrypted(head)) {
+                String key = passphrase != null && !passphrase.isEmpty() ? passphrase
+                        : settings.passphrase().orElseThrow(() -> new InvalidBackupException(
+                        "Die Sicherung ist verschlüsselt. Bitte die Passphrase angeben."));
+                plain = Files.createTempFile(dir, ".upload-", ".zip.tmp");
+                try (InputStream in = Files.newInputStream(temp); OutputStream out = Files.newOutputStream(plain)) {
+                    BackupCrypto.decrypt(in, out, key);
+                }
+                archive = plain;
+            }
+            try (BackupArchive opened = BackupArchive.open(archive, json)) {
+                opened.verify();
             }
             String name = uniqueName("nestwerk-hochgeladen-" + LocalDateTime.now(clock).format(STAMP));
-            Files.move(temp, dir.resolve(name), StandardCopyOption.ATOMIC_MOVE);
+            Files.move(archive, dir.resolve(name), StandardCopyOption.ATOMIC_MOVE);
             return name;
         } catch (IOException e) {
             throw new UncheckedIOException("Hochladen fehlgeschlagen", e);
         } finally {
             deleteQuietly(temp);
+            deleteQuietly(plain);
+        }
+    }
+
+    private static void copyLimited(InputStream content, Path target) throws IOException {
+        try (OutputStream out = Files.newOutputStream(target)) {
+            byte[] buffer = new byte[64 * 1024];
+            long total = 0;
+            int n;
+            while ((n = content.read(buffer)) > 0) {
+                total += n;
+                if (total > MAX_UPLOAD) {
+                    throw new InvalidBackupException("Die Datei ist zu groß.");
+                }
+                out.write(buffer, 0, n);
+            }
         }
     }
 
@@ -339,7 +405,7 @@ public class BackupService {
         }
     }
 
-    static String describe(Throwable e) {
+    public static String describe(Throwable e) {
         String message = e.getMessage();
         return message == null || message.isBlank() ? e.getClass().getSimpleName() : message;
     }
@@ -352,6 +418,19 @@ public class BackupService {
                 // Aufräumen ist bestmöglich
             }
         }
+    }
+
+    /** Hinweis für Verwalter, wenn die letzte erfolgreiche Sicherung fehlt oder älter als drei Tage ist. */
+    public Optional<String> staleWarning(User user) {
+        if (!canManage(user)) {
+            return Optional.empty();
+        }
+        Optional<BackupRun> last = lastSuccessfulBackup();
+        if (last.isEmpty()) {
+            return Optional.of("Es gibt noch keine Sicherung.");
+        }
+        long days = java.time.Duration.between(last.get().getStartedAt(), clock.instant()).toDays();
+        return days >= STALE_DAYS ? Optional.of("Die letzte Sicherung ist " + days + " Tage alt.") : Optional.empty();
     }
 
     Optional<BackupRun> lastSuccessfulBackup() {

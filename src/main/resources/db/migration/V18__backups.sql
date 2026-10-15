@@ -15,3 +15,6 @@ CREATE INDEX backup_runs_started_idx ON backup_runs (started_at DESC);
 INSERT INTO permissions (key, module, label, description, sort_order)
 VALUES ('BACKUP_MANAGE', 'Verwaltung', 'Sicherungen verwalten',
         'Sicherungen anlegen, herunterladen, einstellen und Daten wiederherstellen', 70);
+
+-- Zugangsdaten der Sicherungsziele (z. B. ein privater SSH-Schlüssel) sind verschlüsselt länger als 2000 Zeichen
+ALTER TABLE app_settings ALTER COLUMN value TYPE TEXT;

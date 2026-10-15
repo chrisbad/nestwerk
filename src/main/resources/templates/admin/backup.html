@@ -56,10 +56,214 @@
         <form class="inline-form" data-raw-upload th:attr="data-upload-url=@{/admin/backup/upload}">
             <div class="field">
                 <label for="backup-file">Sicherungsdatei (.zip)</label>
-                <input id="backup-file" class="input" type="file" accept=".zip,application/zip" required>
+                <input id="backup-file" class="input" type="file" accept=".zip,.enc,application/zip" required>
+            </div>
+            <div class="field">
+                <label for="backup-passphrase">Passphrase <span class="hint">nur für verschlüsselte Kopien (.zip.enc)</span></label>
+                <input id="backup-passphrase" class="input" type="password" autocomplete="off" data-upload-passphrase>
             </div>
             <button type="submit" class="button">Hochladen</button>
             <progress hidden max="100" value="0" data-upload-progress></progress>
+        </form>
+    </section>
+
+    <h2 id="einstellungen" class="backup-heading">Automatisch sichern</h2>
+
+    <section class="sheet event-form settings-section">
+        <h3>Zeitplan</h3>
+        <p class="muted" th:if="${nextRun != null}" th:text="'Nächste Sicherung: ' + ${nextRun}">Nächste</p>
+        <form method="post" th:action="@{/admin/backup/settings/schedule}" class="backup-form">
+            <div class="field-switch">
+                <label class="switch">
+                    <input type="checkbox" name="enabled" value="true" th:checked="${schedule.enabled}">
+                    <span class="switch-track" aria-hidden="true"></span>
+                    Regelmäßig sichern
+                </label>
+            </div>
+            <div class="field">
+                <label for="frequency">Wie oft</label>
+                <select id="frequency" name="frequency">
+                    <option value="DAILY" th:selected="${schedule.frequency.name() == 'DAILY'}">Täglich</option>
+                    <option value="WEEKLY" th:selected="${schedule.frequency.name() == 'WEEKLY'}">Wöchentlich</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="weekday">Wochentag <span class="hint">bei wöchentlich</span></label>
+                <select id="weekday" name="weekday">
+                    <option th:each="d : ${weekdays}" th:value="${d.key}" th:text="${d.value}"
+                            th:selected="${d.key == schedule.weekday.name()}">Sonntag</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="time">Uhrzeit</label>
+                <input id="time" class="input" type="time" name="time" required th:value="${schedule.time}">
+            </div>
+            <button type="submit" class="button">Speichern</button>
+        </form>
+    </section>
+
+    <section class="sheet event-form settings-section">
+        <h3>Aufbewahrung</h3>
+        <p class="muted">Gilt hier auf dem Server und an jedem Ziel. Hochgeladene Sicherungen bleiben immer.</p>
+        <form method="post" th:action="@{/admin/backup/settings/retention}" class="backup-form">
+            <div class="field">
+                <label for="keepLast">Die letzten</label>
+                <input id="keepLast" class="input input-narrow" type="number" name="keepLast" min="1" max="365"
+                       th:value="${retention.keepLast}" required>
+            </div>
+            <div class="field">
+                <label for="keepWeekly">dazu je eine pro Woche für</label>
+                <input id="keepWeekly" class="input input-narrow" type="number" name="keepWeekly" min="0" max="104"
+                       th:value="${retention.keepWeekly}" required> <span class="hint">Wochen</span>
+            </div>
+            <div class="field">
+                <label for="keepMonthly">und je eine pro Monat für</label>
+                <input id="keepMonthly" class="input input-narrow" type="number" name="keepMonthly" min="0" max="120"
+                       th:value="${retention.keepMonthly}" required> <span class="hint">Monate</span>
+            </div>
+            <div class="field-switch">
+                <label class="switch">
+                    <input type="checkbox" name="notifySuccess" value="true" th:checked="${notifySuccess}">
+                    <span class="switch-track" aria-hidden="true"></span>
+                    Auch bei Erfolg benachrichtigen (Fehler werden immer gemeldet)
+                </label>
+            </div>
+            <button type="submit" class="button">Speichern</button>
+        </form>
+    </section>
+
+    <section class="sheet event-form settings-section">
+        <h3>Verschlüsselung</h3>
+        <p class="muted">Kopien an der externen Platte, per WebDAV und SFTP werden mit der Passphrase verschlüsselt
+            (<code>.zip.enc</code>). Die Passphrase gut aufbewahren: Ohne sie lässt sich eine solche Kopie nicht
+            wiederherstellen.</p>
+        <form method="post" th:action="@{/admin/backup/settings/encryption}" class="backup-form">
+            <div class="field-switch">
+                <label class="switch">
+                    <input type="checkbox" name="enabled" value="true" th:checked="${encryptionEnabled}">
+                    <span class="switch-track" aria-hidden="true"></span>
+                    Kopien verschlüsseln
+                </label>
+            </div>
+            <div class="field">
+                <label for="passphrase">Passphrase
+                    <span class="hint" th:text="${hasPassphrase} ? 'gespeichert; leer lassen = unverändert' : 'mindestens 8 Zeichen'">hint</span></label>
+                <input id="passphrase" class="input" type="password" name="passphrase" minlength="8"
+                       autocomplete="new-password">
+            </div>
+            <button type="submit" class="button">Speichern</button>
+        </form>
+    </section>
+
+    <h2 id="ziele" class="backup-heading">Zusätzliche Ziele</h2>
+    <p class="muted">Jede Sicherung (von Hand oder geplant) wird zusätzlich an alle eingeschalteten Ziele kopiert.</p>
+
+    <section class="sheet event-form settings-section" th:if="${sftpHostKey != null}" role="status">
+        <h3>SFTP-Server bestätigen</h3>
+        <p>Der Server meldet diesen Fingerabdruck. Stimmt er mit dem deines Servers überein
+            (<code>ssh-keygen -lf /etc/ssh/ssh_host_*_key.pub</code>)?</p>
+        <p class="backup-name" th:text="${sftpHostKey.fingerprint}">SHA256:…</p>
+        <form method="post" th:action="@{/admin/backup/targets/sftp/trust}">
+            <input type="hidden" name="knownHost" th:value="${sftpHostKey.knownHostsLine}">
+            <button type="submit" class="button">Fingerabdruck bestätigen</button>
+        </form>
+    </section>
+
+    <section class="sheet event-form settings-section">
+        <h3>Externe Platte</h3>
+        <p class="muted">Verzeichnis im Container: <code th:text="${externalDir}">/data/external</code>.
+            Die Platte wird beim Installieren als <code>NESTWERK_EXTERNAL_BACKUP_DIR</code> eingebunden.</p>
+        <p th:text="${externalPrepared} ? 'Eingerichtet und erreichbar.' : 'Nicht eingerichtet oder nicht eingehängt.'"
+           th:classappend="${externalPrepared} ? 'muted' : 'notice'">Status</p>
+        <div class="backup-actions">
+            <form method="post" th:action="@{/admin/backup/settings/external}">
+                <input type="hidden" name="enabled" th:value="${!externalEnabled}">
+                <button type="submit" class="button"
+                        th:text="${externalEnabled} ? 'Ausschalten' : 'Einschalten'">Einschalten</button>
+            </form>
+            <form method="post" th:action="@{/admin/backup/targets/external/prepare}" th:unless="${externalPrepared}">
+                <button type="submit" class="button button-ghost">Als Ziel einrichten</button>
+            </form>
+            <form method="post" th:action="@{/admin/backup/targets/{k}/test(k='external')}">
+                <button type="submit" class="button button-ghost">Verbindung testen</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="sheet event-form settings-section">
+        <h3>WebDAV / Nextcloud</h3>
+        <form method="post" th:action="@{/admin/backup/settings/webdav}" class="backup-form">
+            <div class="field-switch">
+                <label class="switch">
+                    <input type="checkbox" name="enabled" value="true" th:checked="${webdav.enabled}">
+                    <span class="switch-track" aria-hidden="true"></span>
+                    Eingeschaltet
+                </label>
+            </div>
+            <div class="field field-wide">
+                <label for="webdav-url">Ordner-Adresse
+                    <span class="hint">Nextcloud: https://cloud.example.org/remote.php/dav/files/BENUTZER/Nestwerk/</span></label>
+                <input id="webdav-url" class="input" type="url" name="url" th:value="${webdav.url}">
+            </div>
+            <div class="field">
+                <label for="webdav-user">Benutzer</label>
+                <input id="webdav-user" class="input" type="text" name="user" th:value="${webdav.user}" autocomplete="off">
+            </div>
+            <div class="field">
+                <label for="webdav-password">App-Passwort
+                    <span class="hint" th:if="${webdav.hasPassword}">gespeichert; leer = unverändert</span></label>
+                <input id="webdav-password" class="input" type="password" name="password" autocomplete="new-password">
+            </div>
+            <button type="submit" class="button">Speichern</button>
+        </form>
+        <form method="post" th:action="@{/admin/backup/targets/{k}/test(k='webdav')}" class="backup-test">
+            <button type="submit" class="button button-ghost">Verbindung testen</button>
+        </form>
+    </section>
+
+    <section class="sheet event-form settings-section">
+        <h3>SFTP</h3>
+        <form method="post" th:action="@{/admin/backup/settings/sftp}" class="backup-form">
+            <div class="field-switch">
+                <label class="switch">
+                    <input type="checkbox" name="enabled" value="true" th:checked="${sftp.enabled}">
+                    <span class="switch-track" aria-hidden="true"></span>
+                    Eingeschaltet
+                </label>
+            </div>
+            <div class="field">
+                <label for="sftp-host">Server</label>
+                <input id="sftp-host" class="input" type="text" name="host" th:value="${sftp.host}" autocomplete="off">
+            </div>
+            <div class="field">
+                <label for="sftp-port">Port</label>
+                <input id="sftp-port" class="input input-narrow" type="number" name="port" min="1" max="65535"
+                       th:value="${sftp.port}">
+            </div>
+            <div class="field">
+                <label for="sftp-user">Benutzer</label>
+                <input id="sftp-user" class="input" type="text" name="user" th:value="${sftp.user}" autocomplete="off">
+            </div>
+            <div class="field">
+                <label for="sftp-path">Verzeichnis <span class="hint">z. B. backups/nestwerk</span></label>
+                <input id="sftp-path" class="input" type="text" name="path" th:value="${sftp.path}">
+            </div>
+            <div class="field">
+                <label for="sftp-password">Passwort
+                    <span class="hint" th:if="${sftp.hasPassword}">gespeichert; leer = unverändert</span></label>
+                <input id="sftp-password" class="input" type="password" name="password" autocomplete="new-password">
+            </div>
+            <div class="field field-wide">
+                <label for="sftp-key">Privater Schlüssel (OpenSSH, ohne Passphrase)
+                    <span class="hint" th:if="${sftp.hasPrivateKey}">gespeichert; leer = unverändert</span></label>
+                <textarea id="sftp-key" class="input backup-name" name="privateKey" rows="4"
+                          placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea>
+            </div>
+            <p class="muted field-wide" th:if="${!#strings.isEmpty(sftp.hostKey)}">Host-Key bestätigt.</p>
+            <button type="submit" class="button">Speichern</button>
+        </form>
+        <form method="post" th:action="@{/admin/backup/targets/{k}/test(k='sftp')}" class="backup-test">
+            <button type="submit" class="button button-ghost">Verbindung testen</button>
         </form>
     </section>
 

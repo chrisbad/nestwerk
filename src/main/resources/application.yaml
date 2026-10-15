@@ -64,6 +64,8 @@ nestwerk:
     dir: ${NESTWERK_ATTACHMENT_DIR:./data/attachments}
   backup:
     dir: ${NESTWERK_BACKUP_DIR:./data/backups}
+    external-dir: ${NESTWERK_EXTERNAL_BACKUP_DIR:./data/external}
+  secret-key: ${NESTWERK_SECRET_KEY:}
   base-url: ${NESTWERK_BASE_URL:http://localhost:8080}
   mail:
     from: ${MAIL_FROM:}

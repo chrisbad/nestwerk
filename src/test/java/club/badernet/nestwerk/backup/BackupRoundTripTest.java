@@ -49,7 +49,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = {"nestwerk.admin.password=test-admin-pw",
         "nestwerk.attachments.dir=target/backup-test/attachments",
-        "nestwerk.backup.dir=target/backup-test/backups"})
+        "nestwerk.backup.dir=target/backup-test/backups",
+        "nestwerk.backup.external-dir=target/backup-test/external"})
 class BackupRoundTripTest {
 
     static final byte[] PNG = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 13};
