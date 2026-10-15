@@ -59,6 +59,25 @@ Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich:
 - Abfuhrkalender lassen sich bei einer Hausarbeit mit festen Terminen als `.ics`-Datei oder Abo-Adresse
   übernehmen; Abos werden täglich aktualisiert.
 
+### KI-Anbindung (MCP)
+
+Nestwerk enthält einen MCP-Server unter `https://<nestwerk>/mcp`. Darüber kann ein KI-Assistent wie Claude
+Termine, ToDos, den Haushaltsplan, Kontakte und Benachrichtigungen lesen und bearbeiten. Löschen kann er nichts.
+
+- Der Assistent handelt immer als ein Benutzer und hat genau dessen Rechte. Ein Administrator gibt einer Rolle das
+  Recht „KI-Zugang nutzen“. Danach legt jeder Benutzer unter „KI-Zugänge“ (Benutzermenü) ein eigenes Token an.
+  Das Token wird nur einmal angezeigt und lässt sich jederzeit widerrufen.
+- Claude Code verbinden:
+
+  ```bash
+  claude mcp add --transport http nestwerk https://<nestwerk>/mcp --header "Authorization: Bearer nw_…"
+  ```
+
+  Andere Clients brauchen die Adresse und den Header `Authorization: Bearer <token>`. Die Seite „KI-Zugänge“ zeigt
+  passende Schnipsel mit der Adresse aus `NESTWERK_BASE_URL`.
+- Der Server arbeitet zustandslos. Am Reverse Proxy ist nichts Besonderes nötig, außer dass der Header
+  `Authorization` durchgereicht wird.
+
 ### Update
 
 ```bash

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('KI-Zugänge')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='ai')}"></header>
+<main class="event-main">
+    <div class="page-head">
+        <div>
+            <h1>KI-Zugänge</h1>
+            <p>Mit einem Zugang bedient ein KI-Assistent wie Claude Nestwerk in deinem Namen: Termine, ToDos,
+                Haushaltsplan, Kontakte und Benachrichtigungen. Er sieht und darf genau das, was du darfst.
+                Löschen kann er nichts.</p>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <section class="sheet pairing-code" th:if="${newToken != null}" role="status">
+        <h2 th:text="'Zugang „' + ${newTokenName} + '“'">Zugang</h2>
+        <p>Kopiere das Token jetzt. Es wird hier nicht noch einmal angezeigt.</p>
+        <div class="copy-row">
+            <input id="new-token" class="input code-input" type="text" readonly th:value="${newToken}"
+                   aria-label="Neues Token">
+            <button type="button" class="button" data-copy="new-token">Kopieren</button>
+        </div>
+    </section>
+
+    <section class="sheet event-form settings-section">
+        <h2>Neuer Zugang</h2>
+        <form method="post" th:action="@{/settings/ai}" class="inline-form">
+            <div class="field">
+                <label for="name">Name</label>
+                <input id="name" class="input" type="text" name="name" maxlength="100" required
+                       placeholder="z. B. Claude auf dem Laptop">
+            </div>
+            <div class="field">
+                <label for="expiresOn">Gültig bis <span class="hint">optional</span></label>
+                <input id="expiresOn" class="input" type="date" name="expiresOn">
+            </div>
+            <button type="submit" class="button">Token erzeugen</button>
+        </form>
+    </section>
+
+    <section class="chore-section" th:unless="${#lists.isEmpty(tokens)}">
+        <h2>Deine Zugänge</h2>
+        <ul class="sheet credit-list">
+            <li th:each="t : ${tokens}">
+                <div class="credit-main">
+                    <strong th:text="${t.name}">Claude</strong>
+                    <span class="badge" th:text="${t.active} ? 'aktiv' : 'ungültig'">aktiv</span>
+                    <span class="muted" th:text="'erstellt ' + ${t.created}">erstellt</span>
+                    <span class="muted" th:if="${t.expires != null}" th:text="'gültig bis ' + ${t.expires}">bis</span>
+                    <span class="muted" th:text="${t.lastUsed != null} ? 'zuletzt benutzt ' + ${t.lastUsed} : 'noch nie benutzt'">zuletzt</span>
+                    <span class="pending-actions" th:if="${t.active}">
+                        <form method="post" th:action="@{/settings/ai/{id}/revoke(id=${t.id})}"
+                              th:attr="data-confirm=|„${t.name}“ widerrufen? Der Assistent kommt danach nicht mehr hinein.|">
+                            <button type="submit" class="button button-danger button-small">Widerrufen</button>
+                        </form>
+                    </span>
+                </div>
+            </li>
+        </ul>
+    </section>
+
+    <section class="sheet settings-section ai-help">
+        <h2>So verbindest du einen Assistenten</h2>
+        <p>Adresse des MCP-Servers: <code th:text="${mcpUrl}">https://nestwerk.example.org/mcp</code>.
+            Das Token gehört in den Header <code>Authorization: Bearer …</code>.</p>
+        <h3>Claude Code</h3>
+        <pre class="code-snippet" id="snippet-claude-code"
+             th:text="'claude mcp add --transport http nestwerk ' + ${mcpUrl} + ' --header &quot;Authorization: Bearer DEIN_TOKEN&quot;'">claude mcp add …</pre>
+        <button type="button" class="button button-ghost button-small" data-copy="snippet-claude-code">Kopieren</button>
+        <h3>Andere MCP-Clients (JSON)</h3>
+        <pre class="code-snippet" id="snippet-json" th:text="|{
+  &quot;mcpServers&quot;: {
+    &quot;nestwerk&quot;: {
+      &quot;type&quot;: &quot;http&quot;,
+      &quot;url&quot;: &quot;${mcpUrl}&quot;,
+      &quot;headers&quot;: { &quot;Authorization&quot;: &quot;Bearer DEIN_TOKEN&quot; }
+    }
+  }
+}|">{}</pre>
+        <button type="button" class="button button-ghost button-small" data-copy="snippet-json">Kopieren</button>
+    </section>
+</main>
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>
