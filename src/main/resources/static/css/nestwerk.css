@@ -1808,6 +1808,14 @@ form.inline { display: inline; margin: 0; }
 .pairing-code { padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; border: 2px solid var(--honey); }
 .pairing-value { font-family: var(--font-display); font-size: var(--step-4); font-weight: 700; letter-spacing: 0.12em; margin: 0.25rem 0 0.5rem; }
 
+/* KI-Zugänge */
+.copy-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.code-input { flex: 1 1 18rem; min-width: 0; font-family: ui-monospace, Consolas, monospace; }
+.ai-help h3 { margin: 1.25rem 0 0.4rem; font-size: var(--step-0); }
+.ai-help code { font-family: ui-monospace, Consolas, monospace; overflow-wrap: anywhere; }
+.code-snippet { margin: 0 0 0.5rem; padding: 0.75rem; overflow-x: auto; border-radius: var(--radius-field);
+    background: var(--sage); font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem; white-space: pre; }
+
 /* Wand-Tablet: große Ziele, keine Navigation */
 .tablet-body { background: var(--bg); }
 .tablet-pair { max-width: 28rem; margin: 0 auto; padding: 3rem 1rem; display: grid; gap: 1rem; }

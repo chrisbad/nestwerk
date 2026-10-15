@@ -163,6 +163,21 @@
         });
     }
 
+    /* --- In die Zwischenablage kopieren ---------------------------------- */
+
+    function initCopyButtons() {
+        document.addEventListener("click", event => {
+            const button = event.target.closest("[data-copy]");
+            if (!button) return;
+            const source = document.getElementById(button.dataset.copy);
+            if (!source) return;
+            const text = "value" in source ? source.value : source.textContent;
+            navigator.clipboard.writeText(text.trim()).then(
+                () => showToast("Kopiert.", "success"),
+                () => showToast("Kopieren ging nicht. Bitte markieren und selbst kopieren.", "error"));
+        });
+    }
+
     /* --- Tabellen-Schnellsuche ------------------------------------------- */
 
     function applyFilter(input) {
@@ -583,6 +598,7 @@
         initConfirm();
         initPasswordToggles();
         initFilters();
+        initCopyButtons();
         initHtmx();
         initGreeting();
         initEventForm();

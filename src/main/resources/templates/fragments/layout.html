@@ -110,6 +110,8 @@
                     <a class="menu-item" th:href="@{/settings/notifications}">Meine Benachrichtigungswege</a>
                     <a class="menu-item" th:href="@{/settings/pin}"
                        th:if="${@householdAccess.mayOpen(#authentication.name)}">PIN fürs Tablet</a>
+                    <a class="menu-item" th:href="@{/settings/ai}"
+                       sec:authorize="hasAuthority('AI_ACCESS')">KI-Zugänge</a>
                     <a class="menu-item" th:href="@{/admin/notifications}"
                        sec:authorize="hasAuthority('NOTIFICATION_SETTINGS_MANAGE')">Benachrichtigungen einstellen</a>
                     <a class="menu-item" th:href="@{/admin/devices}"
