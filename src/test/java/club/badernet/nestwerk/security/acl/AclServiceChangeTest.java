@@ -109,7 +109,8 @@ class AclServiceChangeTest {
         acl.applyPreset(admin, kind.getId(), "GAST");
 
         assertThat(acl.rulesOf(kind.getId()))
-                .containsExactlyInAnyOrder(VIEW_ANY, new AclRule("CONTACT", "VIEW", "ANY"));
+                .containsExactlyInAnyOrder(VIEW_ANY, new AclRule("CONTACT", "VIEW", "ANY"),
+                        new AclRule("CHORE", "VIEW", "ANY"));
     }
 
     @Test

@@ -27,9 +27,18 @@ public class HomeController {
     private final TodoQuery todoQuery;
     private final TodoViews todoViews;
     private final ContactService contactService;
+    private final club.badernet.nestwerk.household.HouseholdAccess householdAccess;
+    private final club.badernet.nestwerk.household.ChoreTaskService choreTasks;
+    private final HouseholdViews householdViews;
 
     public HomeController(CurrentUser currentUser, TodoAccess todoAccess, TodoQuery todoQuery, TodoViews todoViews,
-                          ContactService contactService) {
+                          ContactService contactService,
+                          club.badernet.nestwerk.household.HouseholdAccess householdAccess,
+                          club.badernet.nestwerk.household.ChoreTaskService choreTasks,
+                          HouseholdViews householdViews) {
+        this.householdAccess = householdAccess;
+        this.choreTasks = choreTasks;
+        this.householdViews = householdViews;
         this.currentUser = currentUser;
         this.todoAccess = todoAccess;
         this.todoQuery = todoQuery;
@@ -54,6 +63,15 @@ public class HomeController {
                     .map(t -> todoViews.row(t, user, labels, today)).toList();
         }
         model.addAttribute("myTodos", myTodos);
+        boolean household = me.map(u -> householdAccess.mayOpen(u.getUsername())).orElse(false);
+        model.addAttribute("showHousehold", household);
+        List<HouseholdViews.TaskChip> myChores = List.of();
+        if (household) {
+            User user = me.get();
+            HouseholdViews.Context ctx = householdViews.context(user);
+            myChores = householdViews.chips(choreTasks.mine(user, ctx.today()).stream().limit(TILE_LIMIT).toList(), ctx);
+        }
+        model.addAttribute("myChores", myChores);
         return "index";
     }
 

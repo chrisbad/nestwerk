@@ -31,6 +31,10 @@
                     </th:block>
                 </dd>
             </th:block>
+            <th:block th:if="${event.absence}">
+                <dt>Haushaltsplan</dt>
+                <dd>Abwesend – wird übersprungen</dd>
+            </th:block>
             <th:block th:if="${o.privateEvent}">
                 <dt>Sichtbarkeit</dt>
                 <dd>Privat</dd>

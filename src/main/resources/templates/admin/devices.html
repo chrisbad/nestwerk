@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Wand-Tablets')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='devices')}"></header>
+<main class="event-main">
+    <div class="page-head">
+        <div>
+            <h1>Wand-Tablets</h1>
+            <p>Ein gekoppeltes Tablet zeigt den Haushaltsplan von heute und morgen. Abgehakt wird dort mit der PIN des Mitglieds.</p>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <section class="sheet pairing-code" th:if="${pairingCode != null}" role="status">
+        <h2 th:text="'Code für „' + ${pairingDevice} + '“'">Code</h2>
+        <p class="pairing-value" th:text="${#strings.substring(pairingCode, 0, 4)} + ' ' + ${#strings.substring(pairingCode, 4)}">ABCD 2345</p>
+        <p>Öffne auf dem Tablet <strong th:text="@{/tablet/pair}">/tablet/pair</strong> und gib den Code ein.
+            Er gilt 15 Minuten und nur einmal. Er wird hier nicht noch einmal angezeigt.</p>
+    </section>
+
+    <section class="sheet event-form settings-section">
+        <h2>Tablet koppeln</h2>
+        <form method="post" th:action="@{/admin/devices}" class="inline-form">
+            <div class="field">
+                <label for="name">Name</label>
+                <input id="name" class="input" type="text" name="name" maxlength="100" required placeholder="z. B. Küche">
+            </div>
+            <button type="submit" class="button">Code erzeugen</button>
+        </form>
+    </section>
+
+    <section class="chore-section" th:unless="${#lists.isEmpty(devices)}">
+        <h2>Tablets</h2>
+        <ul class="sheet credit-list">
+            <li th:each="d : ${devices}">
+                <div class="credit-main">
+                    <strong th:text="${d.name}">Küche</strong>
+                    <span class="badge" th:if="${d.active}">gekoppelt</span>
+                    <span class="badge" th:if="${!d.active and d.pairing}">wartet auf Code</span>
+                    <span class="badge" th:if="${!d.active and !d.pairing}">abgemeldet</span>
+                    <span class="muted" th:if="${d.lastSeen != null}" th:text="'zuletzt aktiv ' + ${d.lastSeen}">zuletzt</span>
+                    <span class="pending-actions">
+                        <form method="post" th:action="@{/admin/devices/{id}/pair(id=${d.id})}">
+                            <button type="submit" class="button button-ghost button-small">Neuer Code</button>
+                        </form>
+                        <form method="post" th:if="${d.active or d.pairing}" th:action="@{/admin/devices/{id}/revoke(id=${d.id})}"
+                              th:attr="data-confirm=|„${d.name}“ abmelden? Das Tablet zeigt danach nichts mehr an.|">
+                            <button type="submit" class="button button-danger button-small">Abmelden</button>
+                        </form>
+                    </span>
+                </div>
+            </li>
+        </ul>
+    </section>
+</main>
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

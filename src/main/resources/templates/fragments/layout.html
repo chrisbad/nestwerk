@@ -55,6 +55,8 @@
                th:aria-current="${active == 'calendar'} ? 'page'">Kalender</a>
             <a th:href="@{/todos}" th:if="${@todoAccess.mayOpen(#authentication.name)}"
                th:aria-current="${active == 'todos'} ? 'page'">ToDos</a>
+            <a th:href="@{/household}" th:if="${@householdAccess.mayOpen(#authentication.name)}"
+               th:aria-current="${active == 'household'} ? 'page'">Haushalt</a>
             <a th:href="@{/contacts}" th:if="${@contactService.mayOpen(#authentication.name)}"
                th:aria-current="${active == 'contacts'} ? 'page'">Kontakte</a>
             <a th:href="@{/admin/users}" sec:authorize="hasAuthority('USER_MANAGE')"
@@ -106,8 +108,12 @@
                     <p class="menu-label">Angemeldet als<br><strong sec:authentication="name">benutzer</strong></p>
                     <a class="menu-item" th:href="@{/notifications}">Benachrichtigungen</a>
                     <a class="menu-item" th:href="@{/settings/notifications}">Meine Benachrichtigungswege</a>
+                    <a class="menu-item" th:href="@{/settings/pin}"
+                       th:if="${@householdAccess.mayOpen(#authentication.name)}">PIN fürs Tablet</a>
                     <a class="menu-item" th:href="@{/admin/notifications}"
                        sec:authorize="hasAuthority('NOTIFICATION_SETTINGS_MANAGE')">Benachrichtigungen einstellen</a>
+                    <a class="menu-item" th:href="@{/admin/devices}"
+                       sec:authorize="hasAuthority('HOUSEHOLD_DEVICE_MANAGE')">Wand-Tablets</a>
                     <form th:action="@{/logout}" method="post">
                         <button type="submit" class="menu-item">Abmelden</button>
                     </form>

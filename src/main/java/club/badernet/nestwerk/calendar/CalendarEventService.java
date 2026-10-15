@@ -3,6 +3,7 @@ package club.badernet.nestwerk.calendar;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
 import club.badernet.nestwerk.security.PermissionCatalog;
 import club.badernet.nestwerk.user.User;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,10 +30,12 @@ public class CalendarEventService {
     private final RecurrenceExpander expander;
     private final ZoneId zone;
     private final PermissionCatalog permissions;
+    private final ApplicationEventPublisher publisher;
 
     public CalendarEventService(CalendarEventRepository events, FamilyMemberRepository members,
                                 RecurrenceExpander expander, CalendarSettings settings,
-                                PermissionCatalog permissions) {
+                                PermissionCatalog permissions, ApplicationEventPublisher publisher) {
+        this.publisher = publisher;
         this.events = events;
         this.members = members;
         this.expander = expander;
@@ -72,7 +75,11 @@ public class CalendarEventService {
         CalendarEvent event = new CalendarEvent(UUID.randomUUID() + "@nestwerk", requireTitle(in.title()),
                 times[0], times[1], in.allDay(), zone.getId(), actor.getId());
         applyDetails(event, in);
-        return events.save(event);
+        CalendarEvent saved = events.save(event);
+        if (saved.isAbsence()) {
+            publisher.publishEvent(new AbsenceChangedEvent(saved.getId()));
+        }
+        return saved;
     }
 
     @Transactional
@@ -84,6 +91,7 @@ public class CalendarEventService {
         if (in.privateEvent() && !event.isPrivateEvent()) {
             require(actor, CalendarPermission.CALENDAR_PRIVATE_CREATE);
         }
+        boolean wasAbsence = event.isAbsence();
         Instant[] times = times(in);
         boolean seriesChanged = !times[0].equals(event.getStartsAt())
                 || !java.util.Objects.equals(normalizeRule(in.rrule()), event.getRrule());
@@ -94,6 +102,7 @@ public class CalendarEventService {
             event.clearExceptions();
         }
         event.markChanged();
+        absenceChanged(event, wasAbsence);
     }
 
     @Transactional
@@ -103,6 +112,7 @@ public class CalendarEventService {
             throw new AccessDeniedException("Keine Berechtigung zum Löschen dieses Termins");
         }
         events.delete(event);
+        absenceChanged(event, false);
     }
 
     @Transactional
@@ -110,6 +120,7 @@ public class CalendarEventService {
         CalendarEvent event = editableSeries(id, recurrenceId, actor);
         event.cancelOccurrence(recurrenceId);
         event.markChanged();
+        absenceChanged(event, false);
     }
 
     @Transactional
@@ -123,6 +134,14 @@ public class CalendarEventService {
         event.overrideOccurrence(recurrenceId, requireTitle(in.title()), description(in.description()),
                 location(in.location()), start, end);
         event.markChanged();
+        absenceChanged(event, false);
+    }
+
+    private void absenceChanged(CalendarEvent event, boolean wasAbsence) {
+        if (wasAbsence || event.isAbsence()) {
+            events.flush();
+            publisher.publishEvent(new AbsenceChangedEvent(event.getId()));
+        }
     }
 
     public boolean canEdit(CalendarEvent event, User actor) {
@@ -152,6 +171,7 @@ public class CalendarEventService {
         event.setDescription(description(in.description()));
         event.setLocation(location(in.location()));
         event.setPrivateEvent(in.privateEvent());
+        event.setAbsence(in.absence());
         String rule = normalizeRule(in.rrule());
         if (rule != null) {
             expander.validate(rule, event.getStartsAt().atZone(zone));

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Kopf mit Bereichsnavigation; erwartet ${tab} -->
+<div th:fragment="head(title, subtitle)" class="page-head household-head">
+    <div>
+        <h1 th:text="${title}">Haushaltsplan</h1>
+        <p th:if="${subtitle != null}" th:text="${subtitle}">KW 42</p>
+    </div>
+    <nav class="segmented" aria-label="Haushalt">
+        <a th:href="@{/household}" th:aria-current="${tab == 'week'} ? 'page'">Wochenplan</a>
+        <a th:href="@{/household/today}" th:aria-current="${tab == 'today'} ? 'page'">Heute</a>
+        <a th:href="@{/household/chores}" th:aria-current="${tab == 'chores'} ? 'page'">Hausarbeiten</a>
+        <a th:href="@{/household/stats}" th:aria-current="${tab == 'stats'} ? 'page'">Auswertung</a>
+        <a th:href="@{/household/rewards}" th:if="${@rewardService.mayOpen(#authentication.name)}"
+           th:aria-current="${tab == 'rewards'} ? 'page'">Belohnungen</a>
+    </nav>
+</div>
+
+<!-- Aufwand als ein bis drei Punkte -->
+<span th:fragment="effort(effort, label)" class="effort" th:classappend="'effort-' + ${effort}"
+      th:title="'Aufwand: ' + ${label}" role="img" th:aria-label="'Aufwand ' + ${label}">
+    <i></i><i></i><i></i>
+</span>
+
+<!-- Felder zum Buchen: Aufwand (mit Minuten je Grad), tatsächliche Dauer und Zeitpunkt der Erledigung -->
+<div th:fragment="book-fields(prefix, easy, medium, hard)" class="book-fields" data-book-form>
+    <fieldset class="field choices effort-choices">
+        <legend>Aufwand</legend>
+        <label class="choice effort-choice" th:each="e : ${@householdViews.efforts()}"
+               th:with="m=${e.name() == 'EASY' ? easy : (e.name() == 'MEDIUM' ? medium : hard)}">
+            <input type="radio" name="effort" th:value="${e}" th:checked="${e.name() == 'MEDIUM'}"
+                   th:attr="data-minutes=${m}">
+            <span th:text="${e.label()}">leicht</span>
+            <span class="effort-minutes" th:text="${m} + ' Min'">10 Min</span>
+        </label>
+    </fieldset>
+    <div class="field-row">
+        <div class="field">
+            <label th:for="|${prefix}-minutes|">Tatsächliche Dauer <span class="hint">Minuten</span></label>
+            <input th:id="|${prefix}-minutes|" class="input" type="number" name="minutes" min="1" max="600"
+                   th:value="${medium}" required data-book-minutes>
+        </div>
+        <div class="field">
+            <label th:for="|${prefix}-at|">Erledigt am</label>
+            <input th:id="|${prefix}-at|" class="input" type="datetime-local" name="performedAt"
+                   th:value="${@householdViews.nowInput()}" required data-book-now>
+        </div>
+    </div>
+</div>
+
+<!-- Mithelfer beim Buchen; erwartet eine Id-Vorsilbe -->
+<fieldset th:fragment="helper-fields" class="field choices">
+    <legend>Mitgeholfen haben <span class="hint">jeder bekommt dieselbe Dauer</span></legend>
+    <label class="choice choice-member" th:each="m : ${@householdViews.bookMembers()}"
+           th:style="|--member-color: ${m.color}|">
+        <input type="checkbox" name="helpers" th:value="${m.id}">
+        <span th:text="${m.name}">Tim</span>
+    </label>
+</fieldset>
+
+<!-- Eine Aufgabe; erwartet ${c} (TaskChip), ${back}, optional ${showAssignee}, ${showDay}, ${toast} -->
+<li th:fragment="chip" class="chore-chip" th:id="|task-${c.id}|"
+    th:classappend="${(c.done ? ' is-done' : '') + (c.overdue ? ' is-overdue' : '')}"
+    th:style="${c.assignee != null} ? |--member-color: ${c.assignee.color}|">
+    <th:block th:if="${c.canComplete}">
+        <button type="button" class="chore-check" th:title="'Buchen: ' + ${c.title}"
+                th:attr="data-open-dialog=|book-${c.id}|">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.5 3.5 3.5 7.5-8"/></svg>
+            <span class="visually-hidden" th:text="'Buchen: ' + ${c.title}">Buchen</span>
+        </button>
+        <dialog class="dialog book-dialog" th:id="|book-${c.id}|">
+            <form method="post" th:action="@{/household/tasks/{id}/complete(id=${c.id})}"
+                  th:hx-post="@{/household/tasks/{id}/complete(id=${c.id})}" hx-target="closest li"
+                  hx-swap="outerHTML">
+                <input type="hidden" name="back" th:value="${back}">
+                <div class="dialog-head">
+                    <h2 th:text="${c.title}">Spülmaschine</h2>
+                    <button type="button" class="icon-button" data-close-dialog>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                        <span class="visually-hidden">Schließen</span>
+                    </button>
+                </div>
+                <div class="dialog-body">
+                    <div th:replace="~{household/fragments :: book-fields(|chip-${c.id}|, ${c.minutesEasy}, ${c.minutesMedium}, ${c.minutesHard})}"></div>
+                    <fieldset th:replace="~{household/fragments :: helper-fields}"></fieldset>
+                </div>
+                <div class="dialog-foot">
+                    <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+                    <button type="submit" class="button">Buchen</button>
+                </div>
+            </form>
+        </dialog>
+    </th:block>
+    <form th:if="${c.canUndo}" method="post" th:action="@{/household/tasks/{id}/undo(id=${c.id})}"
+          th:hx-post="@{/household/tasks/{id}/undo(id=${c.id})}" hx-target="closest li" hx-swap="outerHTML">
+        <input type="hidden" name="back" th:value="${back}">
+        <button type="submit" class="chore-check is-checked" th:title="'Rückgängig: ' + ${c.title}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6.5 12.5 3.5 3.5 7.5-8"/></svg>
+            <span class="visually-hidden" th:text="'Rückgängig: ' + ${c.title}">Rückgängig</span>
+        </button>
+    </form>
+    <span th:unless="${c.canComplete or c.canUndo}" class="chore-check is-static" th:classappend="${c.done} ? 'is-checked'"
+          aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="m6.5 12.5 3.5 3.5 7.5-8"/></svg>
+    </span>
+    <a class="chore-body" th:href="@{/household/tasks/{id}(id=${c.id})}">
+        <span class="chore-title" th:text="${c.title}">Spülmaschine</span>
+        <span class="chore-meta">
+            <span th:if="${showDay != null and showDay}" th:text="${c.dayLabel}">heute</span>
+            <span th:if="${c.time != null}" th:text="${c.time}">19:00</span>
+            <span th:text="${c.minutes} + ' Min'">15 Min</span>
+            <th:block th:if="${c.effort != null}">
+                <span th:replace="~{household/fragments :: effort(${c.effort}, ${c.effortLabel})}"></span>
+            </th:block>
+            <span class="chore-who" th:if="${showAssignee != null and showAssignee}"
+                  th:text="${c.assignee != null} ? ${c.assignee.name} : 'offen'">Lena</span>
+        </span>
+    </a>
+    <p hidden th:if="${toast != null}" th:attr="data-toast=${toastType}" th:text="${toast}"></p>
+</li>
+
+</body>
+</html>

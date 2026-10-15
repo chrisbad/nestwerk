@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${chore.title})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='household')}"></header>
+<main class="event-main">
+    <a class="back-link" th:href="@{/household/chores}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+        Zu den Hausarbeiten
+    </a>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <article class="sheet event-view">
+        <div class="detail-head">
+            <div>
+                <h1 th:text="${chore.title}">Spülmaschine</h1>
+                <p class="event-when" th:text="${schedule}">Täglich, 07:00 Uhr</p>
+            </div>
+            <div class="todo-detail-actions">
+                <button type="button" class="button" th:if="${canBook}" data-open-dialog="book-chore">Jetzt buchen</button>
+                <a class="button button-ghost" th:if="${canEdit}" th:href="@{/household/chores/{id}/edit(id=${chore.id})}">Bearbeiten</a>
+            </div>
+        </div>
+
+        <p class="notice" th:unless="${chore.active}">Deaktiviert: Es werden keine neuen Termine geplant.</p>
+
+        <dl class="event-facts">
+            <th:block th:if="${chore.area != null}">
+                <dt>Bereich</dt>
+                <dd th:text="${chore.area}">Küche</dd>
+            </th:block>
+            <dt>Zeitaufwand</dt>
+            <dd th:text="|leicht ${chore.minutesEasy} · mittel ${chore.minutesMedium} · schwer ${chore.minutesHard} Minuten|">
+                leicht 10 · mittel 15 · schwer 30 Minuten
+            </dd>
+            <th:block th:unless="${chore.kind.name() == 'ON_DEMAND'}">
+                <dt>Verteilung</dt>
+                <dd th:text="${chore.distribution.label()}">Reihum</dd>
+            </th:block>
+            <th:block th:unless="${#lists.isEmpty(candidates)}">
+                <dt th:text="${chore.kind.name() == 'ON_DEMAND'} ? 'Wer bucht' : (${chore.distribution.name() == 'ROTATION'} ? 'Reihenfolge' : 'Wer')">Wer</dt>
+                <dd class="event-members">
+                    <span class="member-chip" th:each="m : ${candidates}" th:style="|--member-color: ${m.color}|"
+                          th:text="${m.name}">Lena</span>
+                </dd>
+            </th:block>
+        </dl>
+
+        <div class="event-notes" th:if="${chore.description != null}" th:text="${chore.description}">Notiz</div>
+    </article>
+
+    <section class="sheet todo-section" id="dates" th:if="${chore.kind.name() == 'DATES'}">
+        <div class="todo-section-head">
+            <h2>Feste Termine</h2>
+        </div>
+        <ul class="link-list" th:unless="${#lists.isEmpty(dates)}">
+            <li th:each="d : ${dates}">
+                <span th:text="${T(club.badernet.nestwerk.web.HouseholdViews).longDay(d.dueOn)} + (${d.dueTime != null} ? ', ' + ${d.dueTime} + ' Uhr' : '')">Mittwoch, 22. Oktober</span>
+                <span class="badge" th:if="${d.source.name() == 'ICAL'}">iCal</span>
+                <form th:if="${canEdit}" method="post" class="inline-form"
+                      th:action="@{/household/chores/{id}/dates/{d}/delete(id=${chore.id}, d=${d.id})}">
+                    <button type="submit" class="button button-ghost button-small">Entfernen</button>
+                </form>
+            </li>
+        </ul>
+        <p class="muted" th:if="${#lists.isEmpty(dates)}">Keine kommenden Termine.</p>
+        <form th:if="${canEdit}" class="date-add" method="post" th:action="@{/household/chores/{id}/dates(id=${chore.id})}">
+            <label class="field">
+                <span>Datum</span>
+                <input class="input" type="date" name="day" required>
+            </label>
+            <label class="field">
+                <span>Uhrzeit <span class="hint">optional</span></span>
+                <input class="input" type="time" name="time">
+            </label>
+            <button type="submit" class="button button-ghost">Termin hinzufügen</button>
+        </form>
+
+        <details class="ical-import" th:if="${canEdit}" th:open="${chore.icalUrl != null}">
+            <summary>Aus einem Kalender übernehmen (z. B. Abfuhrkalender)</summary>
+            <p class="notice" th:if="${chore.icalUrl != null}">
+                Abo: <span class="ical-url" th:text="${chore.icalUrl}">https://…</span>, wird täglich aktualisiert.
+            </p>
+            <form method="post" enctype="multipart/form-data" class="ical-form"
+                  th:action="@{/household/chores/{id}/ical(id=${chore.id})}">
+                <div class="field">
+                    <label for="ical-url">Abo-Adresse <span class="hint">https:// oder webcal://</span></label>
+                    <input id="ical-url" class="input" type="url" name="url" maxlength="500" th:value="${chore.icalUrl}"
+                           placeholder="https://gemeinde.example/abfuhr.ics">
+                </div>
+                <div class="field">
+                    <label for="ical-file">… oder Datei <span class="hint">.ics, höchstens 1 MB, ohne Abo</span></label>
+                    <input id="ical-file" class="input" type="file" name="file" accept=".ics,text/calendar">
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="ical-filter">Nur Termine mit <span class="hint">z. B. „Gelb“</span></label>
+                        <input id="ical-filter" class="input" type="text" name="filter" maxlength="100"
+                               th:value="${chore.icalFilter}">
+                    </div>
+                    <div class="field">
+                        <label for="ical-days">Fällig</label>
+                        <select id="ical-days" class="input" name="daysBefore">
+                            <option value="0" th:selected="${chore.icalDaysBefore == 0}">am Tag selbst</option>
+                            <option value="1" th:selected="${chore.icalDaysBefore == 1}">am Vortag</option>
+                            <option value="2" th:selected="${chore.icalDaysBefore == 2}">2 Tage vorher</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="ical-time">Uhrzeit <span class="hint">optional</span></label>
+                        <input id="ical-time" class="input" type="time" name="time" th:value="${chore.icalTime}">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="button">Termine übernehmen</button>
+                </div>
+            </form>
+            <form th:if="${chore.icalUrl != null}" method="post"
+                  th:action="@{/household/chores/{id}/ical/unsubscribe(id=${chore.id})}">
+                <button type="submit" class="button button-ghost button-small">Abo beenden</button>
+            </form>
+        </details>
+    </section>
+
+    <section class="sheet todo-section" th:unless="${chore.kind.name() == 'ON_DEMAND'}">
+        <div class="todo-section-head">
+            <h2>Die nächsten drei Wochen</h2>
+        </div>
+        <ul class="chore-list" th:unless="${#lists.isEmpty(upcoming)}">
+            <th:block th:each="c : ${upcoming}" th:with="showAssignee=true, showDay=true">
+                <li th:replace="~{household/fragments :: chip}"></li>
+            </th:block>
+        </ul>
+        <p class="muted" th:if="${#lists.isEmpty(upcoming)}">Nichts geplant.</p>
+    </section>
+
+    <div class="danger-zone household-danger" th:if="${canDelete}">
+        <form th:if="${chore.active}" method="post" th:action="@{/household/chores/{id}/deactivate(id=${chore.id})}">
+            <button type="submit" class="button button-ghost">Deaktivieren</button>
+        </form>
+        <form th:unless="${chore.active}" method="post" th:action="@{/household/chores/{id}/activate(id=${chore.id})}">
+            <button type="submit" class="button button-ghost">Wieder aktivieren</button>
+        </form>
+        <form method="post" th:action="@{/household/chores/{id}/delete(id=${chore.id})}"
+              th:attr="data-confirm=|Hausarbeit „${chore.title}“ löschen?|">
+            <button type="submit" class="button button-danger">Hausarbeit löschen</button>
+        </form>
+    </div>
+</main>
+<dialog class="dialog book-dialog" id="book-chore" th:if="${canBook}">
+    <form method="post" th:action="@{/household/chores/{id}/book(id=${chore.id})}">
+        <div class="dialog-head">
+            <h2 th:text="${chore.title} + ' buchen'">Spülmaschine buchen</h2>
+            <button type="button" class="icon-button" data-close-dialog>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span class="visually-hidden">Schließen</span>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <div class="field" th:if="${completeAny or ownMember == null}">
+                <label for="book-doer">Erledigt von</label>
+                <select id="book-doer" name="doer" class="input">
+                    <option th:each="m : ${allMembers.values()}" th:value="${m.id}" th:text="${m.name}"
+                            th:selected="${m.id == ownMember}">Lena</option>
+                </select>
+            </div>
+            <div th:replace="~{household/fragments :: book-fields('chore', ${chore.minutesEasy}, ${chore.minutesMedium}, ${chore.minutesHard})}"></div>
+            <fieldset th:replace="~{household/fragments :: helper-fields}"></fieldset>
+        </div>
+        <div class="dialog-foot">
+            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+            <button type="submit" class="button">Buchen</button>
+        </div>
+    </form>
+</dialog>
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

@@ -23,7 +23,20 @@
         <p class="sheet sheet-empty" th:if="${#lists.isEmpty(myTodos)}">Gerade ist nichts fällig. Schön.</p>
     </section>
 
-    <ul class="areas" th:if="${showTodos or showContacts or #authorization.expression('hasAnyAuthority(''CALENDAR_VIEW'', ''USER_MANAGE'', ''ACCESS_ROLE_MANAGE'', ''MEMBER_MANAGE'')')}">
+    <section class="home-todos" th:if="${showHousehold}">
+        <div class="home-todos-head">
+            <h2>Meine Hausarbeiten</h2>
+            <a th:href="@{/household/today}">Alle für heute</a>
+        </div>
+        <ul class="chore-list" th:unless="${#lists.isEmpty(myChores)}">
+            <th:block th:each="c : ${myChores}" th:with="back='/', showDay=true">
+                <li th:replace="~{household/fragments :: chip}"></li>
+            </th:block>
+        </ul>
+        <p class="sheet sheet-empty" th:if="${#lists.isEmpty(myChores)}">Heute ist im Haushalt nichts mehr für dich offen.</p>
+    </section>
+
+    <ul class="areas" th:if="${showTodos or showContacts or showHousehold or #authorization.expression('hasAnyAuthority(''CALENDAR_VIEW'', ''USER_MANAGE'', ''ACCESS_ROLE_MANAGE'', ''MEMBER_MANAGE'')')}">
         <li sec:authorize="hasAuthority('CALENDAR_VIEW')">
             <a class="area area-feature" th:href="@{/calendar}">
                 <span class="area-icon">
@@ -44,6 +57,17 @@
                 </span>
                 <h2>ToDos</h2>
                 <p>Was irgendwann erledigt werden muss</p>
+            </a>
+        </li>
+        <li th:if="${showHousehold}">
+            <a class="area" th:href="@{/household}">
+                <span class="area-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 20V10l6-5 6 5v10z"/><path d="M9.5 20v-4.5h5V20"/><path d="M15.5 3.5l1 1.5M18.5 4.5l-.5 1.8M20 7.5l-1.8.2"/>
+                    </svg>
+                </span>
+                <h2>Haushalt</h2>
+                <p>Haushaltsplan, Zeitkonto und Belohnungen</p>
             </a>
         </li>
         <li th:if="${showContacts}">
@@ -92,7 +116,7 @@
             </a>
         </li>
     </ul>
-    <p class="empty-home" th:unless="${showTodos or showContacts or #authorization.expression('hasAnyAuthority(''CALENDAR_VIEW'', ''USER_MANAGE'', ''ACCESS_ROLE_MANAGE'', ''MEMBER_MANAGE'')')}">
+    <p class="empty-home" th:unless="${showTodos or showContacts or showHousehold or #authorization.expression('hasAnyAuthority(''CALENDAR_VIEW'', ''USER_MANAGE'', ''ACCESS_ROLE_MANAGE'', ''MEMBER_MANAGE'')')}">
         Für dein Konto sind noch keine Bereiche freigegeben. Ein Administrator kann dir eine Rolle zuweisen.
     </p>
 </main>

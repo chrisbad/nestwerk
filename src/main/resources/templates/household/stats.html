@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Auswertung')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='household')}"></header>
+<main class="household-page">
+    <div th:replace="~{household/fragments :: head('Auswertung', ${period.label})}"></div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <div class="plan-nav">
+        <a class="icon-button" th:href="@{/household/stats(period=${period.key}, date=${period.previous})}" title="Zurück">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+            <span class="visually-hidden">Vorheriger Zeitraum</span>
+        </a>
+        <nav class="segmented" aria-label="Zeitraum">
+            <a th:href="@{/household/stats(period='day', date=${period.from})}" th:aria-current="${period.key == 'day'} ? 'page'">Tag</a>
+            <a th:href="@{/household/stats(period='week', date=${period.from})}" th:aria-current="${period.key == 'week'} ? 'page'">Woche</a>
+            <a th:href="@{/household/stats(period='month', date=${period.from})}" th:aria-current="${period.key == 'month'} ? 'page'">Monat</a>
+            <a th:href="@{/household/stats(period='year', date=${period.from})}" th:aria-current="${period.key == 'year'} ? 'page'">Jahr</a>
+        </nav>
+        <a class="icon-button" th:href="@{/household/stats(period=${period.key}, date=${period.next})}" title="Weiter">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+            <span class="visually-hidden">Nächster Zeitraum</span>
+        </a>
+    </div>
+
+    <p class="hint" th:unless="${seesAll}">Du siehst hier deine eigenen Werte.</p>
+
+    <div class="sheet stats-table-wrap" th:unless="${#lists.isEmpty(rows)}">
+        <table class="stats-table">
+            <thead>
+            <tr>
+                <th scope="col">Mitglied</th>
+                <th scope="col" class="num">Minuten</th>
+                <th scope="col" class="num">leicht</th>
+                <th scope="col" class="num">mittel</th>
+                <th scope="col" class="num">schwer</th>
+                <th scope="col" class="num">überfällig</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${rows}" th:style="|--member-color: ${r.member().color}|">
+                <th scope="row">
+                    <span class="stats-name" th:text="${r.member().name}">Lena</span>
+                    <span class="stats-bar" aria-hidden="true"><i th:style="|width: ${r.minutes() * 100 / maxMinutes}%|"></i></span>
+                </th>
+                <td class="num stats-minutes" th:text="${r.minutes()}">120</td>
+                <td class="num" th:text="${r.easy()}">3</td>
+                <td class="num" th:text="${r.medium()}">2</td>
+                <td class="num" th:text="${r.hard()}">1</td>
+                <td class="num" th:classappend="${r.overdue() > 0} ? 'is-late'" th:text="${r.overdue()}">0</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="sheet sheet-empty" th:if="${#lists.isEmpty(rows)}">
+        Dein Konto ist mit keinem Familienmitglied verknüpft, daher gibt es hier nichts auszuwerten.
+    </p>
+
+    <section class="chore-section">
+        <h2>Erledigt im Zeitraum</h2>
+        <p class="muted" th:if="${#lists.isEmpty(credits)}">In diesem Zeitraum wurde nichts abgehakt.</p>
+        <ul class="sheet credit-list" th:unless="${#lists.isEmpty(credits)}">
+            <li th:each="cr : ${credits}">
+                <div class="credit-main">
+                    <span class="muted" th:text="${cr.day()}">Mo 13.10.</span>
+                    <a th:href="@{/household/tasks/{id}(id=${cr.taskId()})}" th:text="${cr.title()}">Bad</a>
+                    <span class="member-chip" th:if="${cr.member() != null}" th:style="|--member-color: ${cr.member().color}|"
+                          th:text="${cr.member().name}">Lena</span>
+                    <strong class="credit-minutes" th:text="${cr.minutes()} + ' Min'">30 Min</strong>
+                </div>
+                <p class="hint" th:if="${cr.corrected()}"
+                   th:text="'Korrigiert von ' + ${cr.planned()} + ' Min: ' + ${cr.reason()}">Korrigiert</p>
+                <details th:if="${canCorrect}" class="credit-correct">
+                    <summary>Korrigieren</summary>
+                    <form method="post" th:action="@{/household/credits/{id}/correct(id=${cr.id()})}" class="inline-form">
+                        <input type="hidden" name="back" th:value="@{/household/stats(period=${period.key}, date=${period.from})}">
+                        <label class="field">
+                            <span>Minuten</span>
+                            <input class="input" type="number" name="minutes" min="0" max="600" th:value="${cr.minutes()}" required>
+                        </label>
+                        <label class="field credit-reason">
+                            <span>Grund</span>
+                            <input class="input" type="text" name="reason" maxlength="200" required
+                                   placeholder="z. B. nur zur Hälfte erledigt">
+                        </label>
+                        <button type="submit" class="button button-ghost">Speichern</button>
+                    </form>
+                </details>
+            </li>
+        </ul>
+    </section>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

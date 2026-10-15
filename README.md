@@ -47,6 +47,18 @@ Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich:
   Nestwerk über „Teilen → Zum Home-Bildschirm“ installiert sein.
 - Welche Wege standardmäßig gelten, legt ein Administrator unter „Benachrichtigungen einstellen“ fest.
 
+### Haushalt und Wand-Tablet
+
+- Der Haushaltsplan plant drei Wochen im Voraus. Wer im Kalender an einem Termin mit dem Häkchen „Abwesend“
+  teilnimmt, wird beim Verteilen übersprungen.
+- **Wand-Tablet koppeln:** Unter „Wand-Tablets“ (Benutzermenü, Recht „Wand-Tablets koppeln“) einen Code
+  erzeugen, auf dem Tablet `https://<nestwerk>/tablet/pair` öffnen und den Code eingeben. Das Tablet sieht
+  danach nur den Haushaltsplan von heute und morgen; abgemeldet wird es dort mit einem Klick.
+- Abgehakt wird am Tablet mit der PIN des Mitglieds. Jeder setzt sie unter „PIN fürs Tablet“, für Kinder
+  ohne Konto geht das in der Mitgliederverwaltung.
+- Abfuhrkalender lassen sich bei einer Hausarbeit mit festen Terminen als `.ics`-Datei oder Abo-Adresse
+  übernehmen; Abos werden täglich aktualisiert.
+
 ### Update
 
 ```bash

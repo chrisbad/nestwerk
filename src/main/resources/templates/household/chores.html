@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Hausarbeiten')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='household')}"></header>
+<main class="household-page">
+    <div th:replace="~{household/fragments :: head('Hausarbeiten', null)}"></div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+
+    <div class="household-actions" th:if="${canCreate}">
+        <a class="button" th:href="@{/household/chores/new}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Hausarbeit
+        </a>
+    </div>
+
+    <p class="sheet sheet-empty" th:if="${#maps.isEmpty(groups)}">
+        Noch keine Hausarbeiten.
+        <th:block th:if="${canCreate}">Lege die erste über „Hausarbeit“ an, zum Beispiel „Spülmaschine ausräumen“.</th:block>
+    </p>
+
+    <section class="chore-group" th:each="g : ${groups}">
+        <h2 th:text="${g.key}">Küche</h2>
+        <ul class="sheet chore-rows">
+            <li th:each="ch : ${g.value}" th:classappend="${!ch.active} ? 'is-inactive'">
+                <a th:href="@{/household/chores/{id}(id=${ch.id})}">
+                    <span class="chore-row-title" th:text="${ch.title}">Spülmaschine</span>
+                    <span class="chore-row-meta">
+                        <span th:text="${T(club.badernet.nestwerk.web.HouseholdViews).schedule(ch)}">Täglich</span>
+                        <span th:text="${ch.minutesRange()} + ' Min'">10–30 Min</span>
+                        <span th:unless="${ch.kind.name() == 'ON_DEMAND'}" th:text="${ch.distribution.label()}">Reihum</span>
+                    </span>
+                </a>
+            </li>
+        </ul>
+    </section>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>
