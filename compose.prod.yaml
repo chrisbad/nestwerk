@@ -1,3 +1,7 @@
+# Nestwerk im Serverbetrieb. Ergänzungen:
+#   compose.proxy.yaml  – hinter dem zentralen nginx-proxy (proxy/compose.yaml) mit Let's-Encrypt-Zertifikat
+#   compose.build.yaml  – Image lokal aus dem Quelltext bauen statt von ghcr.io laden
+# Welche Dateien gelten, steht in der .env als COMPOSE_FILE (das Installationsskript setzt das).
 services:
   db:
     image: postgres:17
@@ -15,7 +19,7 @@ services:
       retries: 10
 
   app:
-    build: .
+    image: ghcr.io/chrisbad/nestwerk:${NESTWERK_VERSION:-latest}
     restart: unless-stopped
     depends_on:
       db:
@@ -26,8 +30,12 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD}
       NESTWERK_ADMIN_USERNAME: ${NESTWERK_ADMIN_USERNAME:-admin}
       NESTWERK_ADMIN_PASSWORD: ${NESTWERK_ADMIN_PASSWORD:-}
+      NESTWERK_SECRET_KEY: ${NESTWERK_SECRET_KEY:-}
+      NESTWERK_TIMEZONE: ${NESTWERK_TIMEZONE:-Europe/Berlin}
       SPRING_DOCKER_COMPOSE_ENABLED: "false"
       NESTWERK_ATTACHMENT_DIR: /data/attachments
+      NESTWERK_BACKUP_DIR: /data/backups
+      NESTWERK_EXTERNAL_BACKUP_DIR: /data/external
       NESTWERK_BASE_URL: ${NESTWERK_BASE_URL:-http://localhost:8080}
       MAIL_HOST: ${MAIL_HOST:-}
       MAIL_PORT: ${MAIL_PORT:-587}
@@ -38,6 +46,9 @@ services:
       - "${APP_BIND:-127.0.0.1:8080}:8080"
     volumes:
       - attachments:/data/attachments
+      - backups:/data/backups
+      # externe Platte für Sicherungen; ohne Angabe ein Verzeichnis neben dieser Datei
+      - ${NESTWERK_EXTERNAL_BACKUP_HOST_DIR:-./external-backup}:/data/external
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/actuator/health"]
       interval: 15s
@@ -48,3 +59,4 @@ services:
 volumes:
   db-data:
   attachments:
+  backups:

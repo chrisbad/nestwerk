@@ -1,0 +1,91 @@
+# Baut, testet und veröffentlicht das Docker-Image nach ghcr.io/chrisbad/nestwerk.
+#   Push auf main      → Tag „main“ (Vorabversion)
+#   Tag v1.2.3         → Tags „1.2.3“, „1.2“ und „latest“ plus GitHub-Release mit Installationspaket
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - name: Tests (Testcontainers nutzt das Docker des Runners)
+        run: ./mvnw -B verify
+
+  image:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version bestimmen
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "app=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "app=0.0.0-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=ref,event=branch
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: APP_VERSION=${{ steps.version.outputs.app }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  release:
+    needs: image
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Installationspaket packen
+        run: |
+          mkdir -p dist/nestwerk
+          cp install.sh update.sh compose.prod.yaml compose.proxy.yaml .env.example dist/nestwerk/
+          mkdir -p dist/nestwerk/proxy/vhost.d
+          cp proxy/compose.yaml proxy/nestwerk-vhost.conf dist/nestwerk/proxy/
+          chmod +x dist/nestwerk/install.sh dist/nestwerk/update.sh
+          sed -i "s/^VERSION=\"\${NESTWERK_VERSION:-latest}\"/VERSION=\"\${NESTWERK_VERSION:-${GITHUB_REF_NAME#v}}\"/" \
+            dist/nestwerk/install.sh
+          tar -C dist -czf "nestwerk-install-${GITHUB_REF_NAME}.tar.gz" nestwerk
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: nestwerk-install-*.tar.gz
+          generate_release_notes: true

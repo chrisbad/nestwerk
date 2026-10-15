@@ -14,6 +14,8 @@ import club.badernet.nestwerk.user.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.core.io.Resource;
@@ -49,6 +51,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 /** Sicherungen anlegen, herunterladen, hochladen und wiederherstellen. */
 @Controller
@@ -72,9 +75,11 @@ public class AdminBackupController {
     private final BackupDistributor targets;
     private final CurrentUser currentUser;
     private final Clock clock;
+    private final String version;
 
     public AdminBackupController(BackupService backups, BackupSettings settings, BackupDistributor targets,
-                                 CurrentUser currentUser, Clock clock) {
+                                 CurrentUser currentUser, Clock clock, ObjectProvider<BuildProperties> build) {
+        this.version = Optional.ofNullable(build.getIfAvailable()).map(BuildProperties::getVersion).orElse("dev");
         this.backups = backups;
         this.settings = settings;
         this.targets = targets;
@@ -88,6 +93,7 @@ public class AdminBackupController {
         model.addAttribute("files", backups.files(actor).stream().map(f -> new FileRow(f.name(), size(f.size()),
                 moment(f.modified()))).toList());
         model.addAttribute("directory", backups.directory().toString());
+        model.addAttribute("version", version);
         BackupSettings.Schedule schedule = settings.schedule();
         model.addAttribute("schedule", schedule);
         model.addAttribute("nextRun", schedule.enabled() ? moment(BackupScheduler.nextSlot(schedule,

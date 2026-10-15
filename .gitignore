@@ -1,6 +1,7 @@
 HELP.md
 .env
 /data/
+/external-backup/
 .playwright-mcp/
 target/
 .mvn/wrapper/maven-wrapper.jar

@@ -10,7 +10,8 @@
     </parent>
     <groupId>club.badernet</groupId>
     <artifactId>nestwerk</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <!-- beim Release setzt die CI die Version aus dem Git-Tag: -Drevision=1.2.0 -->
+    <version>${revision}</version>
     <name>nestwerk</name>
     <description>nestwerk</description>
     <url/>
@@ -28,6 +29,7 @@
     </scm>
     <properties>
         <java.version>25</java.version>
+        <revision>0.0.1-SNAPSHOT</revision>
         <spring-ai.version>2.0.1</spring-ai.version>
     </properties>
     <dependencyManagement>

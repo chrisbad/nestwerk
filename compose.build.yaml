@@ -1,0 +1,5 @@
+# Image lokal aus dem Quelltext bauen (Entwicklung, start-prod.bat) statt es von ghcr.io zu laden.
+services:
+  app:
+    image: nestwerk:local
+    build: .

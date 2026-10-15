@@ -1,6 +1,6 @@
 @echo off
-rem Startet Nestwerk im Produktivmodus per Docker Compose (compose.prod.yaml).
-rem Baut das App-Image neu und startet Datenbank und App im Hintergrund.
+rem Startet Nestwerk im Produktivmodus per Docker Compose (compose.prod.yaml + compose.build.yaml).
+rem Baut das App-Image lokal neu und startet Datenbank und App im Hintergrund (ohne Reverse Proxy).
 rem Voraussetzungen: laufendes Docker mit Compose-Plugin und eine ausgefuellte .env.
 cd /d "%~dp0"
 
@@ -57,11 +57,11 @@ exit /b 1
 
 rem --wait blockiert, bis die Healthchecks von db und app gruen sind
 echo Baue und starte Nestwerk (compose.prod.yaml)...
-docker compose -f compose.prod.yaml up -d --build --wait
+docker compose -f compose.prod.yaml -f compose.build.yaml up -d --build --wait
 if errorlevel 1 (
     echo Start fehlgeschlagen. Log der App:
-    docker compose -f compose.prod.yaml logs --tail 50 app
-    docker compose -f compose.prod.yaml logs --tail 200 app 2>nul | findstr /c:"password authentication failed" >nul
+    docker compose -f compose.prod.yaml -f compose.build.yaml logs --tail 50 app
+    docker compose -f compose.prod.yaml -f compose.build.yaml logs --tail 200 app 2>nul | findstr /c:"password authentication failed" >nul
     if not errorlevel 1 (
         echo.
         echo Hinweis: Die Datenbank lehnt das Passwort ab. POSTGRES_PASSWORD gilt nur beim ersten Anlegen
@@ -75,5 +75,5 @@ set "APP_BIND=127.0.0.1:8080"
 for /f "usebackq tokens=1,* delims==" %%a in (".env") do if /i "%%a"=="APP_BIND" set "APP_BIND=%%b"
 echo.
 echo Nestwerk laeuft auf http://%APP_BIND%
-echo Logs:    docker compose -f compose.prod.yaml logs -f app
-echo Stoppen: docker compose -f compose.prod.yaml down
+echo Logs:    docker compose -f compose.prod.yaml -f compose.build.yaml logs -f app
+echo Stoppen: docker compose -f compose.prod.yaml -f compose.build.yaml down

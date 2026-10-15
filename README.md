@@ -21,20 +21,60 @@ Tests (benötigen laufendes Docker für Testcontainers): `./mvnw verify`
 
 ## Auf dem Linuxserver installieren
 
-Voraussetzung: Docker mit Compose-Plugin, Git.
+Voraussetzung: ein Linux-Server (Debian/Ubuntu getestet) mit Root-Zugang, eine Domain, die per DNS auf den
+Server zeigt, und offene Ports 80/443. Docker installiert das Skript bei Bedarf selbst.
 
-```bash
-git clone <repo-url> nestwerk && cd nestwerk
-cp .env.example .env        # Passwörter anpassen!
-docker compose -f compose.prod.yaml up -d --build
-```
+1. Unter [Releases](https://github.com/chrisbad/nestwerk/releases) das Paket `nestwerk-install-vX.Y.Z.tar.gz`
+   herunterladen und auf den Server kopieren.
+2. Auf dem Server:
 
-- Die App lauscht standardmäßig nur auf `127.0.0.1:8080` (`APP_BIND` in `.env`).
-  Der Reverse Proxy (nginx, Traefik, Caddy …) terminiert HTTPS und leitet dorthin weiter;
-  er sollte `X-Forwarded-For`/`-Proto`/`-Host` setzen.
+   ```bash
+   tar xzf nestwerk-install-*.tar.gz && cd nestwerk
+   sudo ./install.sh
+   ```
+
+Das Skript fragt nach Domain, E-Mail für Let's Encrypt, Admin-Namen und optional einer externen Backup-Platte.
+Alle Passwörter und den `NESTWERK_SECRET_KEY` erzeugt es selbst und legt sie in `/opt/nestwerk/.env` ab (diese
+Datei gut aufbewahren). Am Ende zeigt es Adresse und Admin-Passwort.
+
+- **Reverse Proxy für alle Dienste:** Läuft auf dem Server noch keiner, richtet das Skript unter `/opt/proxy` einen
+  zentralen [nginx-proxy](https://github.com/nginx-proxy/nginx-proxy) mit `acme-companion` ein. Er belegt 80/443
+  und holt die Zertifikate automatisch. Ist ein anderer Proxy auf 80/443 aktiv, lauscht Nestwerk nur auf
+  `127.0.0.1:8080` (`APP_BIND`). Dein Proxy leitet die Domain dorthin und setzt `X-Forwarded-For`/`-Proto`/`-Host`.
+- **Image:** Das Image kommt fertig von `ghcr.io/chrisbad/nestwerk`. Solange das Paket privat ist, fragt das
+  Skript einmal nach einem GitHub-Token mit dem Recht `read:packages` und meldet den Server damit an.
 - Der Datenbankport wird nicht veröffentlicht, die Daten liegen im Volume `db-data`.
 - Der erste Admin wird aus `NESTWERK_ADMIN_USERNAME`/`NESTWERK_ADMIN_PASSWORD` angelegt,
   solange keine Benutzer existieren. Weitere Konten legt der Admin unter `/admin/users` an.
+
+### Weiteren Dienst hinter den Proxy hängen
+
+Jeder Container im Docker-Netz `proxy` mit diesen Variablen bekommt seine Domain samt Zertifikat:
+
+```yaml
+services:
+  wiki:
+    image: …
+    environment:
+      VIRTUAL_HOST: wiki.example.org
+      VIRTUAL_PORT: "3000"          # Port im Container
+      LETSENCRYPT_HOST: wiki.example.org
+    networks: [default, proxy]
+networks:
+  proxy:
+    external: true
+```
+
+Eigene nginx-Einstellungen je Domain liegen in `/opt/proxy/vhost.d/<domain>`. Für Nestwerk legt das Skript dort
+größere Upload-Grenzen und längere Zeitlimits für Sicherungen an.
+
+### Umzug auf einen neuen Server
+
+Auf dem alten Server unter „Sicherungen“ eine Sicherung erstellen und herunterladen. Auf dem neuen Server
+`install.sh` ausführen, als Admin anmelden, die Sicherung unter „Sicherungen“ hochladen und wiederherstellen.
+Danach gelten die Benutzer und Passwörter aus der Sicherung. Zugangsdaten der Sicherungsziele (WebDAV/SFTP) sind
+mit dem alten `NESTWERK_SECRET_KEY` verschlüsselt. Den Wert aus der alten `.env` übernehmen oder die Zugangsdaten
+neu eintragen.
 
 ### Benachrichtigungen
 
@@ -81,25 +121,46 @@ Termine, ToDos, den Haushaltsplan, Kontakte und Benachrichtigungen lesen und bea
 ### Update
 
 ```bash
-git pull
-docker compose -f compose.prod.yaml up -d --build
+sudo /opt/nestwerk/update.sh          # neueste Version
+sudo /opt/nestwerk/update.sh 1.4.0    # bestimmte Version
 ```
 
-### Backup
+`update.sh` sichert zuerst mit der laufenden Version (Art „vor einem Update“), lädt dann das neue Image und startet
+neu. Datenbank-Migrationen laufen beim Start automatisch.
 
-Datenbank:
+### Sicherungen
+
+Sicherungen verwaltet ein Administrator (Recht „Sicherungen verwalten“) unter „Sicherungen“ im Benutzermenü:
+
+- **Jetzt sichern** oder **regelmäßig** (täglich oder wöchentlich zu einer Uhrzeit). Eine Sicherung ist eine
+  ZIP-Datei mit allen Tabellen und Anhängen. Sie liegt im Volume `backups` und lässt sich herunterladen.
+- **Aufbewahrung:** die letzten N Sicherungen, dazu je eine pro Woche und Monat. Hochgeladene Sicherungen bleiben.
+- **Zusätzliche Ziele:** externe Platte (`NESTWERK_EXTERNAL_BACKUP_HOST_DIR` in `.env`, Nestwerk schreibt nur
+  bei vorhandener Markierungsdatei), WebDAV/Nextcloud und SFTP. Kopien dorthin lassen sich mit einer Passphrase
+  verschlüsseln (`.zip.enc`).
+- **Wiederherstellen:** aus der Liste oder nach dem Hochladen einer Datei, auch einer verschlüsselten Kopie. Vorher
+  legt Nestwerk automatisch eine Sicherheitskopie an. Ältere Sicherungen werden auf den aktuellen Stand migriert.
+- Bei einem Fehlschlag gibt es eine Benachrichtigung. Die Startseite warnt, wenn die letzte Sicherung älter als drei
+  Tage ist.
+
+### Export und Import
+
+- **Kalender:** „Export“ in der Kalenderleiste liefert alle sichtbaren Termine als `.ics`. „Import“ übernimmt
+  `.ics`-Dateien, etwa aus Google oder Outlook. Gleiche UIDs werden aktualisiert statt doppelt angelegt.
+- **Kontakte:** über „Austausch“ als vCard oder CSV (Excel). Der Import erkennt CSV aus Nestwerk, Google und Outlook
+  und ergänzt vorhandene Kontakte.
+- **ToDos:** über „Austausch“ die aktuelle Ansicht als CSV. Der Import nimmt dasselbe Format, mit ID wird ein
+  vorhandenes ToDo aktualisiert.
+
+Jeder Import zeigt erst eine Vorschau und übernimmt erst nach Bestätigung.
+
+### Notfall: Sicherung von Hand
+
+Falls die App nicht startet, lassen sich Datenbank und Anhänge auch direkt sichern:
 
 ```bash
-docker compose -f compose.prod.yaml exec -T db \
-  pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" > backup.sql
-```
-
-Anhänge (Dateien an ToDos, Kommentaren und Kontakten liegen im Volume `attachments`):
-
-```bash
-docker compose -f compose.prod.yaml run --rm --no-deps -v "$PWD":/backup --entrypoint "" app \
+cd /opt/nestwerk
+docker compose exec -T db pg_dump -U nestwerk nestwerk > backup.sql
+docker compose run --rm --no-deps -v "$PWD":/backup --entrypoint "" app \
   tar czf /backup/anhaenge.tgz -C /data/attachments .
 ```
-
-Datenbank und Anhänge gehören zusammen: Ein Anhang ohne passenden Datensatz wird nachts automatisch
-entfernt, ein Datensatz ohne Datei liefert beim Herunterladen einen Fehler.
