@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="de" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Putzplan')}"></head>
+<head th:replace="~{fragments/layout :: head('Haushaltsplan')}"></head>
 <body class="tablet-body">
 <main class="tablet-board" data-tablet>
     <header class="tablet-head">
         <div>
-            <h1>Putzplan</h1>
+            <h1>Haushaltsplan</h1>
             <p th:text="${todayLabel}">Montag, 13. Oktober</p>
         </div>
         <a class="button button-ghost" th:href="@{/tablet}">Aktualisieren</a>

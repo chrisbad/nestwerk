@@ -58,7 +58,7 @@ public class CalendarEvent {
     @Column(name = "private_event", nullable = false)
     private boolean privateEvent;
 
-    /** Die teilnehmenden Mitglieder sind abwesend (z. B. Urlaub); der Putzplan überspringt sie. */
+    /** Die teilnehmenden Mitglieder sind abwesend (z. B. Urlaub); der Haushaltsplan überspringt sie. */
     @Column(nullable = false)
     private boolean absence;
 

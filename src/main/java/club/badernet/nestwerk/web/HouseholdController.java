@@ -412,7 +412,7 @@ public class HouseholdController {
     private User requireModule() {
         User user = currentUser.require();
         if (!access.mayOpen(user.getUsername())) {
-            throw new AccessDeniedException("Keine Berechtigung für den Putzplan");
+            throw new AccessDeniedException("Keine Berechtigung für den Haushaltsplan");
         }
         return user;
     }

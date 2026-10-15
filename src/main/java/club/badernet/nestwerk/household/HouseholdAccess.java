@@ -31,7 +31,7 @@ public class HouseholdAccess {
         this.users = users;
     }
 
-    /** Für die Navigation: darf der Benutzer den Putzplan öffnen? */
+    /** Für die Navigation: darf der Benutzer den Haushaltsplan öffnen? */
     @Transactional(readOnly = true)
     public boolean mayOpen(String username) {
         return users.findByUsername(username)

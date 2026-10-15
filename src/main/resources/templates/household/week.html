@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="de" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Putzplan')}"></head>
+<head th:replace="~{fragments/layout :: head('Haushaltsplan')}"></head>
 <body>
 <header th:replace="~{fragments/layout :: nav(active='household')}"></header>
 <main class="household-page">
-    <div th:replace="~{household/fragments :: head('Putzplan', ${'KW ' + weekNumber + ': ' + weekRange})}"></div>
+    <div th:replace="~{household/fragments :: head('Haushaltsplan', ${'KW ' + weekNumber + ': ' + weekRange})}"></div>
 
     <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
     <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>

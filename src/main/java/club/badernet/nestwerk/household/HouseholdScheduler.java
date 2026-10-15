@@ -17,7 +17,7 @@ import java.time.LocalDate;
 import java.time.ZonedDateTime;
 
 /**
- * Zeitplaner des Putzplans: plant einmal am Tag die nächsten drei Wochen, erinnert minütlich an fällige
+ * Zeitplaner des Haushaltsplans: plant einmal am Tag die nächsten drei Wochen, erinnert minütlich an fällige
  * Hausarbeiten und verteilt nach Änderungen an Abwesenheiten neu.
  */
 @Component
@@ -56,12 +56,12 @@ public class HouseholdScheduler {
                 settings.set(LAST_PLAN, today.toString());
             }
         } catch (RuntimeException e) {
-            log.error("Planung des Putzplans für {} fehlgeschlagen", today, e);
+            log.error("Planung des Haushaltsplans für {} fehlgeschlagen", today, e);
         }
         try {
             reminders.run(now);
         } catch (RuntimeException e) {
-            log.error("Erinnerungen zum Putzplan fehlgeschlagen", e);
+            log.error("Erinnerungen zum Haushaltsplan fehlgeschlagen", e);
         }
     }
 

@@ -16,7 +16,7 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
-/** Benachrichtigungen zum Putzplan; Empfänger sind die Benutzer der betroffenen Mitglieder. */
+/** Benachrichtigungen zum Haushaltsplan; Empfänger sind die Benutzer der betroffenen Mitglieder. */
 @Component
 public class HouseholdNotifier {
 

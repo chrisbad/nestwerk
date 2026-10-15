@@ -1590,7 +1590,7 @@ form.inline { display: inline; margin: 0; }
     .todo-filters select, .todo-filters .choice-compact { flex: 1 1 45%; }
 }
 
-/* --- Haushalt: Putzplan -------------------------------------------------- */
+/* --- Haushalt: Haushaltsplan -------------------------------------------------- */
 
 .household-page { max-width: 80rem; }
 .household-head { align-items: center; }

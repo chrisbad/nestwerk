@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Erinnerungen zum Putzplan: Aufgaben mit Uhrzeit eine Stunde vorher, ohne Uhrzeit zur Erinnerungsstunde,
+ * Erinnerungen zum Haushaltsplan: Aufgaben mit Uhrzeit eine Stunde vorher, ohne Uhrzeit zur Erinnerungsstunde,
  * überfällige einmal (bis zu einer Woche nach Fälligkeit).
  */
 @Component
