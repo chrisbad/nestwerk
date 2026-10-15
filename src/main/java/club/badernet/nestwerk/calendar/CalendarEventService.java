@@ -15,6 +15,7 @@ import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -67,12 +68,18 @@ public class CalendarEventService {
 
     @Transactional
     public CalendarEvent create(EventInput in, User actor) {
+        return create(in, actor, UUID.randomUUID() + "@nestwerk");
+    }
+
+    /** Anlegen mit vorgegebener UID, z. B. beim Import aus einer iCal-Datei. */
+    @Transactional
+    public CalendarEvent create(EventInput in, User actor, String uid) {
         require(actor, CalendarPermission.CALENDAR_EVENT_CREATE);
         if (in.privateEvent()) {
             require(actor, CalendarPermission.CALENDAR_PRIVATE_CREATE);
         }
         Instant[] times = times(in);
-        CalendarEvent event = new CalendarEvent(UUID.randomUUID() + "@nestwerk", requireTitle(in.title()),
+        CalendarEvent event = new CalendarEvent(uid, requireTitle(in.title()),
                 times[0], times[1], in.allDay(), zone.getId(), actor.getId());
         applyDetails(event, in);
         CalendarEvent saved = events.save(event);
@@ -142,6 +149,31 @@ public class CalendarEventService {
             events.flush();
             publisher.publishEvent(new AbsenceChangedEvent(event.getId()));
         }
+    }
+
+    /** Alle Termine, die der Betrachter sehen darf, mit geladenen Ausnahmen (für den Export). */
+    @Transactional(readOnly = true)
+    public List<CalendarEvent> visibleEvents(User viewer) {
+        require(viewer, CalendarPermission.CALENDAR_VIEW);
+        List<CalendarEvent> list = events.findCandidates(Instant.parse("1900-01-01T00:00:00Z"),
+                Instant.parse("2300-01-01T00:00:00Z"), viewer.getId(), viewer.isAdministrator());
+        list.forEach(e -> e.getExceptions().size());
+        return list.stream().sorted(Comparator.comparing(CalendarEvent::getStartsAt)).toList();
+    }
+
+    /** Der sichtbare Termin mit dieser UID, falls vorhanden. */
+    @Transactional(readOnly = true)
+    public Optional<CalendarEvent> findVisibleByUid(String uid, User viewer) {
+        require(viewer, CalendarPermission.CALENDAR_VIEW);
+        return events.findByUid(uid).filter(e -> isVisible(e, viewer));
+    }
+
+    public boolean canCreate(User actor) {
+        return has(actor, CalendarPermission.CALENDAR_EVENT_CREATE);
+    }
+
+    public boolean canCreatePrivate(User actor) {
+        return has(actor, CalendarPermission.CALENDAR_PRIVATE_CREATE);
     }
 
     public boolean canEdit(CalendarEvent event, User actor) {

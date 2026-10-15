@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${kind.title})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active=${kind.key})}"></header>
+<main class="event-main">
+    <div class="page-head">
+        <div>
+            <h1 th:text="${kind.title}">Importieren</h1>
+            <p th:text="${kind.hint}">Hinweis</p>
+        </div>
+        <a class="button button-ghost" th:href="@{${kind.back}}">Zurück</a>
+    </div>
+
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <section class="sheet event-form settings-section" th:if="${report == null}">
+        <h2>Datei wählen</h2>
+        <form method="post" th:action="@{/import/{k}(k=${kind.key})}" enctype="multipart/form-data" class="inline-form">
+            <div class="field">
+                <label for="file" th:text="${kind.formats}">Format</label>
+                <input id="file" class="input" type="file" name="file" required th:accept="${kind.accept}">
+            </div>
+            <button type="submit" class="button">Vorschau anzeigen</button>
+        </form>
+        <p class="muted">Erst die Vorschau zeigen, was passiert. Übernommen wird nach deiner Bestätigung.</p>
+    </section>
+
+    <th:block th:if="${report != null}">
+        <section class="sheet settings-section import-summary" role="status">
+            <h2 th:text="${report.applied} ? 'Import abgeschlossen' : 'Vorschau'">Vorschau</h2>
+            <p>
+                <strong th:text="${fileName}">datei.csv</strong>:
+                <span th:text="${report.newCount} + ' neu'">3 neu</span>,
+                <span th:text="${report.updateCount} + ' aktualisiert'">1 aktualisiert</span>,
+                <span th:text="${report.skipCount} + ' übersprungen'">0 übersprungen</span>
+            </p>
+            <ul class="muted" th:unless="${#lists.isEmpty(report.notes)}">
+                <li th:each="n : ${report.notes}" th:text="${n}">Hinweis</li>
+            </ul>
+            <div class="backup-actions">
+                <form method="post" th:action="@{/import/{k}/confirm(k=${kind.key})}" th:unless="${report.applied}">
+                    <button type="submit" class="button"
+                            th:disabled="${report.newCount + report.updateCount == 0}">Jetzt übernehmen</button>
+                </form>
+                <a class="button button-ghost" th:href="@{/import/{k}(k=${kind.key})}"
+                   th:text="${report.applied} ? 'Weitere Datei importieren' : 'Andere Datei wählen'">Andere Datei</a>
+                <a class="button button-ghost" th:if="${report.applied}" th:href="@{${kind.back}}">Fertig</a>
+            </div>
+        </section>
+
+        <div class="sheet">
+            <table class="table">
+                <thead>
+                <tr><th scope="col">Eintrag</th><th scope="col">Details</th><th scope="col">Ergebnis</th></tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${report.rows}">
+                    <td th:text="${r.label}">Titel</td>
+                    <td class="muted" th:text="${r.detail}">Details</td>
+                    <td>
+                        <span class="badge" th:classappend="${r.action.name() == 'SKIP'} ? 'run-warning'"
+                              th:text="${r.action.label}">neu</span>
+                        <span class="muted" th:if="${r.problem != null}" th:text="${r.problem}">Grund</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </th:block>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>
