@@ -179,16 +179,13 @@ public class ChoreService {
         if (description != null && description.length() > 2000) {
             throw new IllegalArgumentException("Die Beschreibung darf höchstens 2000 Zeichen lang sein.");
         }
-        if (in.minutes() == null || in.minutes() < 1 || in.minutes() > MAX_MINUTES) {
-            throw new IllegalArgumentException("Die Minuten müssen zwischen 1 und " + MAX_MINUTES + " liegen.");
-        }
-        if (in.effort() == null) {
-            throw new IllegalArgumentException("Bitte einen Aufwand wählen.");
-        }
+        requireMinutes(in.minutesEasy(), ChoreEffort.EASY);
+        requireMinutes(in.minutesMedium(), ChoreEffort.MEDIUM);
+        requireMinutes(in.minutesHard(), ChoreEffort.HARD);
         if (in.kind() == null) {
             throw new IllegalArgumentException("Bitte wählen, wann die Hausarbeit fällig wird.");
         }
-        if (in.distribution() == null) {
+        if (in.distribution() == null && in.kind() != ChoreKind.ON_DEMAND) {
             throw new IllegalArgumentException("Bitte eine Verteilung wählen.");
         }
         String rrule = null;
@@ -197,10 +194,11 @@ public class ChoreService {
         LocalTime time = in.dueTime();
         switch (in.kind()) {
             case RECURRING -> {
-                rrule = normalizeRule(in.rrule(), startsOn != null ? startsOn : LocalDate.now());
+                // Ohne Startdatum ab heute; fest gespeichert, damit z. B. „wöchentlich“ am selben Wochentag bleibt
                 if (startsOn == null) {
-                    throw new IllegalArgumentException("Bitte ein Startdatum angeben.");
+                    startsOn = planner.today();
                 }
+                rrule = normalizeRule(in.rrule(), startsOn);
             }
             case INTERVAL -> {
                 if (in.intervalDays() == null || in.intervalDays() < 1 || in.intervalDays() > 365) {
@@ -208,23 +206,31 @@ public class ChoreService {
                 }
                 interval = in.intervalDays();
             }
-            case DATES -> {
+            case DATES, ON_DEMAND -> {
                 startsOn = null;
                 time = null;
             }
         }
+        Distribution distribution = in.kind() == ChoreKind.ON_DEMAND ? Distribution.OPEN : in.distribution();
         List<Long> ids = List.copyOf(new LinkedHashSet<>(in.memberIds() == null ? List.of() : in.memberIds()));
         if (!ids.isEmpty() && members.findAllById(ids).size() != ids.size()) {
             throw new IllegalArgumentException("Unbekanntes Familienmitglied ausgewählt.");
         }
-        if (in.distribution() == Distribution.FIXED && ids.size() != 1) {
+        if (distribution == Distribution.FIXED && ids.size() != 1) {
             throw new IllegalArgumentException("Bei fester Zuweisung bitte genau ein Mitglied auswählen.");
         }
-        if ((in.distribution() == Distribution.ROTATION || in.distribution() == Distribution.BALANCED) && ids.isEmpty()) {
+        if ((distribution == Distribution.ROTATION || distribution == Distribution.BALANCED) && ids.isEmpty()) {
             throw new IllegalArgumentException("Bitte mindestens ein Mitglied auswählen.");
         }
-        return new ChoreInput(title, area, description, in.minutes(), in.effort(), in.kind(), rrule, startsOn, time,
-                interval, in.distribution(), ids);
+        return new ChoreInput(title, area, description, in.minutesEasy(), in.minutesMedium(), in.minutesHard(),
+                in.kind(), rrule, startsOn, time, interval, distribution, ids);
+    }
+
+    private static void requireMinutes(Integer minutes, ChoreEffort effort) {
+        if (minutes == null || minutes < 1 || minutes > MAX_MINUTES) {
+            throw new IllegalArgumentException("Der Zeitaufwand für „" + effort.label() + "“ muss zwischen 1 und "
+                    + MAX_MINUTES + " Minuten liegen.");
+        }
     }
 
     private static String normalizeRule(String rrule, LocalDate seed) {

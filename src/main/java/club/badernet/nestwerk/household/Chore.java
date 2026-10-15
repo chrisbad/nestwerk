@@ -22,7 +22,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/** Vorlage einer Hausarbeit: wann sie fällig wird, wie lange sie dauert und wer sie bekommt. */
+/**
+ * Vorlage einer Hausarbeit: wann sie fällig wird, wie lange sie je nach Aufwand dauert und wer sie bekommt. Der
+ * Aufwand selbst wird erst beim Buchen gewählt.
+ */
 @Entity
 @Table(name = "chores")
 public class Chore {
@@ -40,12 +43,14 @@ public class Chore {
     @Column(length = 2000)
     private String description;
 
-    @Column(nullable = false)
-    private int minutes;
+    @Column(name = "minutes_easy", nullable = false)
+    private int minutesEasy;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
-    private ChoreEffort effort;
+    @Column(name = "minutes_medium", nullable = false)
+    private int minutesMedium;
+
+    @Column(name = "minutes_hard", nullable = false)
+    private int minutesHard;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
@@ -113,8 +118,9 @@ public class Chore {
         this.title = in.title();
         this.area = in.area();
         this.description = in.description();
-        this.minutes = in.minutes();
-        this.effort = in.effort();
+        this.minutesEasy = in.minutesEasy();
+        this.minutesMedium = in.minutesMedium();
+        this.minutesHard = in.minutesHard();
         this.kind = in.kind();
         this.rrule = in.rrule();
         this.startsOn = in.startsOn();
@@ -144,8 +150,9 @@ public class Chore {
     public String getTitle() { return title; }
     public String getArea() { return area; }
     public String getDescription() { return description; }
-    public int getMinutes() { return minutes; }
-    public ChoreEffort getEffort() { return effort; }
+    public int getMinutesEasy() { return minutesEasy; }
+    public int getMinutesMedium() { return minutesMedium; }
+    public int getMinutesHard() { return minutesHard; }
     public ChoreKind getKind() { return kind; }
     public String getRrule() { return rrule; }
     public LocalDate getStartsOn() { return startsOn; }
@@ -161,6 +168,27 @@ public class Chore {
     public Long getCreatedBy() { return createdBy; }
     public Instant getCreatedAt() { return createdAt; }
     public long getVersion() { return version; }
+
+    /** Zeitaufwand für den gewählten Aufwandsgrad. */
+    public int minutesFor(ChoreEffort effort) {
+        return switch (effort) {
+            case EASY -> minutesEasy;
+            case MEDIUM -> minutesMedium;
+            case HARD -> minutesHard;
+        };
+    }
+
+    /** Planwert (mittlerer Aufwand) für Wochensummen und ausgleichende Verteilung. */
+    public int getPlanMinutes() {
+        return minutesMedium;
+    }
+
+    /** Spanne der Zeitaufwände, z. B. „10–30“. */
+    public String minutesRange() {
+        int min = Math.min(minutesEasy, Math.min(minutesMedium, minutesHard));
+        int max = Math.max(minutesEasy, Math.max(minutesMedium, minutesHard));
+        return min == max ? String.valueOf(min) : min + "–" + max;
+    }
 
     /** Kandidaten in Reihenfolge; Lücken durch gelöschte Mitglieder fallen weg. */
     public List<Long> getMemberIds() {

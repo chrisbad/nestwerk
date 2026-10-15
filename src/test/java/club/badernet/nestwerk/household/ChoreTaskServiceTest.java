@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
@@ -36,6 +38,7 @@ class ChoreTaskServiceTest {
     @Autowired ChoreService chores;
     @Autowired ChoreTaskService service;
     @Autowired ChoreTaskRepository tasks;
+    @Autowired ChorePlanner planner;
     @Autowired ChoreCreditRepository credits;
     @Autowired UserService userService;
     @Autowired RoleService roleService;
@@ -77,7 +80,7 @@ class ChoreTaskServiceTest {
     }
 
     private ChoreTask firstTask(ChoreKind kind, Integer interval, Distribution distribution, Long... ids) {
-        Chore c = chores.create(new ChoreInput("Küche aufräumen", null, null, 20, ChoreEffort.MEDIUM, kind,
+        Chore c = chores.create(new ChoreInput("Küche aufräumen", null, null, 20, 20, 20, kind,
                 kind == ChoreKind.RECURRING ? "FREQ=DAILY;COUNT=2" : null, today, null, interval, distribution,
                 List.of(ids)), admin);
         entityManager.flush();
@@ -92,7 +95,7 @@ class ChoreTaskServiceTest {
     void completingCreditsDoerAndEveryHelperWithFullMinutes() {
         ChoreTask t = kidsTask();
 
-        service.complete(t.getId(), kid, null, Set.of(papaM.getId(), kidM.getId()));
+        service.complete(t.getId(), kid, null, Set.of(papaM.getId(), kidM.getId()), null);
 
         entityManager.flush();
         assertThat(credits.findAllByTaskId(t.getId()))
@@ -107,9 +110,9 @@ class ChoreTaskServiceTest {
     @Test
     void completingTwiceIsAConflict() {
         ChoreTask t = kidsTask();
-        service.complete(t.getId(), kid, null, Set.of());
+        service.complete(t.getId(), kid, null, Set.of(), null);
 
-        assertThatThrownBy(() -> service.complete(t.getId(), papa, null, Set.of()))
+        assertThatThrownBy(() -> service.complete(t.getId(), papa, null, Set.of(), null))
                 .isInstanceOf(ChoreConflictException.class);
     }
 
@@ -117,7 +120,7 @@ class ChoreTaskServiceTest {
     void childCannotCompleteSomebodyElsesTask() {
         ChoreTask t = firstTask(ChoreKind.RECURRING, null, Distribution.FIXED, papaM.getId());
 
-        assertThatThrownBy(() -> service.complete(t.getId(), kid, null, Set.of()))
+        assertThatThrownBy(() -> service.complete(t.getId(), kid, null, Set.of(), null))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
@@ -125,10 +128,10 @@ class ChoreTaskServiceTest {
     void completingForAnotherMemberNeedsTheAnyRight() {
         ChoreTask t = kidsTask();
 
-        assertThatThrownBy(() -> service.complete(t.getId(), kid, papaM.getId(), Set.of()))
+        assertThatThrownBy(() -> service.complete(t.getId(), kid, papaM.getId(), Set.of(), null))
                 .isInstanceOf(AccessDeniedException.class);
 
-        service.complete(t.getId(), mama, kidM.getId(), Set.of());
+        service.complete(t.getId(), mama, kidM.getId(), Set.of(), null);
         entityManager.flush();
         assertThat(credits.findAllByTaskId(t.getId())).extracting(ChoreCredit::getMemberId)
                 .containsExactly(kidM.getId());
@@ -138,7 +141,7 @@ class ChoreTaskServiceTest {
     void takingOverCreditsTheOneWhoDidIt() {
         ChoreTask t = kidsTask();
 
-        service.complete(t.getId(), papa, null, Set.of());
+        service.complete(t.getId(), papa, null, Set.of(), null);
 
         entityManager.flush();
         assertThat(credits.findAllByTaskId(t.getId())).extracting(ChoreCredit::getMemberId)
@@ -149,7 +152,7 @@ class ChoreTaskServiceTest {
     void userWithoutMemberMustChooseWhoDidIt() {
         ChoreTask t = kidsTask();
 
-        assertThatThrownBy(() -> service.complete(t.getId(), admin, null, Set.of()))
+        assertThatThrownBy(() -> service.complete(t.getId(), admin, null, Set.of(), null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Mitglied");
     }
@@ -157,7 +160,7 @@ class ChoreTaskServiceTest {
     @Test
     void undoRemovesCreditsForCompleterOrCorrector() {
         ChoreTask t = kidsTask();
-        service.complete(t.getId(), kid, null, Set.of(papaM.getId()));
+        service.complete(t.getId(), kid, null, Set.of(papaM.getId()), null);
 
         assertThatThrownBy(() -> service.undo(t.getId(), papa)).isInstanceOf(AccessDeniedException.class);
         service.undo(t.getId(), kid);
@@ -166,7 +169,7 @@ class ChoreTaskServiceTest {
         assertThat(credits.findAllByTaskId(t.getId())).isEmpty();
         assertThat(tasks.findById(t.getId()).orElseThrow().isOpen()).isTrue();
 
-        service.complete(t.getId(), kid, null, Set.of());
+        service.complete(t.getId(), kid, null, Set.of(), null);
         service.undo(t.getId(), mama);
         entityManager.flush();
         assertThat(tasks.findById(t.getId()).orElseThrow().isOpen()).isTrue();
@@ -176,7 +179,7 @@ class ChoreTaskServiceTest {
     void intervalCompletionPlansSuccessorAndUndoRemovesIt() {
         ChoreTask t = firstTask(ChoreKind.INTERVAL, 7, Distribution.FIXED, kidM.getId());
 
-        service.complete(t.getId(), kid, null, Set.of());
+        service.complete(t.getId(), kid, null, Set.of(), null);
         entityManager.flush();
         List<ChoreTask> open = tasks.findAllByChoreIdAndStatus(t.getChore().getId(), ChoreTaskStatus.OPEN);
         assertThat(open).singleElement().satisfies(n -> assertThat(n.getDueOn()).isEqualTo(today.plusDays(7)));
@@ -185,6 +188,140 @@ class ChoreTaskServiceTest {
         entityManager.flush();
         assertThat(tasks.findAllByChoreIdAndStatus(t.getChore().getId(), ChoreTaskStatus.OPEN))
                 .singleElement().satisfies(n -> assertThat(n.getId()).isEqualTo(t.getId()));
+    }
+
+    private Chore staged(ChoreKind kind, Integer interval) {
+        Chore c = chores.create(new ChoreInput("Bad putzen", null, null, 15, 30, 60, kind,
+                kind == ChoreKind.RECURRING ? "FREQ=DAILY;COUNT=2" : null, null, null, interval,
+                Distribution.FIXED, List.of(kidM.getId())), admin);
+        entityManager.flush();
+        return c;
+    }
+
+    @Test
+    void bookingUsesChosenEffortAndAdjustedDurationForEveryone() {
+        ChoreTask t = tasks.findAllByChoreId(staged(ChoreKind.RECURRING, null).getId()).getFirst();
+
+        service.complete(t.getId(), kid, null, Set.of(papaM.getId()),
+                new ChoreTaskService.Booking(ChoreEffort.HARD, 50, null));
+
+        entityManager.flush();
+        assertThat(credits.findAllByTaskId(t.getId()))
+                .extracting(ChoreCredit::getMemberId, ChoreCredit::getMinutes, ChoreCredit::getEffort)
+                .containsExactlyInAnyOrder(tuple(kidM.getId(), 50, ChoreEffort.HARD),
+                        tuple(papaM.getId(), 50, ChoreEffort.HARD));
+    }
+
+    @Test
+    void bookingWithoutDurationTakesTheMinutesOfTheEffort() {
+        ChoreTask t = tasks.findAllByChoreId(staged(ChoreKind.RECURRING, null).getId()).getFirst();
+
+        service.complete(t.getId(), kid, null, Set.of(), new ChoreTaskService.Booking(ChoreEffort.EASY, null, null));
+
+        entityManager.flush();
+        assertThat(credits.findAllByTaskId(t.getId())).extracting(ChoreCredit::getMinutes).containsExactly(15);
+    }
+
+    @Test
+    void bookingMovesTaskToPerformedTimeAndUndoRestoresThePlannedSlot() {
+        ChoreTask t = kidsTask();
+        String slot = t.getSlotKey();
+        LocalDate planned = t.getDueOn();
+        LocalDateTime performed = today.minusDays(2).atTime(17, 45);
+
+        service.complete(t.getId(), kid, null, Set.of(), new ChoreTaskService.Booking(null, null, performed));
+        entityManager.flush();
+        ChoreTask done = tasks.findById(t.getId()).orElseThrow();
+        assertThat(done.getDueOn()).isEqualTo(today.minusDays(2));
+        assertThat(done.getDueTime()).isEqualTo(LocalTime.of(17, 45));
+        assertThat(done.getSlotKey()).isEqualTo(slot);
+        assertThat(credits.findAllByTaskId(t.getId())).singleElement()
+                .satisfies(c -> assertThat(c.getCreatedAt()).isEqualTo(performed.atZone(clock.getZone()).toInstant()));
+
+        // am selben Tag gebucht, also darf das Kind zurücknehmen, auch wenn die Erledigung zurückliegt
+        service.undo(t.getId(), kid);
+        entityManager.flush();
+        ChoreTask reopened = tasks.findById(t.getId()).orElseThrow();
+        assertThat(reopened.getDueOn()).isEqualTo(planned);
+        assertThat(reopened.getDueTime()).isNull();
+        assertThat(reopened.getEffort()).isNull();
+    }
+
+    @Test
+    void movedTaskIsNotPlannedAgain() {
+        Chore c = staged(ChoreKind.RECURRING, null);
+        ChoreTask t = tasks.findAllByChoreId(c.getId()).stream().min(Comparator.comparing(ChoreTask::getDueOn))
+                .orElseThrow();
+        service.complete(t.getId(), kid, null, Set.of(),
+                new ChoreTaskService.Booking(null, null, today.minusDays(1).atTime(9, 0)));
+        entityManager.flush();
+
+        planner.plan(c, today);
+        entityManager.flush();
+        assertThat(tasks.findAllByChoreId(c.getId())).hasSize(2);
+    }
+
+    @Test
+    void bookingInTheFutureIsRejected() {
+        ChoreTask t = kidsTask();
+
+        assertThatThrownBy(() -> service.complete(t.getId(), kid, null, Set.of(),
+                new ChoreTaskService.Booking(null, null, LocalDateTime.now(clock).plusHours(2))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Zukunft");
+        assertThatThrownBy(() -> service.complete(t.getId(), kid, null, Set.of(),
+                new ChoreTaskService.Booking(ChoreEffort.EASY, 0, null)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void onDemandPlansNothingAndIsBookedAdHoc() {
+        Chore c = chores.create(new ChoreInput("Fenster", null, null, 20, 40, 90, ChoreKind.ON_DEMAND,
+                "FREQ=DAILY", today, null, null, null, List.of()), admin);
+        entityManager.flush();
+        assertThat(tasks.findAllByChoreId(c.getId())).isEmpty();
+        assertThat(c.getDistribution()).isEqualTo(Distribution.OPEN);
+        assertThat(c.getStartsOn()).isNull();
+
+        ChoreTask booked = service.bookAdHoc(c.getId(), kid, null, Set.of(),
+                new ChoreTaskService.Booking(ChoreEffort.HARD, null, null));
+        entityManager.flush();
+        assertThat(booked.isOpen()).isFalse();
+        assertThat(booked.isAdHoc()).isTrue();
+        assertThat(credits.findAllByTaskId(booked.getId())).extracting(ChoreCredit::getMinutes).containsExactly(90);
+
+        service.undo(booked.getId(), kid);
+        entityManager.flush();
+        assertThat(tasks.findAllByChoreId(c.getId())).isEmpty();
+    }
+
+    @Test
+    void adHocBookingOfIntervalChoreReplacesTheOpenTask() {
+        Chore c = staged(ChoreKind.INTERVAL, 7);
+        assertThat(tasks.findAllByChoreIdAndStatus(c.getId(), ChoreTaskStatus.OPEN)).hasSize(1);
+
+        service.bookAdHoc(c.getId(), kid, null, Set.of(), ChoreTaskService.Booking.now());
+        entityManager.flush();
+
+        assertThat(tasks.findAllByChoreIdAndStatus(c.getId(), ChoreTaskStatus.OPEN)).singleElement()
+                .satisfies(n -> assertThat(n.getDueOn()).isEqualTo(today.plusDays(7)));
+    }
+
+    @Test
+    void recurringWithoutStartDateStartsToday() {
+        Chore c = staged(ChoreKind.RECURRING, null);
+
+        assertThat(c.getStartsOn()).isEqualTo(today);
+    }
+
+    @Test
+    void strangerCannotBookAdHoc() {
+        Chore c = staged(ChoreKind.ON_DEMAND, null);
+
+        assertThat(service.canBook(kid, c)).isTrue();
+        assertThat(service.canBook(papa, c)).isTrue();
+        assertThatThrownBy(() -> service.bookAdHoc(c.getId(), stranger, null, Set.of(), null))
+                .isInstanceOf(ChoreNotFoundException.class);
     }
 
     @Test

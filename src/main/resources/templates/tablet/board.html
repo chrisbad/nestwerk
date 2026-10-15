@@ -29,7 +29,9 @@
                             <span th:text="${c.dayLabel()}">heute</span>
                             <span th:if="${c.time() != null}" th:text="${c.time()}">19:00</span>
                             <span th:text="${c.minutes()} + ' Min'">5 Min</span>
-                            <span th:replace="~{household/fragments :: effort(${c.effort()}, ${c.effortLabel()})}"></span>
+                            <th:block th:if="${c.effort() != null}">
+                                <span th:replace="~{household/fragments :: effort(${c.effort()}, ${c.effortLabel()})}"></span>
+                            </th:block>
                         </span>
                     </button>
                 </li>
@@ -60,6 +62,7 @@
                         <span th:text="${m.name}">Lena</span>
                     </label>
                 </fieldset>
+                <div th:replace="~{household/fragments :: book-fields(|tablet-${c.id()}|, ${c.minutesEasy()}, ${c.minutesMedium()}, ${c.minutesHard()})}"></div>
                 <label class="field">
                     <span>PIN</span>
                     <input class="input tablet-pin" type="password" name="pin" inputmode="numeric" pattern="\d{4,8}"
@@ -68,7 +71,7 @@
             </div>
             <div class="dialog-foot">
                 <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
-                <button type="submit" class="button">Erledigt</button>
+                <button type="submit" class="button">Buchen</button>
             </div>
         </form>
     </dialog>

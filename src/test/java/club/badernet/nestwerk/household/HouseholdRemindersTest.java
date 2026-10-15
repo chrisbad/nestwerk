@@ -68,7 +68,7 @@ class HouseholdRemindersTest {
     }
 
     private ChoreTask task(LocalTime time, Distribution distribution, Long... memberIds) {
-        Chore c = chores.create(new ChoreInput("Mülltonnen rausstellen", null, null, 5, ChoreEffort.EASY,
+        Chore c = chores.create(new ChoreInput("Mülltonnen rausstellen", null, null, 5, 5, 5,
                 ChoreKind.RECURRING, "FREQ=DAILY;COUNT=1", today, time, null, distribution, List.of(memberIds)), admin);
         entityManager.flush();
         return tasks.findAllByChoreId(c.getId()).getFirst();
@@ -122,7 +122,7 @@ class HouseholdRemindersTest {
     @Test
     void doneTaskIsNotReminded() {
         ChoreTask t = task(null, Distribution.FIXED, lenaM.getId());
-        taskService.complete(t.getId(), lena, null, Set.of());
+        taskService.complete(t.getId(), lena, null, Set.of(), null);
 
         reminders.run(at(9, 0));
 

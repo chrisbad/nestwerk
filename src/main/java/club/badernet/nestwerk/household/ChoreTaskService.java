@@ -8,18 +8,38 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-/** Konkrete Aufgaben: abhaken (mit Mithelfern), rückgängig machen, umverteilen und auflisten. */
+/** Konkrete Aufgaben: buchen (mit Mithelfern), rückgängig machen, umverteilen und auflisten. */
 @Service
 public class ChoreTaskService {
+
+    /**
+     * Was beim Buchen angegeben wird: Aufwandsgrad, tatsächliche Dauer und Zeitpunkt der Durchführung. Fehlende
+     * Werte: mittel, die Minuten des gewählten Grads, jetzt.
+     */
+    public record Booking(ChoreEffort effort, Integer minutes, LocalDateTime performedAt) {
+
+        public static Booking now() {
+            return new Booking(null, null, null);
+        }
+    }
+
+    /** Geprüfte Buchung. */
+    private record CleanBooking(ChoreEffort effort, int minutes, Instant performedAt, LocalDate day, LocalTime time) {
+    }
+
+    private static final Duration FUTURE_TOLERANCE = Duration.ofMinutes(5);
 
     static final Comparator<ChoreTask> ORDER = Comparator.comparing(ChoreTask::getDueOn)
             .thenComparing(t -> t.getDueTime() == null ? LocalTime.MAX : t.getDueTime())
@@ -27,6 +47,7 @@ public class ChoreTaskService {
             .thenComparing(ChoreTask::getId);
 
     private final ChoreTaskRepository tasks;
+    private final ChoreService chores;
     private final ChoreCreditRepository credits;
     private final FamilyMemberRepository members;
     private final ChorePlanner planner;
@@ -34,9 +55,11 @@ public class ChoreTaskService {
     private final HouseholdNotifier notifier;
     private final Clock clock;
 
-    public ChoreTaskService(ChoreTaskRepository tasks, ChoreCreditRepository credits, FamilyMemberRepository members,
-                            ChorePlanner planner, HouseholdAccess access, HouseholdNotifier notifier, Clock clock) {
+    public ChoreTaskService(ChoreTaskRepository tasks, ChoreService chores, ChoreCreditRepository credits,
+                            FamilyMemberRepository members, ChorePlanner planner, HouseholdAccess access,
+                            HouseholdNotifier notifier, Clock clock) {
         this.tasks = tasks;
+        this.chores = chores;
         this.credits = credits;
         this.members = members;
         this.planner = planner;
@@ -56,16 +79,53 @@ public class ChoreTaskService {
     }
 
     /**
-     * Hakt die Aufgabe ab. Erledigt hat sie {@code doerId} (Standard: das eigene Mitglied); jeder Mithelfer
-     * bekommt ebenfalls die vollen Minuten gutgeschrieben.
+     * Bucht die Aufgabe. Erledigt hat sie {@code doerId} (Standard: das eigene Mitglied); jeder Mithelfer bekommt
+     * ebenfalls die gebuchten Minuten gutgeschrieben. Die Aufgabe wandert auf den Zeitpunkt der Durchführung.
      */
     @Transactional
-    public void complete(Long taskId, User actor, Long doerId, Set<Long> helperIds) {
+    public void complete(Long taskId, User actor, Long doerId, Set<Long> helperIds, Booking booking) {
         ChoreTask task = get(taskId, actor);
         requireOpen(task);
         if (!access.can(actor, "COMPLETE", task)) {
             throw new AccessDeniedException("Keine Berechtigung, diese Hausarbeit abzuhaken");
         }
+        finish(task, doer(actor, doerId), helperIds, actor.getId(), validate(task.getChore(), booking));
+    }
+
+    /** Buchen ohne Benutzer (Wand-Tablet); die PIN-Prüfung übernimmt der Aufrufer. */
+    @Transactional
+    public void completeAsMember(Long taskId, Long memberId, Set<Long> helperIds, Booking booking) {
+        ChoreTask task = tasks.findById(taskId).orElseThrow(ChoreNotFoundException::new);
+        requireOpen(task);
+        finish(task, memberId, helperIds, null, validate(task.getChore(), booking));
+    }
+
+    /** Darf der Benutzer diese Hausarbeit ungeplant buchen („Jetzt buchen“)? */
+    public boolean canBook(User user, Chore chore) {
+        return chore.isActive() && access.can(user, "COMPLETE", ChoreTask.adHoc(chore, today(), null));
+    }
+
+    /**
+     * Bucht eine Hausarbeit ohne geplante Aufgabe, z. B. „bei Bedarf“. Bei „nach Erledigung“ ersetzt die Buchung
+     * die offene Aufgabe; der nächste Termin wird ab der Durchführung neu geplant.
+     */
+    @Transactional
+    public ChoreTask bookAdHoc(Long choreId, User actor, Long doerId, Set<Long> helperIds, Booking booking) {
+        Chore chore = chores.get(choreId, actor);
+        if (!canBook(actor, chore)) {
+            throw new AccessDeniedException("Keine Berechtigung, diese Hausarbeit zu buchen");
+        }
+        Long doer = doer(actor, doerId);
+        CleanBooking clean = validate(chore, booking);
+        if (chore.getKind() == ChoreKind.INTERVAL) {
+            tasks.findAllByChoreIdAndStatus(chore.getId(), ChoreTaskStatus.OPEN).forEach(tasks::delete);
+        }
+        ChoreTask task = tasks.save(ChoreTask.adHoc(chore, clean.day(), clean.time()));
+        finish(task, doer, helperIds, actor.getId(), clean);
+        return task;
+    }
+
+    private Long doer(User actor, Long doerId) {
         Long own = access.memberId(actor).orElse(null);
         Long doer = doerId != null ? doerId : own;
         if (doer == null) {
@@ -74,18 +134,28 @@ public class ChoreTaskService {
         if (!doer.equals(own) && !access.canAny(actor, "COMPLETE")) {
             throw new AccessDeniedException("Du kannst Hausarbeiten nur für dich selbst abhaken");
         }
-        finish(task, doer, helperIds, actor.getId());
+        return doer;
     }
 
-    /** Abhaken ohne Benutzer (Wand-Tablet); die PIN-Prüfung übernimmt der Aufrufer. */
-    @Transactional
-    public void completeAsMember(Long taskId, Long memberId, Set<Long> helperIds) {
-        ChoreTask task = tasks.findById(taskId).orElseThrow(ChoreNotFoundException::new);
-        requireOpen(task);
-        finish(task, memberId, helperIds, null);
+    private CleanBooking validate(Chore chore, Booking booking) {
+        Booking b = booking == null ? Booking.now() : booking;
+        ChoreEffort effort = b.effort() != null ? b.effort() : ChoreEffort.MEDIUM;
+        int minutes = b.minutes() != null ? b.minutes() : chore.minutesFor(effort);
+        if (minutes < 1 || minutes > ChoreService.MAX_MINUTES) {
+            throw new IllegalArgumentException("Die Dauer muss zwischen 1 und " + ChoreService.MAX_MINUTES
+                    + " Minuten liegen.");
+        }
+        Instant now = clock.instant();
+        Instant performedAt = b.performedAt() == null ? now : b.performedAt().atZone(clock.getZone()).toInstant();
+        if (performedAt.isAfter(now.plus(FUTURE_TOLERANCE))) {
+            throw new IllegalArgumentException("Der Zeitpunkt der Erledigung darf nicht in der Zukunft liegen.");
+        }
+        LocalDateTime local = LocalDateTime.ofInstant(performedAt, clock.getZone());
+        return new CleanBooking(effort, minutes, performedAt, local.toLocalDate(),
+                local.toLocalTime().truncatedTo(ChronoUnit.MINUTES));
     }
 
-    private void finish(ChoreTask task, Long doer, Set<Long> helperIds, Long userId) {
+    private void finish(ChoreTask task, Long doer, Set<Long> helperIds, Long userId, CleanBooking booking) {
         Set<Long> people = new LinkedHashSet<>();
         people.add(doer);
         if (helperIds != null) {
@@ -94,10 +164,9 @@ public class ChoreTaskService {
         if (members.findAllById(people).size() != people.size()) {
             throw new IllegalArgumentException("Unbekanntes Familienmitglied ausgewählt.");
         }
-        Instant now = clock.instant();
-        task.complete(now, userId);
+        task.complete(booking.performedAt(), booking.day(), booking.time(), booking.effort(), clock.instant(), userId);
         for (Long member : people) {
-            credits.save(new ChoreCredit(task, member, now));
+            credits.save(new ChoreCredit(task, member, booking.minutes(), booking.effort(), booking.performedAt()));
         }
         try {
             tasks.flush();
@@ -116,12 +185,20 @@ public class ChoreTaskService {
         if (task.isOpen()) {
             throw new ChoreConflictException("Diese Hausarbeit ist nicht erledigt.");
         }
-        boolean ownToday = actor.getId().equals(task.getCompletedByUser())
-                && task.getCompletedAt().atZone(clock.getZone()).toLocalDate().equals(today());
-        if (!ownToday && !access.canAny(actor, "CORRECT")) {
+        if (!bookedTodayBy(task, actor) && !access.canAny(actor, "CORRECT")) {
             throw new AccessDeniedException("Keine Berechtigung, diese Erledigung zurückzunehmen");
         }
         credits.deleteAll(credits.findAllByTaskId(taskId));
+        if (task.isAdHoc()) {
+            // ungeplant gebucht: es gibt keinen Termin, zu dem sie zurückkehren könnte
+            Chore chore = task.getChore();
+            tasks.delete(task);
+            tasks.flush();
+            if (chore.getKind() == ChoreKind.INTERVAL) {
+                planner.plan(chore, today());
+            }
+            return;
+        }
         task.reopen();
         if (task.getChore().getKind() == ChoreKind.INTERVAL) {
             tasks.findAllByChoreIdAndStatus(task.getChore().getId(), ChoreTaskStatus.OPEN).stream()
@@ -188,6 +265,13 @@ public class ChoreTaskService {
     @Transactional(readOnly = true)
     public List<ChoreCredit> credits(Long taskId) {
         return credits.findAllByTaskId(taskId);
+    }
+
+    /** Hat dieser Benutzer die Aufgabe heute selbst gebucht (dann darf er sie zurücknehmen)? */
+    public boolean bookedTodayBy(ChoreTask task, User user) {
+        Instant at = task.getBookedAt() != null ? task.getBookedAt() : task.getCompletedAt();
+        return user.getId().equals(task.getCompletedByUser()) && at != null
+                && at.atZone(clock.getZone()).toLocalDate().equals(today());
     }
 
     public LocalDate today() {

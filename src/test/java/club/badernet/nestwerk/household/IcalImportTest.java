@@ -51,7 +51,7 @@ class IcalImportTest {
     void setUp() {
         admin = userService.createAdministrator("chef", "passwort1");
         tim = members.save(new FamilyMember("Tim", "#0000aa", null));
-        gelb = chores.create(new ChoreInput("Gelbe Tonne rausstellen", null, null, 5, ChoreEffort.EASY,
+        gelb = chores.create(new ChoreInput("Gelbe Tonne rausstellen", null, null, 5, 5, 5,
                 ChoreKind.DATES, null, null, null, null, Distribution.FIXED, List.of(tim.getId())), admin);
         today = LocalDate.now(clock);
     }
@@ -126,7 +126,7 @@ class IcalImportTest {
                 .hasMessageContaining("Datei");
         assertThatThrownBy(() -> importer.importFile(gelb.getId(), calendar(), null, 9, null, admin))
                 .hasMessageContaining("Tage vorher");
-        Chore recurring = chores.create(new ChoreInput("Bad", null, null, 5, ChoreEffort.EASY, ChoreKind.INTERVAL,
+        Chore recurring = chores.create(new ChoreInput("Bad", null, null, 5, 5, 5, ChoreKind.INTERVAL,
                 null, today, null, 7, Distribution.OPEN, List.of()), admin);
         assertThatThrownBy(() -> importer.importFile(recurring.getId(), calendar(), null, 0, null, admin))
                 .hasMessageContaining("festen Terminen");

@@ -142,6 +142,9 @@ public class ChorePlanner {
                     result.add(new Slot(due, chore.getDueTime()));
                 }
             }
+            case ON_DEMAND -> {
+                // wird nicht geplant, nur bei Bedarf gebucht
+            }
         }
         result.sort(Comparator.comparing(Slot::day)
                 .thenComparing(s -> s.time() == null ? LocalTime.MIN : s.time()));
@@ -210,7 +213,7 @@ public class ChorePlanner {
         };
     }
 
-    /** Minuten je Mitglied: Gutschriften der letzten 28 Tage plus geplante offene Aufgaben ab heute. */
+    /** Minuten je Mitglied: Gutschriften der letzten 28 Tage plus geplante offene Aufgaben (mittlerer Aufwand) ab heute. */
     Map<Long, Integer> load(LocalDate today) {
         entityManager.flush();
         Map<Long, Integer> load = new HashMap<>();
@@ -222,7 +225,7 @@ public class ChorePlanner {
                 WHERE created_at >= :since GROUP BY member_id""", params,
                 rs -> { load.merge(rs.getLong("member_id"), rs.getInt("m"), Integer::sum); });
         jdbc.query("""
-                SELECT t.assignee_member_id AS member_id, sum(c.minutes) AS m
+                SELECT t.assignee_member_id AS member_id, sum(c.minutes_medium) AS m
                 FROM chore_tasks t JOIN chores c ON c.id = t.chore_id
                 WHERE t.status = 'OPEN' AND t.due_on >= :today AND t.assignee_member_id IS NOT NULL
                 GROUP BY t.assignee_member_id""", params,

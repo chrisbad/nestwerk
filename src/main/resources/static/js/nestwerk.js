@@ -84,6 +84,7 @@
             const opener = event.target.closest("[data-open-dialog]");
             if (opener) {
                 const dialog = document.getElementById(opener.dataset.openDialog);
+                if (dialog) refreshBookNow(dialog);
                 dialog?.showModal();
                 dialog?.querySelector("input:not([type=hidden])")?.focus();
                 return;
@@ -299,6 +300,38 @@
                 showCustom(false);
             }
         });
+    }
+
+    /* --- Buchen: Minuten der gewählten Stufe übernehmen, Zeitpunkt aktuell halten --- */
+
+    const pad = n => String(n).padStart(2, "0");
+
+    function localNow() {
+        const d = new Date();
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    // Die Seite kann lange offen sein (Tablet): beim Öffnen „jetzt“ neu setzen, solange nichts geändert wurde
+    function refreshBookNow(root) {
+        root.querySelectorAll("[data-book-now]").forEach(input => {
+            if (!input.dataset.touched) input.value = localNow();
+        });
+    }
+
+    function initBookForms() {
+        document.addEventListener("input", event => {
+            if (event.target.matches("[data-book-minutes], [data-book-now]")) event.target.dataset.touched = "1";
+        });
+        document.addEventListener("change", event => {
+            const radio = event.target.closest("[data-book-form] input[name=effort]");
+            if (!radio) return;
+            const minutes = radio.closest("[data-book-form]").querySelector("[data-book-minutes]");
+            if (minutes && !minutes.dataset.touched) minutes.value = radio.dataset.minutes;
+        });
+        // in der Capture-Phase, damit auch htmx schon den aktuellen Zeitpunkt sendet
+        document.addEventListener("submit", event => {
+            if (event.target.querySelector("[data-book-form]")) refreshBookNow(event.target);
+        }, true);
     }
 
     /* --- Hausarbeit-Formular: Abschnitte je Art, Reihenfolge der Mitglieder --- */
@@ -554,6 +587,7 @@
         initGreeting();
         initEventForm();
         initChoreForm();
+        initBookForms();
         initAutoSubmit();
         initBoard();
         initCollaboration();

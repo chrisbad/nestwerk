@@ -4,7 +4,8 @@ package club.badernet.nestwerk.household;
 public enum ChoreKind {
     DATES("Feste Termine"),
     RECURRING("Regelmäßig"),
-    INTERVAL("Nach Erledigung");
+    INTERVAL("Nach Erledigung"),
+    ON_DEMAND("Bei Bedarf");
 
     private final String label;
 

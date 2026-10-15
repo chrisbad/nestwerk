@@ -28,9 +28,8 @@
                     <span class="chore-row-title" th:text="${ch.title}">Spülmaschine</span>
                     <span class="chore-row-meta">
                         <span th:text="${T(club.badernet.nestwerk.web.HouseholdViews).schedule(ch)}">Täglich</span>
-                        <span th:text="${ch.minutes} + ' Min'">15 Min</span>
-                        <span th:replace="~{household/fragments :: effort(${#strings.toLowerCase(ch.effort.name())}, ${ch.effort.label()})}"></span>
-                        <span th:text="${ch.distribution.label()}">Reihum</span>
+                        <span th:text="${ch.minutesRange()} + ' Min'">10–30 Min</span>
+                        <span th:unless="${ch.kind.name() == 'ON_DEMAND'}" th:text="${ch.distribution.label()}">Reihum</span>
                     </span>
                 </a>
             </li>

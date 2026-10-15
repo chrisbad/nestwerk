@@ -3,6 +3,8 @@ package club.badernet.nestwerk.web;
 import club.badernet.nestwerk.TestcontainersConfiguration;
 import club.badernet.nestwerk.calendar.CalendarEventRepository;
 import club.badernet.nestwerk.household.Chore;
+import club.badernet.nestwerk.household.ChoreCredit;
+import club.badernet.nestwerk.household.ChoreCreditRepository;
 import club.badernet.nestwerk.household.ChoreEffort;
 import club.badernet.nestwerk.household.ChoreInput;
 import club.badernet.nestwerk.household.ChoreKind;
@@ -33,6 +35,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Set;
 
@@ -62,6 +66,7 @@ class HouseholdControllerTest {
     @Autowired ChoreService chores;
     @Autowired ChoreRepository choreRepository;
     @Autowired ChoreTaskRepository tasks;
+    @Autowired ChoreCreditRepository credits;
     @Autowired CalendarEventRepository events;
     @Autowired EntityManager entityManager;
     @Autowired Clock clock;
@@ -96,7 +101,7 @@ class HouseholdControllerTest {
     }
 
     private ChoreTask todaysTask(String title, Long memberId) {
-        Chore c = chores.create(new ChoreInput(title, "Küche", null, 15, ChoreEffort.HARD, ChoreKind.RECURRING,
+        Chore c = chores.create(new ChoreInput(title, "Küche", null, 15, 15, 15, ChoreKind.RECURRING,
                 "FREQ=DAILY;COUNT=1", today, null, null, Distribution.FIXED, List.of(memberId)), admin);
         entityManager.flush();
         return tasks.findAllByChoreId(c.getId()).getFirst();
@@ -110,7 +115,8 @@ class HouseholdControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Spülmaschine ausräumen")))
                 .andExpect(content().string(containsString("plan-grid")))
-                .andExpect(content().string(containsString("effort-hard")))
+                .andExpect(content().string(containsString("data-open-dialog=\"book-")))
+                .andExpect(content().string(containsString("15 Min")))
                 .andExpect(content().string(containsString("Lena")));
     }
 
@@ -159,7 +165,8 @@ class HouseholdControllerTest {
     @Test
     void createsChoreFromFormInSelectedOrder() throws Exception {
         mockMvc.perform(post("/household/chores").with(csrf()).with(as("mama"))
-                        .param("title", "Bad putzen").param("minutes", "30").param("effort", "HARD")
+                        .param("title", "Bad putzen").param("minutesEasy", "15").param("minutesMedium", "30")
+                        .param("minutesHard", "60")
                         .param("kind", "INTERVAL").param("intervalDays", "7").param("startsOn", today.toString())
                         .param("distribution", "ROTATION")
                         .param("memberIds", kidM.getId().toString()).param("memberIds", mamaM.getId().toString()))
@@ -168,16 +175,53 @@ class HouseholdControllerTest {
         Chore c = choreRepository.findAll().stream().filter(x -> x.getTitle().equals("Bad putzen")).findFirst().orElseThrow();
         assertThat(c.getMemberIds()).containsExactly(kidM.getId(), mamaM.getId());
         assertThat(c.getIntervalDays()).isEqualTo(7);
+        assertThat(c.minutesFor(ChoreEffort.HARD)).isEqualTo(60);
     }
 
     @Test
     void formShowsValidationError() throws Exception {
         mockMvc.perform(post("/household/chores").with(csrf()).with(as("mama"))
-                        .param("title", "Bad").param("minutes", "0").param("effort", "EASY")
+                        .param("title", "Bad").param("minutesEasy", "0").param("minutesMedium", "10")
+                        .param("minutesHard", "20")
                         .param("kind", "INTERVAL").param("intervalDays", "7").param("distribution", "OPEN"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Minuten")))
                 .andExpect(content().string(containsString("value=\"Bad\"")));
+    }
+
+    @Test
+    void bookingWithEffortDurationAndTimeMovesTheTask() throws Exception {
+        ChoreTask t = todaysTask("Müll", kidM.getId());
+        LocalDateTime yesterday = today.minusDays(1).atTime(18, 30);
+
+        mockMvc.perform(post("/household/tasks/{id}/complete", t.getId()).with(csrf()).with(as("kind"))
+                        .param("effort", "HARD").param("minutes", "50").param("performedAt", yesterday.toString())
+                        .param("back", "/household"))
+                .andExpect(redirectedUrl("/household"));
+
+        entityManager.flush();
+        entityManager.clear();
+        ChoreTask booked = tasks.findById(t.getId()).orElseThrow();
+        assertThat(booked.getDueOn()).isEqualTo(today.minusDays(1));
+        assertThat(booked.getDueTime()).isEqualTo(LocalTime.of(18, 30));
+        assertThat(booked.getEffort()).isEqualTo(ChoreEffort.HARD);
+        assertThat(credits.findAllByTaskId(t.getId())).extracting(ChoreCredit::getMinutes).containsExactly(50);
+    }
+
+    @Test
+    void onDemandChoreIsBookedFromItsPage() throws Exception {
+        Chore c = chores.create(new ChoreInput("Fenster putzen", null, null, 20, 40, 90, ChoreKind.ON_DEMAND,
+                null, null, null, null, null, List.of()), admin);
+
+        mockMvc.perform(get("/household/chores/{id}", c.getId()).with(as("kind")))
+                .andExpect(content().string(containsString("Jetzt buchen")))
+                .andExpect(content().string(not(containsString("Die nächsten drei Wochen"))));
+        mockMvc.perform(post("/household/chores/{id}/book", c.getId()).with(csrf()).with(as("kind"))
+                        .param("effort", "EASY").param("minutes", "20"))
+                .andExpect(redirectedUrl("/household/chores/" + c.getId()));
+
+        assertThat(tasks.findAllByChoreId(c.getId())).singleElement()
+                .satisfies(t -> assertThat(t.isOpen()).isFalse());
     }
 
     @Test
@@ -214,7 +258,7 @@ class HouseholdControllerTest {
 
     @Test
     void addingAndRemovingFixedDates() throws Exception {
-        Chore c = chores.create(new ChoreInput("Gelbe Tonne", null, null, 5, ChoreEffort.EASY, ChoreKind.DATES,
+        Chore c = chores.create(new ChoreInput("Gelbe Tonne", null, null, 5, 5, 5, ChoreKind.DATES,
                 null, null, null, null, Distribution.FIXED, List.of(kidM.getId())), admin);
 
         mockMvc.perform(post("/household/chores/{id}/dates", c.getId()).with(csrf()).with(as("mama"))

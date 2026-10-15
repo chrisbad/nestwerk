@@ -1,6 +1,7 @@
 package club.badernet.nestwerk.web;
 
 import club.badernet.nestwerk.household.ChoreConflictException;
+import club.badernet.nestwerk.household.ChoreEffort;
 import club.badernet.nestwerk.household.ChoreNotFoundException;
 import club.badernet.nestwerk.household.ChoreTask;
 import club.badernet.nestwerk.household.ChoreTaskRepository;
@@ -13,6 +14,7 @@ import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Controller;
@@ -28,6 +30,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -51,9 +54,10 @@ public class TabletController {
     public record Column(String name, String color, List<Card> cards) {
     }
 
-    /** Eine Aufgabe als Karte. */
+    /** Eine Aufgabe als Karte; {@code effort} nur bei erledigten, die drei Zeitaufwände für den Buchen-Dialog. */
     public record Card(Long id, String title, String time, int minutes, String effort, String effortLabel,
-                       boolean done, boolean overdue, String dayLabel) {
+                       boolean done, boolean overdue, String dayLabel, int minutesEasy, int minutesMedium,
+                       int minutesHard) {
     }
 
     private final DeviceService devices;
@@ -61,15 +65,18 @@ public class TabletController {
     private final ChoreTaskRepository tasks;
     private final ChoreTaskService taskService;
     private final FamilyMemberRepository members;
+    private final HouseholdViews views;
     private final Clock clock;
 
     public TabletController(DeviceService devices, MemberPins pins, ChoreTaskRepository tasks,
-                            ChoreTaskService taskService, FamilyMemberRepository members, Clock clock) {
+                            ChoreTaskService taskService, FamilyMemberRepository members, HouseholdViews views,
+                            Clock clock) {
         this.devices = devices;
         this.pins = pins;
         this.tasks = tasks;
         this.taskService = taskService;
         this.members = members;
+        this.views = views;
         this.clock = clock;
     }
 
@@ -133,6 +140,8 @@ public class TabletController {
     @PostMapping("/tasks/{id}/complete")
     String complete(@PathVariable Long id, @CookieValue(name = COOKIE, required = false) String token,
                     @RequestParam(required = false) Long member, @RequestParam(required = false) String pin,
+                    @RequestParam(required = false) ChoreEffort effort, @RequestParam(required = false) Integer minutes,
+                    @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime performedAt,
                     RedirectAttributes redirect) {
         Optional<HouseholdDevice> device = devices.authenticate(token);
         if (device.isEmpty()) {
@@ -148,7 +157,8 @@ public class TabletController {
         switch (pins.check(device.get().getId(), member, pin)) {
             case OK -> {
                 try {
-                    taskService.completeAsMember(task.getId(), member, Set.of());
+                    taskService.completeAsMember(task.getId(), member, Set.of(),
+                            new ChoreTaskService.Booking(effort, minutes, performedAt));
                     redirect.addFlashAttribute("success", "„" + task.getChore().getTitle() + "“ erledigt – danke!");
                 } catch (ChoreConflictException | IllegalArgumentException e) {
                     redirect.addFlashAttribute("error", e.getMessage());
@@ -161,11 +171,12 @@ public class TabletController {
         return "redirect:/tablet";
     }
 
-    private static List<Card> cards(List<ChoreTask> tasks, java.util.function.Predicate<ChoreTask> filter, LocalDate today) {
+    private List<Card> cards(List<ChoreTask> tasks, java.util.function.Predicate<ChoreTask> filter, LocalDate today) {
         return tasks.stream().filter(filter).map(t -> new Card(t.getId(), t.getChore().getTitle(), t.timeLabel(),
-                        t.getChore().getMinutes(), t.getChore().getEffort().name().toLowerCase(java.util.Locale.ROOT),
-                        t.getChore().getEffort().label(), !t.isOpen(), t.isOverdue(today),
-                        HouseholdViews.dayLabel(t.getDueOn(), today)))
+                        views.minutes(t), HouseholdViews.effortKey(t.getEffort()),
+                        t.getEffort() == null ? null : t.getEffort().label(), !t.isOpen(), t.isOverdue(today),
+                        HouseholdViews.dayLabel(t.getDueOn(), today), t.getChore().getMinutesEasy(),
+                        t.getChore().getMinutesMedium(), t.getChore().getMinutesHard()))
                 .toList();
     }
 }

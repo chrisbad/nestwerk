@@ -62,7 +62,7 @@ class AbsenceReassignmentTest {
         FamilyMember ben = members.save(new FamilyMember("Ben-Test", "#00aa00", null));
         memberIds = List.of(anna.getId(), ben.getId());
         LocalDate today = LocalDate.now(clock);
-        Chore chore = chores.create(new ChoreInput("Abwesenheitstest", null, null, 5, ChoreEffort.EASY,
+        Chore chore = chores.create(new ChoreInput("Abwesenheitstest", null, null, 5, 5, 5,
                 ChoreKind.RECURRING, "FREQ=DAILY;COUNT=1", today, null, null, Distribution.ROTATION,
                 List.of(anna.getId(), ben.getId())), admin);
         choreId = chore.getId();

@@ -84,7 +84,7 @@ class TabletControllerTest {
         lena = members.save(new FamilyMember("Lena", "#00aa00", lenaUser.getId()));
         baby = members.save(new FamilyMember("Baby", "#aaaa00", null));
         LocalDate today = LocalDate.now(clock);
-        Chore c = chores.create(new ChoreInput("Mülltonnen rausstellen", null, null, 5, ChoreEffort.EASY,
+        Chore c = chores.create(new ChoreInput("Mülltonnen rausstellen", null, null, 5, 5, 5,
                 ChoreKind.RECURRING, "FREQ=DAILY;COUNT=1", today, null, null, Distribution.FIXED, List.of(lena.getId())), admin);
         entityManager.flush();
         task = tasks.findAllByChoreId(c.getId()).getFirst();

@@ -743,6 +743,7 @@ fieldset.field legend { padding: 0; margin-bottom: 0.35rem; font-weight: 600; }
 .avatar-large { width: 3rem; height: 3rem; font-size: 1.25rem; color: #fff; text-shadow: 0 1px 2px rgb(0 0 0 / 0.35); }
 
 .field-row-color { grid-template-columns: 1fr auto; }
+.field-row-thirds { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .color-input {
     width: 4.5rem !important;
     padding: 0.3rem !important;
@@ -1650,6 +1651,23 @@ form.inline { display: inline; margin: 0; }
 .chore-body:hover .chore-title { text-decoration: underline; }
 .chore-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem 0.5rem; font-size: var(--step--1); color: var(--ink-soft); }
 .chore-who { font-weight: 600; color: var(--ink); }
+
+/* Buchen: Dialog am Chip erbt nichts vom Chip; Stufen zeigen ihre Minuten */
+.book-dialog { font-size: var(--step-0); font-weight: normal; text-align: left; white-space: normal; }
+.book-fields { display: grid; gap: 1rem; }
+.book-dialog .dialog-body > * + *, .tablet-dialog .dialog-body > * + *, .complete-form > * + * { margin-top: 1rem; }
+.effort-choice {
+    position: relative;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    min-width: 5.5rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--radius-field);
+}
+.effort-choice input { position: absolute; opacity: 0; pointer-events: none; }
+.effort-choice span:first-of-type { font-weight: 650; }
+.effort-minutes { font-size: var(--step--1); color: var(--ink-soft); }
 
 /* Aufwand: ein, zwei oder drei gefüllte Punkte */
 .effort { display: inline-flex; gap: 2px; vertical-align: middle; }

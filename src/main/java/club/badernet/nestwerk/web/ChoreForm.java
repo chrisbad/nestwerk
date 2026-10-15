@@ -1,7 +1,6 @@
 package club.badernet.nestwerk.web;
 
 import club.badernet.nestwerk.household.Chore;
-import club.badernet.nestwerk.household.ChoreEffort;
 import club.badernet.nestwerk.household.ChoreInput;
 import club.badernet.nestwerk.household.ChoreKind;
 import club.badernet.nestwerk.household.Distribution;
@@ -18,8 +17,9 @@ public class ChoreForm {
     private String title;
     private String area;
     private String description;
-    private Integer minutes = 15;
-    private ChoreEffort effort = ChoreEffort.MEDIUM;
+    private Integer minutesEasy = 10;
+    private Integer minutesMedium = 15;
+    private Integer minutesHard = 30;
     private ChoreKind kind = ChoreKind.RECURRING;
     private String rrule = "FREQ=WEEKLY";
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -30,10 +30,8 @@ public class ChoreForm {
     private Distribution distribution = Distribution.ROTATION;
     private List<Long> memberIds = new ArrayList<>();
 
-    public static ChoreForm forNew(LocalDate today) {
-        ChoreForm f = new ChoreForm();
-        f.startsOn = today;
-        return f;
+    public static ChoreForm forNew() {
+        return new ChoreForm();
     }
 
     public static ChoreForm from(Chore c) {
@@ -41,8 +39,9 @@ public class ChoreForm {
         f.title = c.getTitle();
         f.area = c.getArea();
         f.description = c.getDescription();
-        f.minutes = c.getMinutes();
-        f.effort = c.getEffort();
+        f.minutesEasy = c.getMinutesEasy();
+        f.minutesMedium = c.getMinutesMedium();
+        f.minutesHard = c.getMinutesHard();
         f.kind = c.getKind();
         f.rrule = c.getRrule();
         f.startsOn = c.getStartsOn();
@@ -54,8 +53,8 @@ public class ChoreForm {
     }
 
     public ChoreInput toInput() {
-        return new ChoreInput(title, area, description, minutes, effort, kind, rrule, startsOn, dueTime, intervalDays,
-                distribution, memberIds);
+        return new ChoreInput(title, area, description, minutesEasy, minutesMedium, minutesHard, kind, rrule, startsOn,
+                dueTime, intervalDays, distribution, memberIds);
     }
 
     public String getTitle() { return title; }
@@ -64,10 +63,12 @@ public class ChoreForm {
     public void setArea(String area) { this.area = area; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
-    public Integer getMinutes() { return minutes; }
-    public void setMinutes(Integer minutes) { this.minutes = minutes; }
-    public ChoreEffort getEffort() { return effort; }
-    public void setEffort(ChoreEffort effort) { this.effort = effort; }
+    public Integer getMinutesEasy() { return minutesEasy; }
+    public void setMinutesEasy(Integer minutesEasy) { this.minutesEasy = minutesEasy; }
+    public Integer getMinutesMedium() { return minutesMedium; }
+    public void setMinutesMedium(Integer minutesMedium) { this.minutesMedium = minutesMedium; }
+    public Integer getMinutesHard() { return minutesHard; }
+    public void setMinutesHard(Integer minutesHard) { this.minutesHard = minutesHard; }
     public ChoreKind getKind() { return kind; }
     public void setKind(ChoreKind kind) { this.kind = kind; }
     public String getRrule() { return rrule; }

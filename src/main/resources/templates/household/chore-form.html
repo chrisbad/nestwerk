@@ -20,24 +20,28 @@
                 <input id="title" class="input-title" type="text" th:field="*{title}" maxlength="150" required
                        placeholder="z. B. Spülmaschine ausräumen">
             </div>
-            <div class="field-row">
-                <div class="field">
-                    <label for="area">Bereich <span class="hint">optional</span></label>
-                    <input id="area" class="input" type="text" th:field="*{area}" maxlength="100"
-                           placeholder="Küche, Bad, Garten …">
-                </div>
-                <div class="field">
-                    <label for="minutes">Dauer in Minuten</label>
-                    <input id="minutes" class="input" type="number" min="1" max="600" th:field="*{minutes}" required>
-                </div>
+            <div class="field">
+                <label for="area">Bereich <span class="hint">optional</span></label>
+                <input id="area" class="input" type="text" th:field="*{area}" maxlength="100"
+                       placeholder="Küche, Bad, Garten …">
             </div>
 
-            <fieldset class="field choices">
-                <legend>Aufwand</legend>
-                <label class="choice" th:each="e : ${efforts}">
-                    <input type="radio" th:field="*{effort}" th:value="${e}">
-                    <span th:text="${e.label()}">leicht</span>
-                </label>
+            <fieldset class="field">
+                <legend>Zeitaufwand in Minuten <span class="hint">den Aufwand wählst du erst beim Buchen</span></legend>
+                <div class="field-row field-row-thirds">
+                    <div class="field">
+                        <label for="minutesEasy">leicht</label>
+                        <input id="minutesEasy" class="input" type="number" min="1" max="600" th:field="*{minutesEasy}" required>
+                    </div>
+                    <div class="field">
+                        <label for="minutesMedium">mittel</label>
+                        <input id="minutesMedium" class="input" type="number" min="1" max="600" th:field="*{minutesMedium}" required>
+                    </div>
+                    <div class="field">
+                        <label for="minutesHard">schwer</label>
+                        <input id="minutesHard" class="input" type="number" min="1" max="600" th:field="*{minutesHard}" required>
+                    </div>
+                </div>
             </fieldset>
 
             <div class="field">
@@ -84,7 +88,7 @@
 
             <div class="field-row kind-section" data-kind-section="RECURRING INTERVAL">
                 <div class="field">
-                    <label for="startsOn">Ab</label>
+                    <label for="startsOn">Ab <span class="hint">optional, sonst ab heute</span></label>
                     <input id="startsOn" class="input" type="date" th:field="*{startsOn}">
                 </div>
                 <div class="field">
@@ -96,19 +100,28 @@
             <p class="hint kind-section" data-kind-section="DATES">
                 Die Termine trägst du nach dem Speichern auf der Seite der Hausarbeit ein.
             </p>
+            <p class="hint kind-section" data-kind-section="ON_DEMAND">
+                Es wird nichts geplant. Wenn du sie erledigt hast, buchst du sie auf der Seite der Hausarbeit mit
+                „Jetzt buchen“.
+            </p>
         </fieldset>
 
         <fieldset class="event-fields">
-            <fieldset class="field choices">
-                <legend>Wer bekommt sie?</legend>
-                <label class="choice" th:each="d : ${distributions}">
-                    <input type="radio" th:field="*{distribution}" th:value="${d}">
-                    <span th:text="${d.label()}">Reihum</span>
-                </label>
-            </fieldset>
-            <p class="hint">
-                Reihum geht in der Reihenfolge der Auswahl weiter; ausgleichend bekommt sie, wer in den letzten vier
-                Wochen am wenigsten Zeit eingebracht hat. Abwesende (Häkchen „Abwesend“ im Kalender) werden übersprungen.
+            <div class="kind-section" data-kind-section="DATES RECURRING INTERVAL">
+                <fieldset class="field choices">
+                    <legend>Wer bekommt sie?</legend>
+                    <label class="choice" th:each="d : ${distributions}">
+                        <input type="radio" th:field="*{distribution}" th:value="${d}">
+                        <span th:text="${d.label()}">Reihum</span>
+                    </label>
+                </fieldset>
+                <p class="hint">
+                    Reihum geht in der Reihenfolge der Auswahl weiter; ausgleichend bekommt sie, wer in den letzten vier
+                    Wochen am wenigsten Zeit eingebracht hat. Abwesende (Häkchen „Abwesend“ im Kalender) werden übersprungen.
+                </p>
+            </div>
+            <p class="hint kind-section" data-kind-section="ON_DEMAND">
+                Ausgewählte Mitglieder sind zuständig und dürfen buchen; ohne Auswahl alle.
             </p>
             <fieldset class="field choices" th:unless="${#lists.isEmpty(allMembers)}" data-member-picker
                       th:attr="data-initial-order=${#strings.listJoin(form.memberIds, ',')}">

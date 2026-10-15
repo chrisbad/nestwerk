@@ -1,6 +1,6 @@
 package club.badernet.nestwerk.household;
 
-/** Aufwandsgrad; wird in der Auswertung getrennt von den Minuten gezählt. */
+/** Aufwandsgrad, beim Buchen gewählt; wird in der Auswertung getrennt von den Minuten gezählt. */
 public enum ChoreEffort {
     EASY("leicht"),
     MEDIUM("mittel"),

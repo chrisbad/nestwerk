@@ -16,13 +16,18 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
-/** Ein konkretes Vorkommen einer Hausarbeit mit Fälligkeit und Zuständigem. */
+/**
+ * Ein konkretes Vorkommen einer Hausarbeit mit Fälligkeit und Zuständigem. Beim Buchen wandert die Aufgabe auf den
+ * Zeitpunkt der Durchführung; der {@code slotKey} behält den geplanten Termin.
+ */
 @Entity
 @Table(name = "chore_tasks")
 public class ChoreTask {
 
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
+    private static final String AD_HOC = "adhoc-";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,6 +59,13 @@ public class ChoreTask {
     @Column(name = "completed_by_user")
     private Long completedByUser;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    private ChoreEffort effort;
+
+    @Column(name = "booked_at")
+    private Instant bookedAt;
+
     @Column(name = "notified_due", nullable = false)
     private boolean notifiedDue;
 
@@ -71,6 +83,13 @@ public class ChoreTask {
         this.assigneeMemberId = assigneeMemberId;
     }
 
+    /** Ungeplante Aufgabe, die direkt gebucht wird (z. B. bei Hausarbeiten „bei Bedarf“). */
+    static ChoreTask adHoc(Chore chore, LocalDate day, LocalTime time) {
+        ChoreTask task = new ChoreTask(chore, day, time, null);
+        task.slotKey = AD_HOC + UUID.randomUUID().toString().replace("-", "");
+        return task;
+    }
+
     /** Eindeutiger Schlüssel des Termins innerhalb der Hausarbeit (macht die Planung idempotent). */
     public static String slotKey(LocalDate dueOn, LocalTime dueTime) {
         return dueTime == null ? dueOn.toString() : dueOn + "T" + dueTime.format(TIME);
@@ -80,16 +99,34 @@ public class ChoreTask {
         this.assigneeMemberId = memberId;
     }
 
-    void complete(Instant at, Long userId) {
+    /** Bucht die Aufgabe und verschiebt sie auf den Zeitpunkt der Durchführung. */
+    void complete(Instant performedAt, LocalDate day, LocalTime time, ChoreEffort effort, Instant bookedAt,
+                  Long userId) {
         this.status = ChoreTaskStatus.DONE;
-        this.completedAt = at;
+        this.completedAt = performedAt;
+        this.dueOn = day;
+        this.dueTime = time;
+        this.effort = effort;
+        this.bookedAt = bookedAt;
         this.completedByUser = userId;
     }
 
+    /** Wieder offen, zurück auf dem geplanten Termin. */
     void reopen() {
         this.status = ChoreTaskStatus.OPEN;
         this.completedAt = null;
         this.completedByUser = null;
+        this.effort = null;
+        this.bookedAt = null;
+        if (!isAdHoc()) {
+            int t = slotKey.indexOf('T');
+            this.dueOn = LocalDate.parse(t < 0 ? slotKey : slotKey.substring(0, t));
+            this.dueTime = t < 0 ? null : LocalTime.parse(slotKey.substring(t + 1));
+        }
+    }
+
+    public boolean isAdHoc() {
+        return slotKey.startsWith(AD_HOC);
     }
 
     void markNotifiedDue() {
@@ -117,6 +154,8 @@ public class ChoreTask {
     public ChoreTaskStatus getStatus() { return status; }
     public Instant getCompletedAt() { return completedAt; }
     public Long getCompletedByUser() { return completedByUser; }
+    public ChoreEffort getEffort() { return effort; }
+    public Instant getBookedAt() { return bookedAt; }
     public boolean isNotifiedDue() { return notifiedDue; }
     public long getVersion() { return version; }
 }

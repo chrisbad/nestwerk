@@ -54,11 +54,12 @@ public class ChoreCredit {
     protected ChoreCredit() {
     }
 
-    public ChoreCredit(ChoreTask task, Long memberId, Instant createdAt) {
+    /** {@code createdAt} ist der Zeitpunkt der Durchführung, nach dem die Auswertung zählt. */
+    public ChoreCredit(ChoreTask task, Long memberId, int minutes, ChoreEffort effort, Instant createdAt) {
         this.task = task;
         this.memberId = memberId;
-        this.minutes = task.getChore().getMinutes();
-        this.effort = task.getChore().getEffort();
+        this.minutes = minutes;
+        this.effort = effort;
         this.createdAt = createdAt;
     }
 
@@ -69,7 +70,7 @@ public class ChoreCredit {
         this.correctedAt = at;
     }
 
-    /** Wirksame Minuten: korrigiert, sonst Planwert. */
+    /** Wirksame Minuten: korrigiert, sonst gebucht. */
     public int effectiveMinutes() {
         return correctedMinutes != null ? correctedMinutes : minutes;
     }

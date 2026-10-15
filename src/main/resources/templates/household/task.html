@@ -31,9 +31,13 @@
                 <span th:if="${c.assignee == null}">Offen – wer mag, nimmt sie</span>
             </dd>
             <dt>Aufwand</dt>
-            <dd>
-                <span th:text="${task.chore.minutes} + ' Minuten, ' + ${task.chore.effort.label()}">15 Minuten</span>
+            <dd th:if="${c.done and c.effort != null}">
+                <span th:text="${c.minutes} + ' Minuten, ' + ${c.effortLabel}">15 Minuten, mittel</span>
                 <span th:replace="~{household/fragments :: effort(${c.effort}, ${c.effortLabel})}"></span>
+            </dd>
+            <dd th:unless="${c.done and c.effort != null}"
+                th:text="|leicht ${task.chore.minutesEasy} · mittel ${task.chore.minutesMedium} · schwer ${task.chore.minutesHard} Min|">
+                leicht 10 · mittel 15 · schwer 30 Min
             </dd>
             <dt>Status</dt>
             <dd th:text="${c.done} ? 'Erledigt' : 'Offen'">Offen</dd>
@@ -63,15 +67,10 @@
                             th:selected="${ownMember != null} ? ${m.id == ownMember} : ${m.id == task.assigneeMemberId}">Lena</option>
                 </select>
             </div>
-            <fieldset class="field choices">
-                <legend>Mitgeholfen haben <span class="hint">jeder bekommt die vollen Minuten</span></legend>
-                <label class="choice choice-member" th:each="m : ${allMembers.values()}" th:style="|--member-color: ${m.color}|">
-                    <input type="checkbox" name="helpers" th:value="${m.id}">
-                    <span th:text="${m.name}">Tim</span>
-                </label>
-            </fieldset>
+            <div th:replace="~{household/fragments :: book-fields('task', ${task.chore.minutesEasy}, ${task.chore.minutesMedium}, ${task.chore.minutesHard})}"></div>
+            <fieldset th:replace="~{household/fragments :: helper-fields}"></fieldset>
             <div class="form-actions">
-                <button type="submit" class="button">Als erledigt abhaken</button>
+                <button type="submit" class="button">Buchen</button>
             </div>
         </form>
     </section>

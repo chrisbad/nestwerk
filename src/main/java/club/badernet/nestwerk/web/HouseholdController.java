@@ -28,6 +28,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.IsoFields;
@@ -123,7 +124,7 @@ public class HouseholdController {
         for (WeekDay d : days) {
             cells.add(views.chips(list.stream().filter(t -> t.getDueOn().equals(d.date())).toList(), ctx));
         }
-        int minutes = list.stream().mapToInt(t -> t.getChore().getMinutes()).sum();
+        int minutes = list.stream().mapToInt(views::minutes).sum();
         return new WeekRow(label, color, cells, minutes);
     }
 
@@ -163,7 +164,7 @@ public class HouseholdController {
         if (!chores.canCreate(viewer)) {
             throw new AccessDeniedException("Keine Berechtigung zum Anlegen von Hausarbeiten");
         }
-        model.addAttribute("form", ChoreForm.forNew(tasks.today()));
+        model.addAttribute("form", ChoreForm.forNew());
         prepareForm(model, viewer, null);
         return "household/chore-form";
     }
@@ -197,6 +198,10 @@ public class HouseholdController {
                 .filter(d -> !d.getDueOn().isBefore(ctx.today())).toList() : List.of());
         model.addAttribute("canEdit", access.can(viewer, "EDIT", chore));
         model.addAttribute("canDelete", access.can(viewer, "DELETE", chore));
+        model.addAttribute("canBook", tasks.canBook(viewer, chore));
+        model.addAttribute("ownMember", ctx.ownMember());
+        model.addAttribute("completeAny", ctx.completeAny());
+        model.addAttribute("allMembers", ctx.members());
         model.addAttribute("back", "/household/chores/" + id);
         addCommon(model, viewer, "chores");
         return "household/chore";
@@ -333,9 +338,27 @@ public class HouseholdController {
         return "household/task";
     }
 
+    @PostMapping("/chores/{id}/book")
+    String book(@PathVariable Long id, @RequestParam(required = false) Long doer,
+                @RequestParam(name = "helpers", required = false) Set<Long> helpers,
+                @RequestParam(required = false) ChoreEffort effort, @RequestParam(required = false) Integer minutes,
+                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime performedAt,
+                RedirectAttributes redirect) {
+        User actor = requireModule();
+        try {
+            tasks.bookAdHoc(id, actor, doer, helpers, new ChoreTaskService.Booking(effort, minutes, performedAt));
+            redirect.addFlashAttribute("success", "Gebucht – danke!");
+        } catch (ChoreConflictException | IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/household/chores/" + id;
+    }
+
     @PostMapping("/tasks/{id}/complete")
     String complete(@PathVariable Long id, @RequestParam(required = false) Long doer,
                     @RequestParam(name = "helpers", required = false) Set<Long> helpers,
+                    @RequestParam(required = false) ChoreEffort effort, @RequestParam(required = false) Integer minutes,
+                    @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime performedAt,
                     @RequestParam(required = false) String back,
                     @RequestHeader(name = "HX-Request", required = false) String htmx,
                     Model model, RedirectAttributes redirect) {
@@ -343,7 +366,7 @@ public class HouseholdController {
         String message = "Erledigt – danke!";
         boolean ok = true;
         try {
-            tasks.complete(id, actor, doer, helpers);
+            tasks.complete(id, actor, doer, helpers, new ChoreTaskService.Booking(effort, minutes, performedAt));
         } catch (ChoreConflictException | IllegalArgumentException e) {
             message = e.getMessage();
             ok = false;
@@ -399,7 +422,6 @@ public class HouseholdController {
         model.addAttribute("chore", chore);
         model.addAttribute("action", chore == null ? "/household/chores" : "/household/chores/" + chore.getId());
         model.addAttribute("kinds", ChoreKind.values());
-        model.addAttribute("efforts", ChoreEffort.values());
         model.addAttribute("distributions", Distribution.values());
         model.addAttribute("allMembers", views.context(viewer).members().values());
         addCommon(model, viewer, "chores");

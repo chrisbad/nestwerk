@@ -18,7 +18,10 @@
                 <h1 th:text="${chore.title}">Spülmaschine</h1>
                 <p class="event-when" th:text="${schedule}">Täglich, 07:00 Uhr</p>
             </div>
-            <a class="button button-ghost" th:if="${canEdit}" th:href="@{/household/chores/{id}/edit(id=${chore.id})}">Bearbeiten</a>
+            <div class="todo-detail-actions">
+                <button type="button" class="button" th:if="${canBook}" data-open-dialog="book-chore">Jetzt buchen</button>
+                <a class="button button-ghost" th:if="${canEdit}" th:href="@{/household/chores/{id}/edit(id=${chore.id})}">Bearbeiten</a>
+            </div>
         </div>
 
         <p class="notice" th:unless="${chore.active}">Deaktiviert: Es werden keine neuen Termine geplant.</p>
@@ -28,15 +31,16 @@
                 <dt>Bereich</dt>
                 <dd th:text="${chore.area}">Küche</dd>
             </th:block>
-            <dt>Aufwand</dt>
-            <dd>
-                <span th:text="${chore.minutes} + ' Minuten, ' + ${chore.effort.label()}">15 Minuten, leicht</span>
-                <span th:replace="~{household/fragments :: effort(${#strings.toLowerCase(chore.effort.name())}, ${chore.effort.label()})}"></span>
+            <dt>Zeitaufwand</dt>
+            <dd th:text="|leicht ${chore.minutesEasy} · mittel ${chore.minutesMedium} · schwer ${chore.minutesHard} Minuten|">
+                leicht 10 · mittel 15 · schwer 30 Minuten
             </dd>
-            <dt>Verteilung</dt>
-            <dd th:text="${chore.distribution.label()}">Reihum</dd>
+            <th:block th:unless="${chore.kind.name() == 'ON_DEMAND'}">
+                <dt>Verteilung</dt>
+                <dd th:text="${chore.distribution.label()}">Reihum</dd>
+            </th:block>
             <th:block th:unless="${#lists.isEmpty(candidates)}">
-                <dt th:text="${chore.distribution.name() == 'ROTATION'} ? 'Reihenfolge' : 'Wer'">Wer</dt>
+                <dt th:text="${chore.kind.name() == 'ON_DEMAND'} ? 'Wer bucht' : (${chore.distribution.name() == 'ROTATION'} ? 'Reihenfolge' : 'Wer')">Wer</dt>
                 <dd class="event-members">
                     <span class="member-chip" th:each="m : ${candidates}" th:style="|--member-color: ${m.color}|"
                           th:text="${m.name}">Lena</span>
@@ -120,7 +124,7 @@
         </details>
     </section>
 
-    <section class="sheet todo-section">
+    <section class="sheet todo-section" th:unless="${chore.kind.name() == 'ON_DEMAND'}">
         <div class="todo-section-head">
             <h2>Die nächsten drei Wochen</h2>
         </div>
@@ -145,6 +149,32 @@
         </form>
     </div>
 </main>
+<dialog class="dialog book-dialog" id="book-chore" th:if="${canBook}">
+    <form method="post" th:action="@{/household/chores/{id}/book(id=${chore.id})}">
+        <div class="dialog-head">
+            <h2 th:text="${chore.title} + ' buchen'">Spülmaschine buchen</h2>
+            <button type="button" class="icon-button" data-close-dialog>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span class="visually-hidden">Schließen</span>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <div class="field" th:if="${completeAny or ownMember == null}">
+                <label for="book-doer">Erledigt von</label>
+                <select id="book-doer" name="doer" class="input">
+                    <option th:each="m : ${allMembers.values()}" th:value="${m.id}" th:text="${m.name}"
+                            th:selected="${m.id == ownMember}">Lena</option>
+                </select>
+            </div>
+            <div th:replace="~{household/fragments :: book-fields('chore', ${chore.minutesEasy}, ${chore.minutesMedium}, ${chore.minutesHard})}"></div>
+            <fieldset th:replace="~{household/fragments :: helper-fields}"></fieldset>
+        </div>
+        <div class="dialog-foot">
+            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+            <button type="submit" class="button">Buchen</button>
+        </div>
+    </form>
+</dialog>
 <div th:replace="~{fragments/layout :: confirmDialog}"></div>
 <div th:replace="~{fragments/layout :: toasts}"></div>
 </body>

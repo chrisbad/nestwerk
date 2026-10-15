@@ -93,11 +93,11 @@ class HouseholdAccountControllerTest {
     }
 
     private ChoreCredit kidDid(String title, int minutes) {
-        Chore c = chores.create(new ChoreInput(title, null, null, minutes, ChoreEffort.MEDIUM, ChoreKind.RECURRING,
+        Chore c = chores.create(new ChoreInput(title, null, null, minutes, minutes, minutes, ChoreKind.RECURRING,
                 "FREQ=DAILY;COUNT=1", today, null, null, Distribution.FIXED, List.of(kidM.getId())), admin);
         entityManager.flush();
         ChoreTask t = tasks.findAllByChoreId(c.getId()).getFirst();
-        taskService.complete(t.getId(), kid, null, Set.of());
+        taskService.complete(t.getId(), kid, null, Set.of(), null);
         entityManager.flush();
         return credits.findAllByTaskId(t.getId()).getFirst();
     }

@@ -61,7 +61,7 @@ class ChorePlanningTest {
     }
 
     private ChoreInput input(ChoreKind kind, String rrule, Integer interval, Distribution distribution, Long... ids) {
-        return new ChoreInput("Müll", null, null, 10, ChoreEffort.EASY, kind, rrule, today, null, interval,
+        return new ChoreInput("Müll", null, null, 10, 10, 10, kind, rrule, today, null, interval,
                 distribution, List.of(ids));
     }
 
@@ -73,7 +73,7 @@ class ChorePlanningTest {
 
     @Test
     void recurringPlansWholeHorizon() {
-        Chore c = chores.create(new ChoreInput("Spülmaschine", "Küche", null, 15, ChoreEffort.EASY,
+        Chore c = chores.create(new ChoreInput("Spülmaschine", "Küche", null, 15, 15, 15,
                 ChoreKind.RECURRING, "FREQ=DAILY", today, LocalTime.of(7, 0), null, Distribution.FIXED,
                 List.of(lena.getId())), admin);
 
@@ -112,7 +112,7 @@ class ChorePlanningTest {
 
     @Test
     void balancedPicksMemberWithLeastMinutes() {
-        chores.create(new ChoreInput("Bad", null, null, 60, ChoreEffort.HARD, ChoreKind.RECURRING,
+        chores.create(new ChoreInput("Bad", null, null, 60, 60, 60, ChoreKind.RECURRING,
                 "FREQ=DAILY;COUNT=1", today, null, null, Distribution.FIXED, List.of(lena.getId())), admin);
 
         Chore c = chores.create(input(ChoreKind.RECURRING, "FREQ=DAILY;COUNT=1", null, Distribution.BALANCED,
@@ -131,7 +131,7 @@ class ChorePlanningTest {
 
     @Test
     void fixedDatesBecomeTasksWithinHorizonOnly() {
-        Chore c = chores.create(new ChoreInput("Gelbe Tonne", null, null, 5, ChoreEffort.EASY, ChoreKind.DATES,
+        Chore c = chores.create(new ChoreInput("Gelbe Tonne", null, null, 5, 5, 5, ChoreKind.DATES,
                 null, null, null, null, Distribution.FIXED, List.of(tim.getId())), admin);
         chores.addDate(c.getId(), today.plusDays(3), LocalTime.of(19, 0), admin);
         chores.addDate(c.getId(), today.plusDays(60), LocalTime.of(19, 0), admin);
@@ -145,7 +145,7 @@ class ChorePlanningTest {
 
     @Test
     void removingDateRemovesItsOpenTask() {
-        Chore c = chores.create(new ChoreInput("Gelbe Tonne", null, null, 5, ChoreEffort.EASY, ChoreKind.DATES,
+        Chore c = chores.create(new ChoreInput("Gelbe Tonne", null, null, 5, 5, 5, ChoreKind.DATES,
                 null, null, null, null, Distribution.FIXED, List.of(tim.getId())), admin);
         ChoreDate d = chores.addDate(c.getId(), today.plusDays(3), LocalTime.of(19, 0), admin);
 
@@ -189,25 +189,25 @@ class ChorePlanningTest {
 
     @Test
     void validatesInput() {
-        assertThatThrownBy(() -> chores.create(new ChoreInput(" ", null, null, 10, ChoreEffort.EASY,
+        assertThatThrownBy(() -> chores.create(new ChoreInput(" ", null, null, 10, 10, 10,
                 ChoreKind.INTERVAL, null, today, null, 7, Distribution.OPEN, List.of()), admin))
                 .hasMessageContaining("Titel");
-        assertThatThrownBy(() -> chores.create(new ChoreInput("Bad", null, null, 0, ChoreEffort.EASY,
+        assertThatThrownBy(() -> chores.create(new ChoreInput("Bad", null, null, 0, 0, 0,
                 ChoreKind.INTERVAL, null, today, null, 7, Distribution.OPEN, List.of()), admin))
                 .hasMessageContaining("Minuten");
-        assertThatThrownBy(() -> chores.create(new ChoreInput("Bad", null, null, 10, ChoreEffort.EASY,
+        assertThatThrownBy(() -> chores.create(new ChoreInput("Bad", null, null, 10, 10, 10,
                 ChoreKind.INTERVAL, null, today, null, null, Distribution.OPEN, List.of()), admin))
                 .hasMessageContaining("Tage");
-        assertThatThrownBy(() -> chores.create(new ChoreInput("Bad", null, null, 10, ChoreEffort.EASY,
+        assertThatThrownBy(() -> chores.create(new ChoreInput("Bad", null, null, 10, 10, 10,
                 ChoreKind.RECURRING, "FREQ=QUARK", today, null, null, Distribution.OPEN, List.of()), admin))
                 .hasMessageContaining("Wiederholungsregel");
-        assertThatThrownBy(() -> chores.create(new ChoreInput("Bad", null, null, 10, ChoreEffort.EASY,
+        assertThatThrownBy(() -> chores.create(new ChoreInput("Bad", null, null, 10, 10, 10,
                 ChoreKind.INTERVAL, null, today, null, 7, Distribution.FIXED, List.of(lena.getId(), tim.getId())), admin))
                 .hasMessageContaining("genau ein");
-        assertThatThrownBy(() -> chores.create(new ChoreInput("Bad", null, null, 10, ChoreEffort.EASY,
+        assertThatThrownBy(() -> chores.create(new ChoreInput("Bad", null, null, 10, 10, 10,
                 ChoreKind.INTERVAL, null, today, null, 7, Distribution.ROTATION, List.of()), admin))
                 .hasMessageContaining("mindestens ein");
-        assertThatThrownBy(() -> chores.create(new ChoreInput("Bad", null, null, 10, ChoreEffort.EASY,
+        assertThatThrownBy(() -> chores.create(new ChoreInput("Bad", null, null, 10, 10, 10,
                 ChoreKind.INTERVAL, null, today, null, 7, Distribution.FIXED, List.of(999_999L)), admin))
                 .hasMessageContaining("Unbekanntes");
     }
@@ -216,7 +216,7 @@ class ChorePlanningTest {
     void deleteIsRefusedOnceCreditsExistButDeactivateWorks() {
         Chore c = chores.create(input(ChoreKind.RECURRING, "FREQ=DAILY;COUNT=2", null, Distribution.FIXED,
                 mamaM.getId()), admin);
-        taskService.complete(tasksOf(c).getFirst().getId(), mama, null, Set.of());
+        taskService.complete(tasksOf(c).getFirst().getId(), mama, null, Set.of(), null);
 
         assertThatThrownBy(() -> chores.delete(c.getId(), admin)).hasMessageContaining("deaktivieren");
         chores.deactivate(c.getId(), admin);

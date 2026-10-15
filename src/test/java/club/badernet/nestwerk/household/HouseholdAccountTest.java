@@ -75,11 +75,12 @@ class HouseholdAccountTest {
     }
 
     private ChoreTask done(String title, int minutes, ChoreEffort effort, FamilyMember doer, User actor, Long... helpers) {
-        Chore c = chores.create(new ChoreInput(title, null, null, minutes, effort, ChoreKind.RECURRING,
+        Chore c = chores.create(new ChoreInput(title, null, null, minutes, minutes, minutes, ChoreKind.RECURRING,
                 "FREQ=DAILY;COUNT=1", today, null, null, Distribution.FIXED, List.of(doer.getId())), admin);
         entityManager.flush();
         ChoreTask t = tasks.findAllByChoreId(c.getId()).getFirst();
-        taskService.complete(t.getId(), actor, doer.getId(), Set.of(helpers));
+        taskService.complete(t.getId(), actor, doer.getId(), Set.of(helpers),
+                new ChoreTaskService.Booking(effort, null, null));
         entityManager.flush();
         return t;
     }
@@ -88,7 +89,7 @@ class HouseholdAccountTest {
     void statsSumMinutesAndCountEffortsSeparately() {
         done("Bad", 30, ChoreEffort.HARD, kidM, kid);
         done("Blumen", 5, ChoreEffort.EASY, kidM, kid, mamaM.getId());
-        Chore open = chores.create(new ChoreInput("Fenster", null, null, 20, ChoreEffort.MEDIUM, ChoreKind.RECURRING,
+        Chore open = chores.create(new ChoreInput("Fenster", null, null, 20, 20, 20, ChoreKind.RECURRING,
                 "FREQ=DAILY;COUNT=1", today, null, null, Distribution.FIXED, List.of(kidM.getId())), admin);
         entityManager.flush();
         jdbc.update("UPDATE chore_tasks SET due_on = ? WHERE chore_id = ?", today.minusDays(2), open.getId());
