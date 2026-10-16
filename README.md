@@ -87,10 +87,28 @@ Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich:
   Nestwerk über „Teilen → Zum Home-Bildschirm“ installiert sein.
 - Welche Wege standardmäßig gelten, legt ein Administrator unter „Benachrichtigungen einstellen“ fest.
 
+### Zeiten (Arbeit, Schlaf, Ruhe, Freizeit)
+
+- Unter „Zeiten“ trägt jede Person wiederkehrende Zeiten ein: Art, Uhrzeit (über Mitternacht möglich), Wochentage,
+  gültig ab/bis und einzelne Ausnahmetage (Urlaub). Rechte wie bei Terminen.
+- **Beim Einplanen:** *Nur anzeigen*, *Warnen* (das Formular fragt einmal nach und schlägt freie Zeiten vor) oder
+  *Sperren* (für andere; man selbst bekommt höchstens eine Warnung). Ausgewählte Personen dürfen trotzdem einplanen.
+  Das gilt für Formular, Ziehen im Kalender, MCP und iCal-Import.
+- **Sichtbarkeit:** mit Titel, nur „belegt“ oder unsichtbar; Betroffene und Admins sehen immer den Titel.
+  Im Kalender erscheinen Zeiten als Bänder (Woche, Monat).
+- **Ruhe-Modus:** Push und Mail warten bis zum Ende der Zeit. **Feiertage:** Zeiten mit „an Feiertagen frei“
+  entfallen an den gesetzlichen Feiertagen des eingestellten Bundeslands.
+- **Ruhe-Ziele:** z. B. „mind. 2 freie Abende“ oder „mind. 6 Stunden Ruhe pro Woche“; Stand auf „Zeiten“ und der
+  Startseite, Warnung beim Einplanen, wenn ein Ziel kippen würde.
+
 ### Haushalt und Wand-Tablet
 
 - Der Haushaltsplan plant drei Wochen im Voraus. Wer im Kalender an einem Termin mit dem Häkchen „Abwesend“
   teilnimmt, wird beim Verteilen übersprungen.
+- Jede Aufgabe bekommt eine Uhrzeit: die früheste freie Lücke der zuständigen Person im Zeitfenster der Hausarbeit
+  (frühestens/spätestens, sonst 07:00 bis Fälligkeit bzw. 21:00), außerhalb von Terminen, Zeiten mit Warnung oder
+  Sperre und anderen Hausarbeiten. Wer keine Lücke hat, wird übersprungen; hat niemand Zeit, bleibt sie offen
+  („niemand frei“). Eingeplante Aufgaben stehen auch im Kalender der Person.
 - **Wand-Tablet koppeln:** Unter „Wand-Tablets“ (Benutzermenü, Recht „Wand-Tablets koppeln“) einen Code
   erzeugen, auf dem Tablet `https://<nestwerk>/tablet/pair` öffnen und den Code eingeben. Das Tablet sieht
   danach nur den Haushaltsplan von heute und morgen; abgemeldet wird es dort mit einem Klick.
