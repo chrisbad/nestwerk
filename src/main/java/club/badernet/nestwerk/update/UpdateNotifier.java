@@ -36,6 +36,16 @@ public class UpdateNotifier {
                 "Nestwerk " + update.version() + " ist verfügbar und kann unter „Updates“ eingespielt werden.");
     }
 
+    void finished(UpdateRun run) {
+        String title = switch (run.getStatus()) {
+            case DONE -> "Update auf " + run.getToVersion() + " eingespielt";
+            case ROLLED_BACK -> "Update auf " + run.getToVersion() + " zurückgenommen";
+            default -> "Update auf " + run.getToVersion() + " fehlgeschlagen";
+        };
+        send(run.getStatus() == UpdateRun.Status.DONE ? NotificationType.UPDATE_DONE : NotificationType.UPDATE_FAILED,
+                run.getId(), run.getJobId(), title, run.getMessage());
+    }
+
     private void send(NotificationType type, Long sourceId, String key, String title, String body) {
         try {
             tx.executeWithoutResult(s -> {
