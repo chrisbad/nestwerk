@@ -165,8 +165,18 @@ run_job() {
     fi
     log "Version $to läuft."
     status DONE START "Version $to läuft."
-    # zuletzt sich selbst ersetzen (falls sich der Updater geändert hat); der Status steht schon fest
-    compose up -d --no-deps updater
+    replace_self "$image-updater:$tag"
+}
+
+# Zuletzt den Updater selbst ersetzen. Das muss ein eigener, kurzlebiger Container erledigen: Compose stoppt dabei
+# diesen Container und würde den Befehl sonst mittendrin abbrechen. Der Status steht da schon fest.
+replace_self() {
+    local config
+    config="$(env_get DOCKER_CONFIG_DIR)"
+    docker run -d --rm --name "nestwerk-updater-swap-$ID" --entrypoint sh \
+        -v /var/run/docker.sock:/var/run/docker.sock -v "$INSTALL:$INSTALL" -v "${config:-/root/.docker}:/root/.docker:ro" \
+        -w "$INSTALL" "$1" -c 'sleep 2; docker compose up -d --no-deps updater' >>"$LOG" 2>&1 \
+        || log "Der Updater konnte sich nicht selbst ersetzen; er läuft in der alten Version weiter."
 }
 
 # Aufträge, die beim letzten Start mittendrin abbrachen (Updater neu gestartet)
