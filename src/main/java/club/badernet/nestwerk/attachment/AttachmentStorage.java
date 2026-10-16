@@ -14,6 +14,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -81,6 +82,62 @@ public class AttachmentStorage {
     }
 
     public record StoredFile(String key, FileTime modified) {
+    }
+
+    /** Die Datei zum Schlüssel, falls sie existiert (für die Sicherung). */
+    public Optional<Path> find(String key) {
+        Path path = resolve(key);
+        return Files.isRegularFile(path) ? Optional.of(path) : Optional.empty();
+    }
+
+    /**
+     * Arbeitsverzeichnis für eine Wiederherstellung. Es liegt innerhalb der Ablage, damit das spätere Verschieben
+     * im selben Dateisystem bleibt (die Ablage selbst ist meist ein Volume und lässt sich nicht umbenennen).
+     */
+    public Path createStaging() {
+        try {
+            Files.createDirectories(root);
+            return Files.createTempDirectory(root, ".restore-");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    public void writeStaged(Path staging, String key, InputStream content) {
+        Path target = staging.resolve(resolve(key).getFileName());
+        try {
+            Files.copy(content, target, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Anhang konnte nicht wiederhergestellt werden", e);
+        }
+    }
+
+    /** Ersetzt alle abgelegten Dateien durch die aus dem Arbeitsverzeichnis und entfernt dieses. */
+    public void replaceWith(Path staging) {
+        try {
+            for (StoredFile file : list()) {
+                Files.deleteIfExists(resolve(file.key()));
+            }
+            try (Stream<Path> stream = Files.list(staging)) {
+                for (Path p : stream.toList()) {
+                    Files.move(p, resolve(p.getFileName().toString()), StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
+            Files.deleteIfExists(staging);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Anhänge konnten nicht ersetzt werden", e);
+        }
+    }
+
+    public void discard(Path staging) {
+        try (Stream<Path> stream = Files.list(staging)) {
+            for (Path p : stream.toList()) {
+                Files.deleteIfExists(p);
+            }
+            Files.deleteIfExists(staging);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private Path resolve(String key) {

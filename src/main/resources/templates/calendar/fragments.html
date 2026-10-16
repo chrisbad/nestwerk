@@ -30,6 +30,11 @@
             <a th:href="@{/calendar/week(date=${date})}" th:aria-current="${view == 'week'} ? 'page'">Woche</a>
             <a th:href="@{/calendar/agenda(from=${date})}" th:aria-current="${view == 'agenda'} ? 'page'">Agenda</a>
         </nav>
+        <!-- schlichte Links: die Leiste wird beim Blättern per htmx ersetzt -->
+        <a class="button button-ghost button-small" th:href="@{/export/calendar.ics}"
+           title="Alle sichtbaren Termine als iCal-Datei herunterladen">Export</a>
+        <a class="button button-ghost button-small" th:href="@{/import/calendar}"
+           sec:authorize="hasAuthority('CALENDAR_EVENT_CREATE')" title="Termine aus einer iCal-Datei übernehmen">Import</a>
         <a class="button" th:href="@{/calendar/events/new(date=${date})}"
            sec:authorize="hasAuthority('CALENDAR_EVENT_CREATE')">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>

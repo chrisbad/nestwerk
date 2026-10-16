@@ -178,6 +178,51 @@
         });
     }
 
+    /* --- Große Dateien als Datenstrom hochladen (Sicherungen) ----------- */
+
+    function initRawUploads() {
+        document.addEventListener("submit", event => {
+            const form = event.target;
+            if (!form.matches("form[data-raw-upload]")) return;
+            event.preventDefault();
+            const file = form.querySelector('input[type="file"]').files[0];
+            if (!file) return;
+            const progress = form.querySelector("[data-upload-progress]");
+            const button = form.querySelector('button[type="submit"]');
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", form.dataset.uploadUrl);
+            xhr.setRequestHeader("Content-Type", "application/octet-stream");
+            const token = document.querySelector('meta[name="_csrf"]')?.content;
+            const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+            if (token && header) xhr.setRequestHeader(header, token);
+            const passphrase = form.querySelector("[data-upload-passphrase]")?.value;
+            if (passphrase) xhr.setRequestHeader("X-Backup-Passphrase", encodeURIComponent(passphrase));
+            xhr.upload.addEventListener("progress", e => {
+                if (e.lengthComputable) progress.value = Math.round(e.loaded * 100 / e.total);
+            });
+            xhr.addEventListener("load", () => {
+                button.disabled = false;
+                progress.hidden = true;
+                let body = {};
+                try { body = JSON.parse(xhr.responseText); } catch (ignored) { /* kein JSON */ }
+                if (xhr.status === 200) {
+                    window.location.reload();
+                } else {
+                    showToast(body.error || "Hochladen fehlgeschlagen.", "error");
+                }
+            });
+            xhr.addEventListener("error", () => {
+                button.disabled = false;
+                progress.hidden = true;
+                showToast("Keine Verbindung zum Server. Prüfe die Netzwerkverbindung.", "error");
+            });
+            button.disabled = true;
+            progress.hidden = false;
+            progress.value = 0;
+            xhr.send(file);
+        });
+    }
+
     /* --- Tabellen-Schnellsuche ------------------------------------------- */
 
     function applyFilter(input) {
@@ -599,6 +644,7 @@
         initPasswordToggles();
         initFilters();
         initCopyButtons();
+        initRawUploads();
         initHtmx();
         initGreeting();
         initEventForm();

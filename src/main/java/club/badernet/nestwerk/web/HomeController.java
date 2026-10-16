@@ -30,12 +30,15 @@ public class HomeController {
     private final club.badernet.nestwerk.household.HouseholdAccess householdAccess;
     private final club.badernet.nestwerk.household.ChoreTaskService choreTasks;
     private final HouseholdViews householdViews;
+    private final club.badernet.nestwerk.backup.BackupService backups;
 
     public HomeController(CurrentUser currentUser, TodoAccess todoAccess, TodoQuery todoQuery, TodoViews todoViews,
                           ContactService contactService,
                           club.badernet.nestwerk.household.HouseholdAccess householdAccess,
                           club.badernet.nestwerk.household.ChoreTaskService choreTasks,
-                          HouseholdViews householdViews) {
+                          HouseholdViews householdViews,
+                          club.badernet.nestwerk.backup.BackupService backups) {
+        this.backups = backups;
         this.householdAccess = householdAccess;
         this.choreTasks = choreTasks;
         this.householdViews = householdViews;
@@ -52,6 +55,7 @@ public class HomeController {
         model.addAttribute("today", today);
         model.addAttribute("todayLabel", today.format(DAY_LABEL));
         Optional<User> me = currentUser.find();
+        model.addAttribute("backupWarning", me.flatMap(backups::staleWarning).orElse(null));
         boolean todos = me.map(u -> todoAccess.mayOpen(u.getUsername())).orElse(false);
         model.addAttribute("showTodos", todos);
         model.addAttribute("showContacts", me.map(u -> contactService.mayOpen(u.getUsername())).orElse(false));

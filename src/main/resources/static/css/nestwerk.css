@@ -1808,6 +1808,21 @@ form.inline { display: inline; margin: 0; }
 .pairing-code { padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; border: 2px solid var(--honey); }
 .pairing-value { font-family: var(--font-display); font-size: var(--step-4); font-weight: 700; letter-spacing: 0.12em; margin: 0.25rem 0 0.5rem; }
 
+/* Sicherungen */
+.backup-name { font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem; overflow-wrap: anywhere; }
+.backup-dir { margin-top: 0.5rem; }
+.run-message { margin: 0.25rem 0 0; font-size: 0.85rem; overflow-wrap: anywhere; }
+.run-failed { background: var(--brick-soft); }
+.run-warning { background: var(--honey-soft); }
+.cell-actions form { display: inline; }
+.backup-heading { margin: 2rem 0 0.75rem; }
+.backup-form { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: flex-end; }
+.backup-form .field-wide, .backup-form .field-switch { flex-basis: 100%; }
+.backup-form .field { min-width: 12rem; }
+.backup-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.backup-test { margin-top: 0.75rem; }
+.input-narrow { max-width: 7rem; }
+
 /* KI-Zugänge */
 .copy-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
 .code-input { flex: 1 1 18rem; min-width: 0; font-family: ui-monospace, Consolas, monospace; }

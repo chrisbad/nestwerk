@@ -15,7 +15,9 @@ public enum NotificationType {
     CHORE_OVERDUE("Hausarbeit überfällig", true),
     CHORE_ASSIGNED("Hausarbeit bekommen", false),
     REWARD_REQUESTED("Belohnung beantragt", false),
-    REWARD_DECIDED("Belohnung entschieden", false);
+    REWARD_DECIDED("Belohnung entschieden", false),
+    BACKUP_FAILED("Sicherung fehlgeschlagen", false),
+    BACKUP_DONE("Sicherung erstellt", false);
 
     private final String label;
     private final boolean reminder;

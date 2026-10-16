@@ -15,6 +15,15 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
                 <input id="contact-search" class="input" type="search" name="q" placeholder="Suchen" th:value="${q}">
             </form>
+            <div class="menu" data-menu>
+                <button type="button" class="button button-ghost" aria-expanded="false" aria-haspopup="true"
+                        data-menu-toggle>Austausch</button>
+                <div class="menu-panel" hidden data-menu-panel>
+                    <a class="menu-item" th:href="@{/export/contacts.vcf}">Als vCard exportieren</a>
+                    <a class="menu-item" th:href="@{/export/contacts.csv}">Als CSV (Excel) exportieren</a>
+                    <a class="menu-item" th:if="${canCreate}" th:href="@{/import/contacts}">Kontakte importieren</a>
+                </div>
+            </div>
             <a class="button" th:if="${canCreate}" th:href="@{/contacts/new}">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
                 Kontakt anlegen

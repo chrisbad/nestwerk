@@ -10,6 +10,11 @@
         <h1><span data-greeting>Hallo</span>, <span sec:authentication="name">benutzer</span>.</h1>
     </section>
 
+    <p class="notice" role="status" th:if="${backupWarning != null}">
+        <span th:text="${backupWarning}">Die letzte Sicherung ist 5 Tage alt.</span>
+        <a th:href="@{/admin/backup}">Zu den Sicherungen</a>
+    </p>
+
     <section class="home-todos" th:if="${showTodos}">
         <div class="home-todos-head">
             <h2>Meine ToDos</h2>

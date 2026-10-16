@@ -1,0 +1,19 @@
+# Nestwerk hinter dem zentralen nginx-proxy (siehe proxy/compose.yaml). nginx-proxy liest VIRTUAL_HOST und leitet
+# die Domain an diesen Container weiter, acme-companion holt das Zertifikat für LETSENCRYPT_HOST.
+services:
+  app:
+    environment:
+      VIRTUAL_HOST: ${NESTWERK_DOMAIN:?NESTWERK_DOMAIN muss in .env gesetzt sein}
+      VIRTUAL_PORT: "8080"
+      LETSENCRYPT_HOST: ${NESTWERK_DOMAIN}
+      LETSENCRYPT_EMAIL: ${LETSENCRYPT_EMAIL:-}
+    # kein Port auf dem Host nötig, der Proxy erreicht die App im Netz „proxy“ (Compose ab 2.24)
+    ports: !reset []
+    networks:
+      - default
+      - proxy
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-proxy}
