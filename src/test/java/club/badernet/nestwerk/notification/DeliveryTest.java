@@ -1,6 +1,14 @@
 package club.badernet.nestwerk.notification;
 
 import club.badernet.nestwerk.TestcontainersConfiguration;
+import club.badernet.nestwerk.blocker.Blocker;
+import club.badernet.nestwerk.blocker.BlockerKind;
+import club.badernet.nestwerk.blocker.BlockerRepository;
+import club.badernet.nestwerk.blocker.BlockerStrength;
+import club.badernet.nestwerk.blocker.BlockerVisibility;
+import club.badernet.nestwerk.calendar.CalendarSettings;
+import club.badernet.nestwerk.member.FamilyMember;
+import club.badernet.nestwerk.member.FamilyMemberRepository;
 import club.badernet.nestwerk.user.User;
 import club.badernet.nestwerk.user.UserRepository;
 import club.badernet.nestwerk.user.UserService;
@@ -53,6 +61,9 @@ class DeliveryTest {
     @Autowired UserService userService;
     @Autowired UserRepository users;
     @Autowired JdbcTemplate jdbc;
+    @Autowired FamilyMemberRepository members;
+    @Autowired BlockerRepository blockers;
+    @Autowired CalendarSettings calendar;
 
     HttpServer pushServer;
     final AtomicInteger pushStatus = new AtomicInteger(201);
@@ -113,6 +124,34 @@ class DeliveryTest {
         assertThat(received[0].getSubject()).isEqualTo("Nestwerk: Steuer");
         assertThat(GreenMailUtil.getBody(received[0])).contains("https://nest.example.org/todos/7");
         assertThat(status("EMAIL")).isEqualTo("SENT");
+    }
+
+    @Test
+    void quietBlockerPostponesDeliveryUntilItEnds() {
+        mama.setEmail("mama@example.org");
+        users.saveAndFlush(mama);
+        preferences.set(NotificationPreferences.Scope.GLOBAL, 0L, TYPE.name(), Channel.EMAIL, NotificationPreferences.Choice.ON);
+        FamilyMember member = members.save(new FamilyMember("Mama", "#aa0000", mama.getId()));
+        java.time.ZonedDateTime now = java.time.ZonedDateTime.now(calendar.zone());
+        java.time.LocalTime from = now.toLocalTime().minusHours(1).withSecond(0).withNano(0);
+        java.time.LocalTime to = now.toLocalTime().plusHours(1).withSecond(0).withNano(0);
+        blockers.save(quiet(from, to, member.getId(), now.toLocalDate().minusDays(1)));
+
+        notifyMama("k1");
+        worker.process();
+
+        assertThat(greenMail.getReceivedMessages()).isEmpty();
+        java.sql.Timestamp next = jdbc.queryForObject(
+                "SELECT next_attempt_at FROM notification_deliveries WHERE status = 'PENDING'", java.sql.Timestamp.class);
+        assertThat(next.toInstant()).isAfter(now.toInstant().plusSeconds(3000));
+    }
+
+    private static Blocker quiet(java.time.LocalTime from, java.time.LocalTime to, Long memberId,
+                                 java.time.LocalDate validFrom) {
+        Blocker b = new Blocker("Ruhe", BlockerKind.REST, from, to, java.util.EnumSet.allOf(java.time.DayOfWeek.class),
+                validFrom, null, BlockerStrength.SHOW, BlockerVisibility.TITLE, true, false, null);
+        b.setMemberIds(Set.of(memberId));
+        return b;
     }
 
     @Test

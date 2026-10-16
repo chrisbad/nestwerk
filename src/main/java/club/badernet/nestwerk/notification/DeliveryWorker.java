@@ -1,5 +1,6 @@
 package club.badernet.nestwerk.notification;
 
+import club.badernet.nestwerk.blocker.QuietHours;
 import club.badernet.nestwerk.user.User;
 import club.badernet.nestwerk.user.UserRepository;
 import org.slf4j.Logger;
@@ -42,11 +43,13 @@ public class DeliveryWorker {
     private final PushSubscriptionRepository subscriptions;
     private final Clock clock;
     private final PushSubscriptions safety;
+    private final QuietHours quietHours;
 
     public DeliveryWorker(NamedParameterJdbcTemplate jdbc, UserRepository users, MailDelivery mail,
                           WebPushSender push, PushSubscriptionRepository subscriptions, Clock clock,
-                          PushSubscriptions safety) {
+                          PushSubscriptions safety, QuietHours quietHours) {
         this.safety = safety;
+        this.quietHours = quietHours;
         this.jdbc = jdbc;
         this.users = users;
         this.mail = mail;
@@ -77,6 +80,14 @@ public class DeliveryWorker {
             Optional<User> user = users.findById(job.userId());
             if (user.isEmpty() || !user.get().isEnabled()) {
                 finish(job, "SKIPPED", "Empfänger nicht aktiv");
+                continue;
+            }
+            Optional<Instant> quietUntil = quietHours.quietUntil(job.userId(), clock.instant());
+            if (quietUntil.isPresent()) {
+                // Ruhe-Modus: nach der Ruhezeit zustellen, ohne einen Versuch zu verbrauchen
+                jdbc.update("UPDATE notification_deliveries SET next_attempt_at = :at WHERE id = :id",
+                        new MapSqlParameterSource("at", java.sql.Timestamp.from(quietUntil.get()))
+                                .addValue("id", job.id()));
                 continue;
             }
             if (job.channel() == Channel.EMAIL) {
