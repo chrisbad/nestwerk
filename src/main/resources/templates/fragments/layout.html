@@ -5,22 +5,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title th:text="${title} + ' – Nestwerk'">Nestwerk</title>
-    <meta name="color-scheme" content="light dark">
+    <meta name="color-scheme" content="dark light">
     <meta name="_csrf" th:if="${_csrf}" th:content="${_csrf.token}">
     <meta name="_csrf_header" th:if="${_csrf}" th:content="${_csrf.headerName}">
     <script>
         try {
             const t = localStorage.getItem('nestwerk-theme');
-            if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
-        } catch (e) { /* Speicher nicht verfügbar */ }
+            document.documentElement.dataset.theme = t === 'light' || t === 'system' ? t : 'dark';
+            document.documentElement.classList.add('page-enter');
+        } catch (e) { document.documentElement.dataset.theme = 'dark'; }
     </script>
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <link rel="manifest" th:href="@{/manifest.webmanifest}">
     <link rel="apple-touch-icon" th:href="@{/icons/apple-touch-icon.png}">
-    <meta name="theme-color" content="#3F5B45">
+    <meta name="theme-color" content="#08080d">
     <link rel="preload" as="font" type="font/woff2" crossorigin th:href="@{/fonts/bricolage-grotesque.woff2}">
     <link rel="stylesheet" th:href="@{/css/nestwerk.css}">
     <script defer th:src="@{/js/vendor/htmx.min.js}"></script>
+    <script defer th:src="@{/js/vendor/sortable.min.js}"></script>
     <script defer th:src="@{/js/nestwerk.js}"></script>
 </head>
 <body>
@@ -43,28 +45,24 @@
             <span>Nestwerk</span>
         </a>
 
-        <button type="button" class="icon-button nav-toggle" aria-expanded="false" aria-controls="main-nav"
-                data-nav-toggle>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-            <span class="visually-hidden">Menü</span>
-        </button>
-
         <nav id="main-nav" class="nav-links" aria-label="Hauptnavigation">
-            <a th:href="@{/}" th:aria-current="${active == 'home'} ? 'page'">Start</a>
+            <a th:href="@{/}"
+               th:aria-current="${active == 'home'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg><span>Start</span></a>
             <a th:href="@{/calendar}" sec:authorize="hasAuthority('CALENDAR_VIEW')"
-               th:aria-current="${active == 'calendar'} ? 'page'">Kalender</a>
+               th:aria-current="${active == 'calendar'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Kalender</span></a>
             <a th:href="@{/todos}" th:if="${@todoAccess.mayOpen(#authentication.name)}"
-               th:aria-current="${active == 'todos'} ? 'page'">ToDos</a>
+               th:aria-current="${active == 'todos'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="m8 12 3 3 5-6"/></svg><span>ToDos</span></a>
             <a th:href="@{/household}" th:if="${@householdAccess.mayOpen(#authentication.name)}"
-               th:aria-current="${active == 'household'} ? 'page'">Haushalt</a>
+               th:aria-current="${active == 'household'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 20V10l7.5-6 7.5 6v10z"/><path d="M9.5 20v-5h5v5"/></svg><span>Haushalt</span></a>
             <a th:href="@{/contacts}" th:if="${@contactService.mayOpen(#authentication.name)}"
-               th:aria-current="${active == 'contacts'} ? 'page'">Kontakte</a>
+               th:aria-current="${active == 'contacts'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="3"/><circle cx="12" cy="10" r="2.6"/><path d="M7.8 16.5a4.2 4.2 0 0 1 8.4 0"/></svg><span>Kontakte</span></a>
+            <p class="nav-section" sec:authorize="hasAnyAuthority('USER_MANAGE', 'ACCESS_ROLE_MANAGE', 'MEMBER_MANAGE')">Verwaltung</p>
             <a th:href="@{/admin/users}" sec:authorize="hasAuthority('USER_MANAGE')"
-               th:aria-current="${active == 'users'} ? 'page'">Benutzer</a>
+               th:aria-current="${active == 'users'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 19.5a6.5 6.5 0 0 1 13 0"/><path d="M15.5 4.8a3.5 3.5 0 0 1 0 6.4M18 14a6.5 6.5 0 0 1 3.5 5.5"/></svg><span>Benutzer</span></a>
             <a th:href="@{/admin/roles}" sec:authorize="hasAuthority('ACCESS_ROLE_MANAGE')"
-               th:aria-current="${active == 'roles'} ? 'page'">Rollen</a>
+               th:aria-current="${active == 'roles'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.5 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/></svg><span>Rollen</span></a>
             <a th:href="@{/admin/members}" sec:authorize="hasAuthority('MEMBER_MANAGE')"
-               th:aria-current="${active == 'members'} ? 'page'">Mitglieder</a>
+               th:aria-current="${active == 'members'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="9" r="2.6"/><circle cx="16" cy="9" r="2.6"/><path d="M3.5 18.5a4.5 4.5 0 0 1 9 0M11.5 18.5a4.5 4.5 0 0 1 9 0"/></svg><span>Mitglieder</span></a>
         </nav>
 
         <div class="nav-tools">
@@ -95,10 +93,10 @@
                 <svg class="theme-icon theme-icon-dark" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>
                 </svg>
-                <span class="visually-hidden" data-theme-label>Farbschema: System</span>
+                <span class="visually-hidden" data-theme-label>Farbschema: Dunkel</span>
             </button>
 
-            <div class="menu" data-menu>
+            <div class="menu user-menu" data-menu>
                 <button type="button" class="avatar-button" aria-expanded="false" aria-haspopup="true"
                         data-menu-toggle>
                     <span class="avatar" th:text="${#strings.toUpperCase(#strings.substring(#authentication.name, 0, 1))}">?</span>
@@ -125,6 +123,60 @@
             </div>
         </div>
     </div>
+
+    <!-- Handy: Tab-Leiste unten, „Mehr“ öffnet ein Blatt, das man nach unten wegwischen kann -->
+    <nav class="tabbar" aria-label="Schnellnavigation">
+        <a th:href="@{/}"
+           th:aria-current="${active == 'home'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg><span>Start</span></a>
+        <a th:href="@{/calendar}" sec:authorize="hasAuthority('CALENDAR_VIEW')"
+           th:aria-current="${active == 'calendar'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Kalender</span></a>
+        <a th:href="@{/todos}" th:if="${@todoAccess.mayOpen(#authentication.name)}"
+           th:aria-current="${active == 'todos'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="m8 12 3 3 5-6"/></svg><span>ToDos</span></a>
+        <a th:href="@{/household}" th:if="${@householdAccess.mayOpen(#authentication.name)}"
+           th:aria-current="${active == 'household'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 20V10l7.5-6 7.5 6v10z"/><path d="M9.5 20v-5h5v5"/></svg><span>Haushalt</span></a>
+        <button type="button" class="tabbar-more" data-open-dialog="nav-sheet" aria-haspopup="dialog">
+            <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5.5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="18.5" cy="12" r="1.6"/></svg><span>Mehr</span>
+        </button>
+    </nav>
+    <dialog id="nav-sheet" class="dialog nav-sheet" aria-label="Navigation">
+        <div class="sheet-grip" aria-hidden="true"></div>
+        <nav class="sheet-grid" aria-label="Bereiche">
+            <a th:href="@{/}" class="sheet-link"
+               th:aria-current="${active == 'home'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/></svg><span>Start</span></a>
+            <a th:href="@{/calendar}" sec:authorize="hasAuthority('CALENDAR_VIEW')" class="sheet-link"
+               th:aria-current="${active == 'calendar'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Kalender</span></a>
+            <a th:href="@{/todos}" th:if="${@todoAccess.mayOpen(#authentication.name)}" class="sheet-link"
+               th:aria-current="${active == 'todos'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="m8 12 3 3 5-6"/></svg><span>ToDos</span></a>
+            <a th:href="@{/household}" th:if="${@householdAccess.mayOpen(#authentication.name)}" class="sheet-link"
+               th:aria-current="${active == 'household'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 20V10l7.5-6 7.5 6v10z"/><path d="M9.5 20v-5h5v5"/></svg><span>Haushalt</span></a>
+            <a th:href="@{/contacts}" th:if="${@contactService.mayOpen(#authentication.name)}" class="sheet-link"
+               th:aria-current="${active == 'contacts'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3.5" width="16" height="17" rx="3"/><circle cx="12" cy="10" r="2.6"/><path d="M7.8 16.5a4.2 4.2 0 0 1 8.4 0"/></svg><span>Kontakte</span></a>
+            <a th:href="@{/admin/users}" sec:authorize="hasAuthority('USER_MANAGE')" class="sheet-link"
+               th:aria-current="${active == 'users'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 19.5a6.5 6.5 0 0 1 13 0"/><path d="M15.5 4.8a3.5 3.5 0 0 1 0 6.4M18 14a6.5 6.5 0 0 1 3.5 5.5"/></svg><span>Benutzer</span></a>
+            <a th:href="@{/admin/roles}" sec:authorize="hasAuthority('ACCESS_ROLE_MANAGE')" class="sheet-link"
+               th:aria-current="${active == 'roles'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.5 3.2 8.2 7.5 9.5 4.3-1.3 7.5-5 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/></svg><span>Rollen</span></a>
+            <a th:href="@{/admin/members}" sec:authorize="hasAuthority('MEMBER_MANAGE')" class="sheet-link"
+               th:aria-current="${active == 'members'} ? 'page'"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="9" r="2.6"/><circle cx="16" cy="9" r="2.6"/><path d="M3.5 18.5a4.5 4.5 0 0 1 9 0M11.5 18.5a4.5 4.5 0 0 1 9 0"/></svg><span>Mitglieder</span></a>
+        </nav>
+        <div class="sheet-menu">
+            <p class="menu-label">Angemeldet als <strong sec:authentication="name">benutzer</strong></p>
+            <a class="menu-item" th:href="@{/notifications}">Benachrichtigungen</a>
+            <a class="menu-item" th:href="@{/settings/notifications}">Meine Benachrichtigungswege</a>
+            <a class="menu-item" th:href="@{/settings/pin}"
+               th:if="${@householdAccess.mayOpen(#authentication.name)}">PIN fürs Tablet</a>
+            <a class="menu-item" th:href="@{/settings/ai}"
+               sec:authorize="hasAuthority('AI_ACCESS')">KI-Zugänge</a>
+            <a class="menu-item" th:href="@{/admin/notifications}"
+               sec:authorize="hasAuthority('NOTIFICATION_SETTINGS_MANAGE')">Benachrichtigungen einstellen</a>
+            <a class="menu-item" th:href="@{/admin/devices}"
+               sec:authorize="hasAuthority('HOUSEHOLD_DEVICE_MANAGE')">Wand-Tablets</a>
+            <a class="menu-item" th:href="@{/admin/backup}"
+               sec:authorize="hasAuthority('BACKUP_MANAGE')">Sicherungen</a>
+            <form th:action="@{/logout}" method="post">
+                <button type="submit" class="menu-item">Abmelden</button>
+            </form>
+        </div>
+    </dialog>
 </header>
 
 <button th:fragment="passwordToggle" type="button" class="icon-button" aria-pressed="false" data-password-toggle>

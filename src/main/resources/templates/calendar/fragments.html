@@ -8,12 +8,12 @@
     <div class="cal-title">
         <h1 th:text="${title}">Oktober 2026</h1>
         <div class="cal-step" hx-boost="true" hx-target="#calendar" hx-select="#calendar" hx-swap="outerHTML">
-            <a class="icon-button" th:href="${prevUrl}" title="Zurück">
+            <a class="icon-button" th:href="${prevUrl}" title="Zurück" data-swipe-prev>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
                 <span class="visually-hidden">Zurück</span>
             </a>
             <a class="button button-ghost button-small" th:href="${todayUrl}">Heute</a>
-            <a class="icon-button" th:href="${nextUrl}" title="Weiter">
+            <a class="icon-button" th:href="${nextUrl}" title="Weiter" data-swipe-next>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
                 <span class="visually-hidden">Weiter</span>
             </a>
@@ -67,7 +67,9 @@
    th:classappend="${o.allDay} ? 'occ-allday'"
    th:with="firstMember=${#sets.isEmpty(o.memberIds) ? null : memberById[o.memberIds.iterator().next()]}"
    th:style="${firstMember != null} ? |--occ-color: ${firstMember.color}|"
-   th:href="@{/calendar/events/{id}(id=${o.eventId}, occurrence=${o.recurring} ? ${o.recurrenceId} : null)}">
+   th:href="@{/calendar/events/{id}(id=${o.eventId}, occurrence=${o.recurring} ? ${o.recurrenceId} : null)}"
+   th:attr="data-event-id=${o.eventId}, data-start=${#temporals.format(o.start, 'yyyy-MM-dd')},
+            data-movable=${!o.recurring and #authorization.expression('hasAnyAuthority(''CALENDAR_EVENT_EDIT_OWN'', ''CALENDAR_EVENT_EDIT_ALL'')')} ? 'true' : null">
     <span class="occ-time" th:unless="${o.allDay}" th:text="${#temporals.format(o.start, 'HH:mm')}">10:00</span>
     <span class="occ-title">
         <svg th:if="${o.privateEvent}" class="occ-lock" viewBox="0 0 24 24" aria-label="Privat" role="img">

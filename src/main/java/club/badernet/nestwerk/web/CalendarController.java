@@ -19,6 +19,9 @@ import club.badernet.nestwerk.todo.TodoQuery;
 import club.badernet.nestwerk.todo.TodoService;
 import club.badernet.nestwerk.user.User;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -28,6 +31,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.Instant;
@@ -237,6 +241,21 @@ public class CalendarController {
             model.addAttribute("recurring", event.getRrule() != null);
             addFormData(model);
             return "calendar/event-form";
+        }
+    }
+
+    /** Ziehen im Kalender: einzelnen Termin auf einen anderen Tag legen. Antwortet mit einer kurzen Meldung. */
+    @PostMapping(value = "/events/{id}/move", produces = "text/plain;charset=UTF-8")
+    @ResponseBody
+    ResponseEntity<String> move(@PathVariable Long id,
+                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        try {
+            events.moveToDate(id, date, currentUser.require());
+            return ResponseEntity.ok("Termin wurde verschoben.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Diesen Termin darfst du nicht verschieben.");
         }
     }
 

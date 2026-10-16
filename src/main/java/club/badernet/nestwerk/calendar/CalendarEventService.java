@@ -10,8 +10,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -108,6 +110,28 @@ public class CalendarEventService {
         if (seriesChanged) {
             event.clearExceptions();
         }
+        event.markChanged();
+        absenceChanged(event, wasAbsence);
+    }
+
+    /** Verschiebt einen einzelnen Termin auf einen anderen Tag; Uhrzeiten und Dauer bleiben in Ortszeit erhalten. */
+    @Transactional
+    public void moveToDate(Long id, LocalDate target, User actor) {
+        CalendarEvent event = get(id, actor);
+        if (!canEdit(event, actor)) {
+            throw new AccessDeniedException("Keine Berechtigung zum Bearbeiten dieses Termins");
+        }
+        if (event.getRrule() != null) {
+            throw new IllegalArgumentException("Wiederkehrende Termine lassen sich nur im Formular verschieben.");
+        }
+        ZonedDateTime start = event.getStartsAt().atZone(zone);
+        long days = ChronoUnit.DAYS.between(start.toLocalDate(), target);
+        if (days == 0) {
+            return;
+        }
+        boolean wasAbsence = event.isAbsence();
+        event.setTimes(start.plusDays(days).toInstant(),
+                event.getEndsAt().atZone(zone).plusDays(days).toInstant(), event.isAllDay());
         event.markChanged();
         absenceChanged(event, wasAbsence);
     }

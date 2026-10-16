@@ -14,6 +14,8 @@ import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.security.CurrentUser;
 import club.badernet.nestwerk.user.User;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.DayOfWeek;
@@ -49,7 +52,7 @@ public class HouseholdController {
     }
 
     /** Eine Zeile im Wochenplan: ein Mitglied (oder „offen“) mit seinen Aufgaben je Tag. */
-    public record WeekRow(String label, String color, List<List<HouseholdViews.TaskChip>> cells, int minutes) {
+    public record WeekRow(Long memberId, String label, String color, List<List<HouseholdViews.TaskChip>> cells, int minutes) {
     }
 
     /** Ein Tag mit seinen Aufgaben (Wochenplan auf dem Handy). */
@@ -98,10 +101,10 @@ public class HouseholdController {
         List<WeekRow> rows = new ArrayList<>();
         byMember.forEach((id, list) -> {
             FamilyMember m = ctx.members().get(id);
-            rows.add(row(m.getName(), m.getColor(), list, days, ctx));
+            rows.add(row(id, m.getName(), m.getColor(), list, days, ctx));
         });
         if (!unassigned.isEmpty()) {
-            rows.add(row("Offen", null, unassigned, days, ctx));
+            rows.add(row(null, "Offen", null, unassigned, days, ctx));
         }
         List<DayGroup> byDay = days.stream().map(d -> new DayGroup(d, views.chips(inWeek.stream()
                 .filter(t -> t.getDueOn().equals(d.date())).toList(), ctx))).toList();
@@ -118,14 +121,14 @@ public class HouseholdController {
         return "household/week";
     }
 
-    private WeekRow row(String label, String color, List<ChoreTask> list, List<WeekDay> days,
+    private WeekRow row(Long memberId, String label, String color, List<ChoreTask> list, List<WeekDay> days,
                        HouseholdViews.Context ctx) {
         List<List<HouseholdViews.TaskChip>> cells = new ArrayList<>();
         for (WeekDay d : days) {
             cells.add(views.chips(list.stream().filter(t -> t.getDueOn().equals(d.date())).toList(), ctx));
         }
         int minutes = list.stream().mapToInt(views::minutes).sum();
-        return new WeekRow(label, color, cells, minutes);
+        return new WeekRow(memberId, label, color, cells, minutes);
     }
 
     @GetMapping("/today")
@@ -388,6 +391,22 @@ public class HouseholdController {
             ok = false;
         }
         return answer(id, actor, ok, message, back, htmx, model, redirect);
+    }
+
+    /** Ziehen im Wochenplan: Zuständigkeit ändern, Antwort als kurze Meldung statt Weiterleitung. */
+    @PostMapping(value = "/tasks/{id}/assign", headers = "HX-Request", produces = "text/plain;charset=UTF-8")
+    @ResponseBody
+    ResponseEntity<String> assignInline(@PathVariable Long id, @RequestParam(required = false) Long member) {
+        User actor = requireModule();
+        try {
+            tasks.assign(id, member, actor);
+            return ResponseEntity.ok(member == null ? "Die Hausarbeit ist jetzt offen zum Nehmen."
+                    : "Zuständigkeit wurde geändert.");
+        } catch (ChoreConflictException | IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+        }
     }
 
     @PostMapping("/tasks/{id}/assign")
