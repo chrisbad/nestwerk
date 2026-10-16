@@ -1,5 +1,7 @@
 package club.badernet.nestwerk.ai.tools;
 
+import club.badernet.nestwerk.blocker.BlockerStrength;
+import club.badernet.nestwerk.blocker.Conflict;
 import club.badernet.nestwerk.calendar.CalendarEvent;
 import club.badernet.nestwerk.calendar.CalendarEventService;
 import club.badernet.nestwerk.calendar.CalendarSettings;
@@ -29,7 +31,13 @@ public class CalendarTools {
 
     public record Event(Long eventId, String title, String start, String end, boolean allDay, String location,
                         String description, boolean recurring, String rrule, boolean privateEvent, boolean absence,
-                        List<String> participants) {
+                        List<String> participants, List<String> warnings) {
+
+        /** Hinweise von Blockern der Teilnehmer (der Termin ist trotzdem gespeichert). */
+        Event withWarnings(List<String> found) {
+            return new Event(eventId, title, start, end, allDay, location, description, recurring, rrule,
+                    privateEvent, absence, participants, found);
+        }
     }
 
     private static final int MAX_DAYS = 92;
@@ -86,7 +94,9 @@ public class CalendarTools {
 
     @McpTool(name = "create_event", description = "Legt einen Termin an. Mit Uhrzeit: startDate+startTime und "
             + "endTime (endDate optional, Standard = startDate). Ganztägig: allDay=true, endDate einschließlich. "
-            + "Wiederholung als iCal-RRULE, z. B. FREQ=WEEKLY;BYDAY=MO. participantIds aus list_members.",
+            + "Wiederholung als iCal-RRULE, z. B. FREQ=WEEKLY;BYDAY=MO. participantIds aus list_members. "
+            + "Arbeits-, Schlaf- und Ruhezeiten der Teilnehmer: Hinweise stehen in warnings, gesperrte Zeiten "
+            + "lehnt Nestwerk mit Begründung ab.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
     public Event createEvent(McpTransportContext context,
                              @McpToolParam(description = "Titel") String title,
@@ -117,7 +127,8 @@ public class CalendarTools {
             if (!form.isAllDay() && (startTime == null || endTime == null)) {
                 throw new Tools.ToolException("Bei Terminen mit Uhrzeit sind startTime und endTime nötig.");
             }
-            return view(events.create(form.toInput(), user), names());
+            List<String> warnings = warnings(events.conflicts(form.toInput(), null, user));
+            return view(events.create(form.toInput(), user), names()).withWarnings(warnings);
         });
     }
 
@@ -150,8 +161,9 @@ public class CalendarTools {
             }
             apply(form, startDate, startTime, endDate, endTime, allDay, location, description, rrule, privateEvent,
                     absence, participantIds);
+            List<String> warnings = warnings(events.conflicts(form.toInput(), id, user));
             events.update(id, form.toInput(), user);
-            return view(events.get(id, user), names());
+            return view(events.get(id, user), names()).withWarnings(warnings);
         });
     }
 
@@ -201,6 +213,11 @@ public class CalendarTools {
         }
     }
 
+    private static List<String> warnings(List<Conflict> found) {
+        return found.stream().filter(c -> c.strength() == BlockerStrength.WARN).map(Conflict::message).distinct()
+                .toList();
+    }
+
     private Map<Long, String> names() {
         return members.findAll().stream().collect(Collectors.toMap(FamilyMember::getId, FamilyMember::getName));
     }
@@ -214,7 +231,7 @@ public class CalendarTools {
         return new Event(o.eventId(), o.title(), format(o.start(), o.allDay()),
                 format(o.allDay() ? o.end().minusDays(1) : o.end(), o.allDay()),
                 o.allDay(), o.location(), o.description(), o.recurring(), null, o.privateEvent(), false,
-                participants(o.memberIds(), names));
+                participants(o.memberIds(), names), List.of());
     }
 
     private Event view(CalendarEvent e, Map<Long, String> names) {
@@ -224,7 +241,7 @@ public class CalendarTools {
         return new Event(e.getId(), e.getTitle(), format(start, e.isAllDay()),
                 format(e.isAllDay() ? end.minusDays(1) : end, e.isAllDay()), e.isAllDay(), e.getLocation(),
                 e.getDescription(), e.getRrule() != null, e.getRrule(), e.isPrivateEvent(), e.isAbsence(),
-                participants(e.getMemberIds(), names));
+                participants(e.getMemberIds(), names), List.of());
     }
 
     private String format(ZonedDateTime value, boolean allDay) {

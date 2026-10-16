@@ -165,7 +165,7 @@ public class BlockerConflicts {
         String times = TIME.format(slot.start().atZone(busy.zone())) + "–" + TIME.format(slot.end().atZone(busy.zone()));
         if (insider || blocker.getVisibility() == BlockerVisibility.TITLE) {
             String title = blocker.getTitle().equals(blocker.getKind().label()) ? "" : blocker.getTitle() + ", ";
-            return person.getName() + " " + blocker.getKind().verb() + " da (" + title + times + ").";
+            return person.getName() + " " + blocker.getKind().verb() + " (" + title + times + ").";
         }
         if (blocker.getVisibility() == BlockerVisibility.BUSY) {
             return person.getName() + " ist da nicht verfügbar (" + times + ").";

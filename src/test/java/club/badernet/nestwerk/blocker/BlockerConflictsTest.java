@@ -35,13 +35,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import({TestcontainersConfiguration.class, BlockerConflictsTest.FixedClock.class})
 @SpringBootTest(properties = "nestwerk.admin.password=test-admin-pw")
 @Transactional
-class BlockerConflictsTest {
+public class BlockerConflictsTest {
 
     static final ZoneId BERLIN = ZoneId.of("Europe/Berlin");
 
     /** Montag, 12.10.2026, 07:00 Uhr. */
     @TestConfiguration
-    static class FixedClock {
+    public static class FixedClock {
         @Bean
         @Primary
         Clock fixedClock() {

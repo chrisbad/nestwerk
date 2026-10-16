@@ -2,11 +2,11 @@ package club.badernet.nestwerk.blocker;
 
 /** Art eines Blockers; bestimmt Farbe, Symbol und Standardwerte im Formular. */
 public enum BlockerKind {
-    WORK("Arbeit", "arbeitet"),
-    SLEEP("Schlaf", "schläft"),
-    REST("Ruhe / Pause", "hat Ruhezeit"),
-    LEISURE("Freizeit", "hat Freizeit"),
-    CUSTOM("Eigene", "ist nicht verfügbar");
+    WORK("Arbeit", "arbeitet da"),
+    SLEEP("Schlaf", "schläft da"),
+    REST("Ruhe / Pause", "hat da Ruhezeit"),
+    LEISURE("Freizeit", "hat da Freizeit"),
+    CUSTOM("Eigene", "ist da nicht verfügbar");
 
     private final String label;
     private final String verb;
@@ -20,7 +20,7 @@ public enum BlockerKind {
         return label;
     }
 
-    /** Für Hinweise wie „Lena arbeitet da“. */
+    /** Für Hinweise wie „Lena arbeitet da (…)“. */
     public String verb() {
         return verb;
     }

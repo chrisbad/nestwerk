@@ -1,5 +1,8 @@
 package club.badernet.nestwerk.web;
 
+import club.badernet.nestwerk.blocker.BlockerConflicts;
+import club.badernet.nestwerk.blocker.Conflict;
+import club.badernet.nestwerk.blocker.TimeRange;
 import club.badernet.nestwerk.calendar.CalendarEvent;
 import club.badernet.nestwerk.calendar.CalendarEventService;
 import club.badernet.nestwerk.calendar.CalendarGrid;
@@ -37,7 +40,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -51,6 +58,9 @@ import java.util.Set;
 public class CalendarController {
 
     private static final int AGENDA_DAYS = 60;
+    private static final DateTimeFormatter ALTERNATIVE = DateTimeFormatter.ofPattern("EE, d.M. HH:mm",
+            java.util.Locale.GERMAN);
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
 
     private final CalendarEventService events;
     private final FamilyMemberService members;
@@ -60,10 +70,13 @@ public class CalendarController {
     private final TodoAccess todoAccess;
     private final TodoService todoService;
     private final TodoEventLinks todoLinks;
+    private final BlockerConflicts blockerConflicts;
 
     public CalendarController(CalendarEventService events, FamilyMemberService members,
                               CurrentUser currentUser, CalendarSettings settings, TodoQuery todoQuery,
-                              TodoAccess todoAccess, TodoService todoService, TodoEventLinks todoLinks) {
+                              TodoAccess todoAccess, TodoService todoService, TodoEventLinks todoLinks,
+                              BlockerConflicts blockerConflicts) {
+        this.blockerConflicts = blockerConflicts;
         this.events = events;
         this.members = members;
         this.currentUser = currentUser;
@@ -179,6 +192,12 @@ public class CalendarController {
         try {
             User actor = currentUser.require();
             Todo fromTodo = form.getTodoId() == null ? null : linkableTodo(form.getTodoId(), actor);
+            if (warnAboutBlockers(form, null, actor, model)) {
+                model.addAttribute("action", "/calendar/events");
+                model.addAttribute("isNew", true);
+                addFormData(model);
+                return "calendar/event-form";
+            }
             CalendarEvent created = events.create(form.toInput(), actor);
             if (fromTodo != null) {
                 todoLinks.link(fromTodo.getId(), created.getId());
@@ -227,12 +246,17 @@ public class CalendarController {
                   Model model, RedirectAttributes redirect) {
         User actor = currentUser.require();
         try {
+            if (warnAboutBlockers(form, id, actor, model)) {
+                throw new BlockerWarning();
+            }
             events.update(id, form.toInput(), actor);
             redirect.addFlashAttribute("success", "Termin wurde gespeichert.");
             return "redirect:/calendar/month?date=" + form.getStartDate();
         } catch (IllegalArgumentException e) {
             CalendarEvent event = events.get(id, actor);
-            model.addAttribute("error", e.getMessage());
+            if (!(e instanceof BlockerWarning)) {
+                model.addAttribute("error", e.getMessage());
+            }
             model.addAttribute("event", event);
             model.addAttribute("action", "/calendar/events/" + id);
             model.addAttribute("isNew", false);
@@ -250,8 +274,11 @@ public class CalendarController {
     ResponseEntity<String> move(@PathVariable Long id,
                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         try {
-            events.moveToDate(id, date, currentUser.require());
-            return ResponseEntity.ok("Termin wurde verschoben.");
+            List<Conflict> warnings = events.moveToDate(id, date, currentUser.require());
+            String notes = warnings.stream().map(Conflict::message).distinct()
+                    .collect(java.util.stream.Collectors.joining(" "));
+            return ResponseEntity.ok(notes.isEmpty() ? "Termin wurde verschoben."
+                    : "Termin wurde verschoben. Achtung: " + notes);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (AccessDeniedException e) {
@@ -295,6 +322,47 @@ public class CalendarController {
             redirect.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/calendar/month";
+    }
+
+    /** Freie Zeit als Vorschlag im Formular. */
+    public record Alternative(String label, LocalDate startDate, LocalTime startTime, LocalDate endDate,
+                              LocalTime endTime) {
+    }
+
+    /** Signalisiert im Änderungsformular „erst Warnung zeigen“ (kein Fehler). */
+    private static final class BlockerWarning extends IllegalArgumentException {
+    }
+
+    /**
+     * Zeigt Warnungen von Blockern einmal an, mit freien Alternativen; erst mit „Trotzdem speichern“
+     * ({@code confirmBlockers}) wird gespeichert. Sperren meldet der Service beim Speichern selbst.
+     */
+    private boolean warnAboutBlockers(EventForm form, Long eventId, User actor, Model model) {
+        if (form.isConfirmBlockers()) {
+            return false;
+        }
+        List<Conflict> found = events.conflicts(form.toInput(), eventId, actor);
+        if (found.isEmpty() || BlockerConflicts.blocks(found)) {
+            return false;
+        }
+        model.addAttribute("blockerWarnings", found.stream().map(Conflict::message).distinct().toList());
+        ZoneId zone = settings.zone();
+        LocalDate startDate = form.getStartDate();
+        Instant start = form.isAllDay() || form.getStartTime() == null ? startDate.atStartOfDay(zone).toInstant()
+                : startDate.atTime(form.getStartTime()).atZone(zone).toInstant();
+        Instant end = form.isAllDay() || form.getEndTime() == null
+                ? form.getEndDate().plusDays(1).atStartOfDay(zone).toInstant()
+                : form.getEndDate().atTime(form.getEndTime()).atZone(zone).toInstant();
+        List<Alternative> alternatives = form.isAllDay() ? List.of()
+                : blockerConflicts.alternatives(form.getMemberIds(), new TimeRange(start, end), eventId).stream()
+                .map(t -> {
+                    ZonedDateTime from = t.start().atZone(zone);
+                    ZonedDateTime to = t.end().atZone(zone);
+                    return new Alternative(ALTERNATIVE.format(from) + "–" + TIME.format(to), from.toLocalDate(),
+                            from.toLocalTime(), to.toLocalDate(), to.toLocalTime());
+                }).toList();
+        model.addAttribute("alternatives", alternatives);
+        return true;
     }
 
     private Occurrence seriesStart(CalendarEvent event) {
