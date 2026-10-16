@@ -34,7 +34,7 @@ class PermissionCatalogTest {
         assertThat(byModule.keySet()).containsExactly("Verwaltung", "Kalender");
         assertThat(byModule.get("Verwaltung")).extracting(PermissionDefinition::key)
                 .containsExactly("USER_MANAGE", "ACCESS_ROLE_MANAGE", "MEMBER_MANAGE", "NOTIFICATION_SETTINGS_MANAGE",
-                        "HOUSEHOLD_DEVICE_MANAGE", "AI_ACCESS", "BACKUP_MANAGE");
+                        "HOUSEHOLD_DEVICE_MANAGE", "AI_ACCESS", "BACKUP_MANAGE", "UPDATE_MANAGE");
         assertThat(byModule.get("Kalender").getFirst().label()).isEqualTo("Kalender ansehen");
     }
 
