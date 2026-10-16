@@ -19,7 +19,7 @@ services:
       retries: 10
 
   app:
-    image: ghcr.io/chrisbad/nestwerk:${NESTWERK_VERSION:-latest}
+    image: ${NESTWERK_IMAGE:-ghcr.io/chrisbad/nestwerk}:${NESTWERK_VERSION:-latest}
     restart: unless-stopped
     depends_on:
       db:
@@ -47,6 +47,7 @@ services:
     volumes:
       - attachments:/data/attachments
       - backups:/data/backups
+      - updater:/data/updater
       # externe Platte für Sicherungen; ohne Angabe ein Verzeichnis neben dieser Datei
       - ${NESTWERK_EXTERNAL_BACKUP_HOST_DIR:-./external-backup}:/data/external
     healthcheck:
@@ -56,7 +57,25 @@ services:
       retries: 5
       start_period: 40s
 
+  # Spielt Updates ein, die ein Admin in Nestwerk beauftragt (Aufträge über das Volume „updater“). Braucht den
+  # Docker-Socket und das Installationsverzeichnis unter demselben Pfad wie auf dem Host, damit relative Pfade in
+  # diesen Dateien stimmen. Neue Variablen in den Compose-Dateien brauchen immer einen Standardwert: .env wird bei
+  # einem Update nur bei NESTWERK_VERSION geändert.
+  updater:
+    image: ${NESTWERK_IMAGE:-ghcr.io/chrisbad/nestwerk}-updater:${NESTWERK_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      NESTWERK_DIR: ${NESTWERK_DIR:-/opt/nestwerk}
+    working_dir: ${NESTWERK_DIR:-/opt/nestwerk}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${NESTWERK_DIR:-/opt/nestwerk}:${NESTWERK_DIR:-/opt/nestwerk}
+      # Anmeldung des Hosts bei ghcr.io (privates Image)
+      - ${DOCKER_CONFIG_DIR:-/root/.docker}:/root/.docker:ro
+      - updater:/work
+
 volumes:
   db-data:
   attachments:
   backups:
+  updater:
