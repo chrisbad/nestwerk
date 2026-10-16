@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<!-- Unterseiten der Küche -->
+<nav th:fragment="tabs(tab)" class="kitchen-tabs" aria-label="Küche">
+    <a th:href="@{/kitchen/plan}" th:aria-current="${tab == 'plan'} ? 'page'">Essensplan</a>
+    <a th:href="@{/kitchen/recipes}" th:aria-current="${tab == 'recipes'} ? 'page'">Rezepte</a>
+    <a th:href="@{/kitchen/shopping}" th:aria-current="${tab == 'shopping'} ? 'page'">Einkauf</a>
+    <a th:href="@{/kitchen/pantry}" th:aria-current="${tab == 'pantry'} ? 'page'">Vorrat</a>
+    <a th:href="@{/kitchen/foods}" th:aria-current="${tab == 'foods'} ? 'page'">Lebensmittel</a>
+    <a th:href="@{/kitchen/settings}" sec:authorize="hasAuthority('KITCHEN_SETTINGS')"
+       th:aria-current="${tab == 'settings'} ? 'page'">Einstellungen</a>
+</nav>
+</body>
+</html>

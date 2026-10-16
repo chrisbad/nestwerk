@@ -821,6 +821,24 @@
 
     /* --- Ruhe-Ziel: Fenster nur bei „freie Zeitfenster“ ---------------------- */
     // Neue Zeit: Wechsel der Art lädt die passenden Vorgaben (Uhrzeiten, Tage, Regeln)
+    /** Rezeptformular: weitere Zutatenzeile anhängen (Kopie der letzten, Index hochgezählt). */
+    function initIngredientRows() {
+        document.querySelectorAll("[data-ingredient-rows]").forEach(box => {
+            const add = box.querySelector("[data-add-ingredient]");
+            add.addEventListener("click", () => {
+                const rows = box.querySelectorAll(".ingredient-row");
+                const last = rows[rows.length - 1];
+                const copy = last.cloneNode(true);
+                copy.querySelectorAll("input, select").forEach(field => {
+                    field.name = field.name.replace(/rows\[(\d+)\]/, (m, n) => "rows[" + (Number(n) + 1) + "]");
+                    field.value = "";
+                });
+                last.after(copy);
+                copy.querySelector(".ingredient-amount").focus();
+            });
+        });
+    }
+
     function initBlockerKindDefaults() {
         const form = document.querySelector('[data-blocker-new="true"]');
         if (!form) return;
@@ -1303,6 +1321,7 @@
         initBlockerWarning();
         initGoalForms();
         initBlockerKindDefaults();
+        initIngredientRows();
         consumeToasts(document);
     });
 })();

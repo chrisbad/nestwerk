@@ -2,6 +2,8 @@ package club.badernet.nestwerk.attachment;
 
 import club.badernet.nestwerk.contact.Contact;
 import club.badernet.nestwerk.contact.ContactService;
+import club.badernet.nestwerk.kitchen.KitchenAccess;
+import club.badernet.nestwerk.kitchen.KitchenPermission;
 import club.badernet.nestwerk.todo.Todo;
 import club.badernet.nestwerk.todo.TodoAccess;
 import club.badernet.nestwerk.todo.TodoComment;
@@ -30,7 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/** Anhänge an ToDos, Kommentaren und Kontakten mit Typ-, Größen- und Rechteprüfung. */
+/** Anhänge an ToDos, Kommentaren, Kontakten und Rezepten mit Typ-, Größen- und Rechteprüfung. */
 @Service
 public class AttachmentService {
 
@@ -49,9 +51,12 @@ public class AttachmentService {
     private final TodoAccess todoAccess;
     private final TodoCommentService comments;
     private final ContactService contacts;
+    private final KitchenAccess kitchen;
 
     public AttachmentService(AttachmentRepository attachments, AttachmentStorage storage, TodoService todos,
-                             TodoAccess todoAccess, TodoCommentService comments, ContactService contacts) {
+                             TodoAccess todoAccess, TodoCommentService comments, ContactService contacts,
+                             KitchenAccess kitchen) {
+        this.kitchen = kitchen;
         this.attachments = attachments;
         this.storage = storage;
         this.todos = todos;
@@ -129,6 +134,11 @@ public class AttachmentService {
         return attachments.findAllByContactIdOrderByUploadedAtAsc(contactId);
     }
 
+    @Transactional(readOnly = true)
+    public List<Attachment> forRecipe(Long recipeId) {
+        return attachments.findAllByRecipeIdOrderByUploadedAtAsc(recipeId);
+    }
+
     /** Entfernt Dateien ohne Datensatz (z. B. nach Löschen des Besitzers); frische Dateien bleiben liegen. */
     @Scheduled(cron = "0 30 3 * * *")
     @Transactional(readOnly = true)
@@ -168,6 +178,7 @@ public class AttachmentService {
                     throw new AccessDeniedException("Keine Berechtigung, Anhänge hochzuladen");
                 }
             }
+            case RECIPE -> kitchen.require(actor, KitchenPermission.KITCHEN_RECIPES_EDIT);
         }
     }
 
@@ -176,6 +187,7 @@ public class AttachmentService {
             case TODO -> todos.get(owner.id(), viewer);
             case COMMENT -> comments.load(owner.id(), viewer);
             case CONTACT -> contacts.get(owner.id(), viewer);
+            case RECIPE -> kitchen.require(viewer, KitchenPermission.KITCHEN_VIEW);
         }
     }
 
@@ -184,6 +196,7 @@ public class AttachmentService {
             case TODO -> todoAccess.can(actor, "EDIT", todos.get(owner.id(), actor));
             case COMMENT -> comments.load(owner.id(), actor).getAuthorId().equals(actor.getId());
             case CONTACT -> contacts.can(actor, "EDIT", contacts.get(owner.id(), actor));
+            case RECIPE -> kitchen.has(actor, KitchenPermission.KITCHEN_RECIPES_EDIT);
         };
     }
 

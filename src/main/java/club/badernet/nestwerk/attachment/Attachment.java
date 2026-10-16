@@ -27,6 +27,9 @@ public class Attachment {
     @Column(name = "contact_id", updatable = false)
     private Long contactId;
 
+    @Column(name = "recipe_id", updatable = false)
+    private Long recipeId;
+
     @Column(nullable = false, length = 255, updatable = false)
     private String filename;
 
@@ -54,6 +57,7 @@ public class Attachment {
             case TODO -> todoId = owner.id();
             case COMMENT -> commentId = owner.id();
             case CONTACT -> contactId = owner.id();
+            case RECIPE -> recipeId = owner.id();
         }
         this.filename = filename;
         this.contentType = contentType;
@@ -68,6 +72,9 @@ public class Attachment {
         }
         if (commentId != null) {
             return AttachmentOwner.comment(commentId);
+        }
+        if (recipeId != null) {
+            return AttachmentOwner.recipe(recipeId);
         }
         return AttachmentOwner.contact(contactId);
     }

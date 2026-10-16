@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${foodId == null} ? 'Neues Lebensmittel' : 'Lebensmittel ändern')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='kitchen')}"></header>
+<main class="event-main kitchen-main">
+    <a class="back-link" th:href="@{/kitchen/foods}">← Lebensmittel</a>
+    <h1 th:text="${foodId == null} ? 'Neues Lebensmittel' : 'Lebensmittel ändern'">Neues Lebensmittel</h1>
+    <p class="notice notice-error" role="alert" th:if="${error}" th:text="${error}">Fehler</p>
+
+    <form class="sheet event-form" method="post" th:object="${form}"
+          th:action="${foodId == null} ? @{/kitchen/foods} : @{/kitchen/foods/{id}(id=${foodId})}">
+        <div class="field">
+            <label for="name">Name</label>
+            <input id="name" type="text" th:field="*{name}" maxlength="100" required>
+        </div>
+        <div class="field">
+            <label for="category">Abteilung</label>
+            <select id="category" th:field="*{category}">
+                <option th:each="c : ${categories}" th:value="${c}" th:text="${c.label}">Vorrat</option>
+            </select>
+        </div>
+        <p class="hint">Nährwerte pro 100 g (bei Flüssigkeiten pro 100 ml)</p>
+        <div class="field-grid field-grid-4">
+            <div class="field"><label for="kcal">kcal</label><input id="kcal" type="text" inputmode="decimal" th:field="*{kcal}"></div>
+            <div class="field"><label for="protein">Eiweiß g</label><input id="protein" type="text" inputmode="decimal" th:field="*{protein}"></div>
+            <div class="field"><label for="fat">Fett g</label><input id="fat" type="text" inputmode="decimal" th:field="*{fat}"></div>
+            <div class="field"><label for="carbs">Kohlenhydrate g</label><input id="carbs" type="text" inputmode="decimal" th:field="*{carbs}"></div>
+        </div>
+        <div class="field-grid">
+            <div class="field"><label for="pieceGrams">Gewicht pro Stück in g</label><input id="pieceGrams" type="text" inputmode="decimal" th:field="*{pieceGrams}"></div>
+            <div class="field"><label for="packageGrams">Packungsgröße in g</label><input id="packageGrams" type="text" inputmode="decimal" th:field="*{packageGrams}"></div>
+        </div>
+        <div class="field-grid">
+            <div class="field"><label for="shelfDays">Haltbar (Tage)</label><input id="shelfDays" type="text" inputmode="numeric" th:field="*{shelfDays}"></div>
+            <div class="field"><label for="barcode">Barcode</label><input id="barcode" type="text" inputmode="numeric" th:field="*{barcode}"></div>
+        </div>
+        <div class="form-actions">
+            <a class="button button-ghost" th:href="@{/kitchen/foods}">Abbrechen</a>
+            <button type="submit" class="button">Speichern</button>
+        </div>
+    </form>
+
+    <form class="danger-zone" th:if="${foodId != null}" method="post"
+          th:action="@{/kitchen/foods/{id}/delete(id=${foodId})}" data-confirm="Dieses Lebensmittel löschen? Rezepte behalten die Zutat ohne Nährwerte.">
+        <button type="submit" class="button button-danger">Löschen</button>
+    </form>
+</main>
+</body>
+</html>

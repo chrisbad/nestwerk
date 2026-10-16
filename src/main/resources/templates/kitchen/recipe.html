@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${recipe.title})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='kitchen')}"></header>
+<main class="event-main kitchen-main recipe-page">
+    <a class="back-link" th:href="@{/kitchen/recipes}">← Rezepte</a>
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <div class="page-head">
+        <div>
+            <h1 th:text="${recipe.title}">Pfannkuchen</h1>
+            <p th:if="${recipe.description}" th:text="${recipe.description}">Beschreibung</p>
+            <p class="muted">
+                <span th:if="${recipe.minutes != null}" th:text="|${recipe.minutes} min · |">20 min · </span>
+                <span th:text="|Rezept für ${recipe.servings} Portionen|">Rezept für 2 Portionen</span>
+                <a th:if="${recipe.sourceUrl}" th:href="${recipe.sourceUrl}" rel="noopener noreferrer" target="_blank"> · Quelle</a>
+            </p>
+            <span class="tags"><span class="tag" th:each="t : ${recipe.tagList()}" th:text="${t}">süß</span></span>
+        </div>
+        <div class="page-actions" th:if="${canEdit}">
+            <a class="button button-ghost" th:href="@{/kitchen/recipes/{id}/edit(id=${recipe.id})}">Ändern</a>
+        </div>
+    </div>
+
+    <figure class="recipe-photo" th:each="p, st : ${photos}" th:if="${st.first and p.image}">
+        <img th:src="@{/attachments/{id}(id=${p.id})}" th:alt="${recipe.title}">
+    </figure>
+
+    <section class="sheet nutrition-card" aria-label="Nährwerte">
+        <div class="nutrition-main">
+            <strong th:text="${perServing.kcal}">529 kcal</strong>
+            <span class="muted">pro Portion</span>
+        </div>
+        <dl class="macros">
+            <div><dt>Eiweiß</dt><dd th:text="${perServing.protein}">20 g</dd></div>
+            <div><dt>Fett</dt><dd th:text="${perServing.fat}">10 g</dd></div>
+            <div><dt>Kohlenhydrate</dt><dd th:text="${perServing.carbs}">80 g</dd></div>
+        </dl>
+        <p class="notice notice-warning" th:unless="${#lists.isEmpty(missing)}">
+            Nährwerte unvollständig – nicht mitgezählt:
+            <span th:text="${#strings.listJoin(missing, ', ')}">Zauberpulver</span>
+        </p>
+    </section>
+
+    <section class="sheet">
+        <div class="section-head">
+            <h2>Zutaten</h2>
+            <form method="get" class="servings-picker" th:action="@{/kitchen/recipes/{id}(id=${recipe.id})}">
+                <label for="servings">Portionen</label>
+                <input id="servings" type="number" name="servings" min="0.5" max="100" step="0.5"
+                       th:value="${servingsLabel.replace(',', '.')}" onchange="this.form.requestSubmit()">
+            </form>
+        </div>
+        <ul class="ingredient-list">
+            <li th:each="i : ${ingredients}" th:classappend="${i.missing} ? 'ingredient-missing'">
+                <span class="ingredient-amount" th:text="${i.amount}">200 g</span>
+                <span class="ingredient-name">
+                    <span th:text="${i.name}">Mehl</span>
+                    <span class="muted" th:if="${i.food}" th:text="|(${i.food})|">(Mehl)</span>
+                </span>
+                <span class="ingredient-kcal muted" th:text="${i.kcal}">680 kcal</span>
+            </li>
+        </ul>
+        <p class="muted" th:text="|Zusammen: ${total.kcal}|">Zusammen: 1058 kcal</p>
+    </section>
+
+    <section class="sheet recipe-steps" th:if="${stepsHtml}">
+        <h2>Zubereitung</h2>
+        <div class="markdown" th:utext="${stepsHtml}"></div>
+    </section>
+
+    <section class="sheet" th:if="${canEdit}">
+        <h2>Foto</h2>
+        <form method="post" enctype="multipart/form-data" class="upload-form"
+              th:action="@{/kitchen/recipes/{id}/photo(id=${recipe.id})}">
+            <input type="file" name="file" accept="image/*" required>
+            <button type="submit" class="button button-ghost">Hochladen</button>
+        </form>
+    </section>
+
+    <form class="danger-zone" th:if="${canEdit}" method="post"
+          th:action="@{/kitchen/recipes/{id}/delete(id=${recipe.id})}" data-confirm="Dieses Rezept löschen?">
+        <button type="submit" class="button button-danger">Löschen</button>
+    </form>
+</main>
+</body>
+</html>

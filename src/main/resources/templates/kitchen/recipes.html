@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Rezepte')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='kitchen')}"></header>
+<main class="event-main kitchen-main">
+    <nav th:replace="~{kitchen/fragments :: tabs('recipes')}"></nav>
+    <div class="page-head">
+        <div>
+            <h1>Rezepte</h1>
+            <p>Mit Zutaten, Kalorien und Portionen – für den Essensplan und die Einkaufsliste.</p>
+        </div>
+        <div class="page-actions" th:if="${canEdit}">
+            <a class="button button-ghost" th:href="@{/kitchen/recipes/import}">Aus Link</a>
+            <a class="button" th:href="@{/kitchen/recipes/new}">Neues Rezept</a>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <form class="search-bar" method="get" th:action="@{/kitchen/recipes}" role="search">
+        <input type="search" name="q" th:value="${q}" placeholder="Rezept oder Schlagwort suchen" aria-label="Suche">
+    </form>
+
+    <p class="muted" th:if="${#lists.isEmpty(recipes)}">Keine Rezepte gefunden.</p>
+    <ul class="recipe-grid" th:unless="${#lists.isEmpty(recipes)}">
+        <li th:each="r : ${recipes}">
+            <a class="recipe-card" th:href="@{/kitchen/recipes/{id}(id=${r.id})}" draggable="true"
+               th:attr="data-recipe-id=${r.id},data-recipe-title=${r.title}">
+                <img th:if="${r.photoId != null}" th:src="@{/attachments/{id}(id=${r.photoId})}" alt="" loading="lazy">
+                <span class="recipe-card-placeholder" th:unless="${r.photoId != null}" aria-hidden="true"></span>
+                <span class="recipe-card-body">
+                    <strong th:text="${r.title}">Pfannkuchen</strong>
+                    <span class="muted">
+                        <span th:text="${r.kcal}">529 kcal</span><span th:unless="${r.complete}" title="Nährwerte unvollständig">*</span>
+                        <span th:if="${r.minutes != null}" th:text="| · ${r.minutes} min|"> · 20 min</span>
+                    </span>
+                    <span class="tags"><span class="tag" th:each="t : ${r.tags}" th:text="${t}">süß</span></span>
+                </span>
+            </a>
+        </li>
+    </ul>
+</main>
+</body>
+</html>

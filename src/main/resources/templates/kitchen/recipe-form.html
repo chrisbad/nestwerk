@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${recipeId == null} ? 'Neues Rezept' : 'Rezept ändern')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='kitchen')}"></header>
+<main class="event-main kitchen-main">
+    <a class="back-link" th:href="${recipeId == null} ? @{/kitchen/recipes} : @{/kitchen/recipes/{id}(id=${recipeId})}">← Zurück</a>
+    <h1 th:text="${recipeId == null} ? 'Neues Rezept' : 'Rezept ändern'">Neues Rezept</h1>
+    <p class="notice notice-error" role="alert" th:if="${error}" th:text="${error}">Fehler</p>
+
+    <form class="sheet event-form recipe-form" method="post" th:object="${form}"
+          th:action="${recipeId == null} ? @{/kitchen/recipes} : @{/kitchen/recipes/{id}(id=${recipeId})}">
+        <div class="field">
+            <label for="title">Titel</label>
+            <input id="title" type="text" th:field="*{title}" maxlength="200" required>
+        </div>
+        <div class="field">
+            <label for="description">Kurzbeschreibung <span class="hint">optional</span></label>
+            <input id="description" type="text" th:field="*{description}">
+        </div>
+        <div class="field-grid">
+            <div class="field">
+                <label for="servings">Portionen</label>
+                <input id="servings" type="number" min="1" max="100" th:field="*{servings}" required>
+            </div>
+            <div class="field">
+                <label for="minutes">Dauer in Minuten</label>
+                <input id="minutes" type="number" min="1" max="2880" th:field="*{minutes}">
+            </div>
+        </div>
+        <div class="field">
+            <label for="tags">Schlagworte <span class="hint">mit Komma, z. B. vegetarisch, schnell</span></label>
+            <input id="tags" type="text" th:field="*{tags}" maxlength="500">
+        </div>
+
+        <fieldset class="field ingredient-rows" data-ingredient-rows>
+            <legend>Zutaten</legend>
+            <div class="ingredient-row" th:each="r, st : *{rows}">
+                <input type="text" inputmode="decimal" class="ingredient-amount" placeholder="Menge" aria-label="Menge"
+                       th:name="|rows[${st.index}].amount|" th:value="${r.amount}">
+                <select th:name="|rows[${st.index}].unit|" aria-label="Einheit">
+                    <option value="">–</option>
+                    <option th:each="u : ${units}" th:value="${u.name()}" th:text="${u.label}"
+                            th:selected="${u.name() == r.unit}">g</option>
+                </select>
+                <input type="text" class="ingredient-name" list="food-names" placeholder="Zutat" aria-label="Zutat"
+                       th:name="|rows[${st.index}].name|" th:value="${r.name}">
+                <input type="text" class="ingredient-note" placeholder="Notiz" aria-label="Notiz"
+                       th:name="|rows[${st.index}].note|" th:value="${r.note}">
+            </div>
+            <button type="button" class="button button-ghost button-small" data-add-ingredient>+ Zeile</button>
+            <datalist id="food-names">
+                <option th:each="n : ${foodNames}" th:value="${n}"></option>
+            </datalist>
+        </fieldset>
+
+        <div class="field">
+            <label for="paste">Zutatenliste einfügen <span class="hint">eine Zutat pro Zeile, z. B. „200 g Mehl“</span></label>
+            <textarea id="paste" name="paste" rows="3"></textarea>
+        </div>
+
+        <div class="field">
+            <label for="steps">Zubereitung <span class="hint">Markdown</span></label>
+            <textarea id="steps" th:field="*{steps}" rows="8"></textarea>
+        </div>
+        <div class="field">
+            <label for="sourceUrl">Quelle <span class="hint">Link, optional</span></label>
+            <input id="sourceUrl" type="url" th:field="*{sourceUrl}">
+        </div>
+
+        <div class="form-actions">
+            <a class="button button-ghost" th:href="${recipeId == null} ? @{/kitchen/recipes} : @{/kitchen/recipes/{id}(id=${recipeId})}">Abbrechen</a>
+            <button type="submit" class="button">Speichern</button>
+        </div>
+    </form>
+</main>
+</body>
+</html>
