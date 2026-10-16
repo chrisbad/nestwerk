@@ -789,6 +789,36 @@
         document.addEventListener("htmx:responseError", onFailure);
     }
 
+    /* --- Blocker-Warnung im Terminformular ------------------------------------ */
+    // Ein Vorschlag übernimmt die freie Zeit; jede neue Zeit wird erneut geprüft statt „trotzdem“ gespeichert.
+    function initBlockerWarning() {
+        const box = document.querySelector("[data-blocker-warning]");
+        if (!box) return;
+        const form = box.closest("form");
+        const unconfirm = label => {
+            box.querySelector("[data-blocker-confirm]")?.remove();
+            const submit = form.querySelector("[data-blocker-submit]");
+            if (submit) submit.textContent = label;
+        };
+        box.addEventListener("click", event => {
+            const chip = event.target.closest("[data-alt-start-date]");
+            if (!chip) return;
+            const set = (name, value) => {
+                const field = form.querySelector(`[name="${name}"]`);
+                if (field) field.value = value;
+            };
+            set("startDate", chip.dataset.altStartDate);
+            set("startTime", chip.dataset.altStartTime.slice(0, 5));
+            set("endDate", chip.dataset.altEndDate);
+            set("endTime", chip.dataset.altEndTime.slice(0, 5));
+            box.querySelectorAll(".chip").forEach(c => c.classList.toggle("is-picked", c === chip));
+            unconfirm("Mit dieser Zeit speichern");
+            haptic();
+        });
+        form.querySelectorAll('[name="startDate"], [name="startTime"], [name="endDate"], [name="endTime"]')
+            .forEach(field => field.addEventListener("input", () => unconfirm("Speichern")));
+    }
+
     function initDragClickGuard() {
         document.addEventListener("click", event => {
             if (Date.now() - draggedAt < 350) {
@@ -1240,6 +1270,7 @@
         initPlanDrag();
         initDragClickGuard();
         initUpdateRestart();
+        initBlockerWarning();
         consumeToasts(document);
     });
 })();

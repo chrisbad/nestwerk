@@ -1,5 +1,6 @@
 package club.badernet.nestwerk.web;
 
+import club.badernet.nestwerk.blocker.BlockerBands;
 import club.badernet.nestwerk.blocker.BlockerConflicts;
 import club.badernet.nestwerk.blocker.Conflict;
 import club.badernet.nestwerk.blocker.TimeRange;
@@ -71,12 +72,14 @@ public class CalendarController {
     private final TodoService todoService;
     private final TodoEventLinks todoLinks;
     private final BlockerConflicts blockerConflicts;
+    private final BlockerBands blockerBands;
 
     public CalendarController(CalendarEventService events, FamilyMemberService members,
                               CurrentUser currentUser, CalendarSettings settings, TodoQuery todoQuery,
                               TodoAccess todoAccess, TodoService todoService, TodoEventLinks todoLinks,
-                              BlockerConflicts blockerConflicts) {
+                              BlockerConflicts blockerConflicts, BlockerBands blockerBands) {
         this.blockerConflicts = blockerConflicts;
+        this.blockerBands = blockerBands;
         this.events = events;
         this.members = members;
         this.currentUser = currentUser;
@@ -119,6 +122,7 @@ public class CalendarController {
             weeks.add(week);
         }
         model.addAttribute("weeks", weeks);
+        model.addAttribute("bands", blockerBands.between(days.getFirst(), days.getLast(), currentUser.require()));
         addTodos(model, days.getFirst(), days.getLast());
         model.addAttribute("month", month);
         model.addAttribute("prev", month.minusMonths(1).atDay(1));
@@ -136,6 +140,7 @@ public class CalendarController {
 
         List<DayCell> cells = days.stream()
                 .map(d -> new DayCell(d, true, d.equals(today), byDay.get(d))).toList();
+        model.addAttribute("bands", blockerBands.between(days.getFirst(), days.getLast(), currentUser.require()));
         model.addAttribute("days", cells);
         addTodos(model, days.getFirst(), days.getLast());
         model.addAttribute("first", days.getFirst());

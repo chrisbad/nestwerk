@@ -17,6 +17,7 @@
                 <span class="week-day-name" th:text="${#temporals.format(cell.date, 'EEEE')}">Montag</span>
                 <span class="day-num" th:text="${cell.date.dayOfMonth}">12</span>
             </h2>
+            <ul th:replace="~{calendar/fragments :: bands(${bands[cell.date]}, false)}"></ul>
             <div class="day-events" th:attr="data-drop-date=${cell.date}">
                 <th:block th:each="o : ${cell.occurrences}"><a th:replace="~{calendar/fragments :: occurrence(${o})}"></a></th:block>
                 <th:block th:each="t : ${todosByDay[cell.date]}"><a th:replace="~{calendar/fragments :: todo(${t})}"></a></th:block>

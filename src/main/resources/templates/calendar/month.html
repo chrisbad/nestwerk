@@ -23,6 +23,7 @@
                 <a class="day-num" th:href="@{/calendar/week(date=${cell.date})}"
                    th:attr="aria-label=${#temporals.format(cell.date, 'EEEE, d. MMMM')}"
                    th:text="${cell.date.dayOfMonth}">1</a>
+                <ul th:replace="~{calendar/fragments :: bands(${bands[cell.date]}, true)}"></ul>
                 <div class="day-events" th:attr="data-drop-date=${cell.date}">
                     <th:block th:each="o : ${cell.occurrences}"><a th:replace="~{calendar/fragments :: occurrence(${o})}"></a></th:block>
                     <th:block th:each="t : ${todosByDay[cell.date]}"><a th:replace="~{calendar/fragments :: todo(${t})}"></a></th:block>

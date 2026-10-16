@@ -2797,3 +2797,60 @@ a { color: var(--moss); }
 .run-done { background: color-mix(in srgb, var(--ok) 22%, var(--surface-2)); }
 .run-rolled_back { background: var(--honey-soft); }
 @media (prefers-reduced-motion: reduce) { .update-step-active .update-step-dot { animation: none; } }
+
+/* --- Blocker: Bänder im Kalender, Warnung im Formular -------------------- */
+
+.bands { display: grid; gap: 0.25rem; margin: 0 0 0.4rem; padding: 0; list-style: none; }
+.band {
+    --band-color: var(--moss);
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    min-width: 0;
+    padding: 0.2rem 0.55rem;
+    border-radius: 8px;
+    border-left: 3px solid var(--band-color);
+    background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--band-color) 14%, transparent) 0 6px,
+            color-mix(in srgb, var(--band-color) 6%, transparent) 6px 12px);
+    color: var(--ink-soft);
+    font-size: 0.78rem;
+    line-height: 1.3;
+}
+.band-times { flex: none; font-variant-numeric: tabular-nums; color: var(--ink); font-weight: 600; }
+.band-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.band-sleep { --band-color: #4d74ff; }
+.band-rest { --band-color: var(--ok); }
+.band-leisure { --band-color: var(--honey); }
+/* Monat: nur schmale Leisten, Text im Tooltip */
+.bands-compact { display: flex; gap: 2px; margin: 0.15rem 0 0.25rem; }
+.bands-compact .band { flex: 1 1 0; height: 4px; padding: 0; border: 0; border-radius: 2px;
+    background: color-mix(in srgb, var(--band-color) 70%, transparent); }
+.bands-compact .band > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+.blocker-warning {
+    display: flex;
+    gap: 0.75rem;
+    margin: 1rem 0 0;
+    padding: 0.9rem 1rem;
+    border-radius: var(--radius-panel);
+    border: 1px solid color-mix(in srgb, var(--honey) 45%, transparent);
+    background: color-mix(in srgb, var(--honey) 12%, var(--surface));
+    animation: rise 0.35s var(--ease);
+}
+.blocker-warning ul { margin: 0.35rem 0 0; padding-left: 1.1rem; }
+.blocker-warning-icon { flex: none; width: 1.5rem; height: 1.5rem; fill: none; stroke: var(--honey);
+    stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.blocker-alternatives { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.75rem; }
+.blocker-alternatives .chip {
+    padding: 0.35rem 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--ok) 50%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--ok) 12%, var(--surface));
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--step--1);
+    cursor: pointer;
+    transition: transform 0.2s var(--spring);
+}
+.blocker-alternatives .chip:active { transform: scale(0.94); }
+.blocker-alternatives .chip.is-picked { background: var(--grad-fresh); color: #06261b; border-color: transparent; }

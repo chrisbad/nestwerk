@@ -44,6 +44,15 @@
 </div>
 
 <!-- Legende der Familienmitglieder -->
+<ul th:fragment="bands(list, compact)" class="bands" th:classappend="${compact} ? 'bands-compact'"
+    th:if="${list != null and !list.isEmpty()}">
+    <li th:each="b : ${list}" class="band" th:classappend="'band-' + ${b.kind}"
+        th:style="${b.color != null} ? |--band-color: ${b.color}|" th:attr="title=|${b.label}, ${b.times}|">
+        <span class="band-times" th:text="${b.times}">08:00–16:00</span>
+        <span class="band-label" th:text="${b.label}">Lena · Arbeit</span>
+    </li>
+</ul>
+
 <ul th:fragment="legend" class="cal-legend" th:unless="${#maps.isEmpty(memberById)}">
     <li th:each="entry : ${memberById}">
         <span class="swatch" th:style="|background-color: ${entry.value.color}|"></span>
