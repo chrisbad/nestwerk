@@ -9,6 +9,31 @@
     <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
     <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
 
+    <section class="sheet settings-block">
+        <h2>Bring!</h2>
+        <p class="muted">Die Einkaufsliste geht an eine Bring!-Liste; Gekauftes liest Nestwerk von dort zurück.
+            Das Passwort wird verschlüsselt gespeichert.</p>
+        <p class="notice notice-warning" th:if="${bringError}" th:text="${bringError}"></p>
+        <form method="post" th:action="@{/kitchen/settings/bring}" class="slot-row">
+            <input type="email" name="email" required autocomplete="off" placeholder="E-Mail" aria-label="E-Mail"
+                   th:value="${bringEmail}">
+            <input type="password" name="password" required autocomplete="new-password" placeholder="Passwort"
+                   aria-label="Passwort">
+            <button type="submit" class="button button-small" th:text="${bringConnected} ? 'Neu verbinden' : 'Verbinden'">Verbinden</button>
+        </form>
+        <form method="post" th:action="@{/kitchen/settings/bring/list}" class="slot-row" th:if="${!#lists.isEmpty(bringLists)}">
+            <select name="listUuid" aria-label="Liste">
+                <option th:each="l : ${bringLists}" th:value="${l.uuid}" th:text="${l.name}"
+                        th:selected="${l.uuid == bringListUuid}">Zuhause</option>
+            </select>
+            <button type="submit" class="button button-ghost button-small">Liste wählen</button>
+        </form>
+        <p class="muted" th:if="${bringConnected and bringListName != null}" th:text="|Aktive Liste: ${bringListName}|"></p>
+        <form method="post" th:action="@{/kitchen/settings/bring/disconnect}" th:if="${bringConnected}"
+              data-confirm="Verbindung zu Bring! trennen?">
+            <button type="submit" class="button button-ghost button-small">Trennen</button>
+        </form>
+    </section>
 
     <section class="sheet settings-block">
         <h2>Kalorienziele</h2>

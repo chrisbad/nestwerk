@@ -24,6 +24,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.NoSuchElementException;
 import java.util.function.Function;
 
 /**
@@ -73,7 +74,8 @@ public class Tools {
         } catch (ObjectOptimisticLockingFailureException e) {
             throw new ToolException("Der Eintrag wurde inzwischen geändert. Bitte neu laden und erneut versuchen.");
         } catch (TodoNotFoundException | EventNotFoundException | ChoreNotFoundException | ContactNotFoundException
-                 | NotificationNotFoundException | TodoConflictException | ChoreConflictException e) {
+                 | NotificationNotFoundException | TodoConflictException | ChoreConflictException
+                 | NoSuchElementException e) {
             throw new ToolException(e.getMessage());
         } catch (RuntimeException e) {
             log.warn("MCP-Tool fehlgeschlagen", e);

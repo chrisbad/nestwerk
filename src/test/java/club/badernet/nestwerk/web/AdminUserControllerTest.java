@@ -163,7 +163,8 @@ class AdminUserControllerTest {
             "CALENDAR_VIEW", "CALENDAR_EVENT_CREATE", "CALENDAR_EVENT_EDIT_OWN", "CALENDAR_EVENT_EDIT_ALL",
             "CALENDAR_EVENT_DELETE_OWN", "CALENDAR_EVENT_DELETE_ALL", "CALENDAR_PRIVATE_CREATE",
             "NOTIFICATION_SETTINGS_MANAGE", "HOUSEHOLD_DEVICE_MANAGE", "AI_ACCESS", "BACKUP_MANAGE",
-            "UPDATE_MANAGE"})
+            "UPDATE_MANAGE", "KITCHEN_VIEW", "KITCHEN_RECIPES_EDIT", "KITCHEN_PLAN", "KITCHEN_SHOPPING",
+            "KITCHEN_SETTINGS"})
     void administratorCanCreateAdministrator() throws Exception {
         mockMvc.perform(post("/admin/users").with(csrf())
                         .param("username", "zweiter-admin")

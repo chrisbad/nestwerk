@@ -79,7 +79,9 @@ class McpEndpointTest {
                         "get_todo", "create_todo", "update_todo", "set_todo_status", "check_todo", "uncheck_todo",
                         "add_todo_comment", "list_chore_tasks", "my_chore_tasks", "complete_chore_task",
                         "undo_chore_task", "search_contacts", "get_contact", "list_notifications",
-                        "mark_notifications_read")))
+                        "mark_notifications_read", "search_foods", "create_food", "search_recipes", "get_recipe",
+                        "create_recipe", "plan_meal", "get_meal_plan", "shopping_list", "add_shopping_item",
+                        "list_pantry")))
                 .andExpect(jsonPath("$.result.tools[?(@.name == 'list_todos')].annotations.destructiveHint")
                         .value(org.hamcrest.Matchers.contains(false)));
     }

@@ -117,10 +117,33 @@ Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich:
 - Abfuhrkalender lassen sich bei einer Hausarbeit mit festen Terminen als `.ics`-Datei oder Abo-Adresse
   übernehmen; Abos werden täglich aktualisiert.
 
+### Küche
+
+- **Rezepte und Lebensmittel:** Zu jedem Rezept zeigt Nestwerk Kalorien, Eiweiß, Fett und Kohlenhydrate pro Portion und
+  rechnet die Zutaten auf eine andere Portionenzahl um. Die Nährwerte stammen aus einem Grundstock von rund 150
+  Lebensmitteln, aus Open Food Facts (Barcode-Scan) oder eigener Pflege. Zutaten, die sich nicht umrechnen lassen,
+  werden markiert („Nährwerte unvollständig“) und nicht als 0 kcal gezählt.
+- **Rezept-Import:** Ein Link zu einer Rezeptseite (auch Cookidoo-Seiten, die öffentlich lesbar sind) füllt das
+  Rezeptformular vor; gespeichert wird erst nach dem Prüfen. Ein Login bei Cookidoo ist nicht nötig.
+- **Essensplan:** Wochenansicht mit frei einstellbaren Mahlzeiten, Mitessern und Portionen, Drag & Drop und
+  „Woche auffüllen“. Kalorienziele (Küche → Einstellungen) liefern Portionsvorschläge und die Tagesbilanz je Person.
+- **Vorrat:** Menge, Ort und MHD; „Gekocht“ zeigt vorher, was abgebucht wird (ältestes MHD zuerst), Mengen sind
+  korrigierbar. Täglich um 8 Uhr kommt eine Sammelnachricht, wenn etwas in den nächsten zwei Tagen abläuft.
+- **Einkauf:** „Aus Plan erzeugen“ = Bedarf aller ungekochten Mahlzeiten minus Vorrat, dazu freie Artikel. Gekaufte
+  Artikel werden über „Einräumen“ in den Vorrat übernommen.
+- **Bring!:** Unter Küche → Einstellungen E-Mail und Passwort des Bring!-Kontos eintragen und eine Liste wählen. Das
+  Passwort wird verschlüsselt gespeichert (Schlüssel wie bei den Sicherungen). „An Bring! senden“ schickt die offenen
+  Artikel; was bei Bring! nicht mehr „zu kaufen“ ist, gilt als gekauft (Knopf und alle 15 Minuten). Nestwerk nutzt die
+  inoffizielle Web-API von Bring!; fällt sie aus, bleibt die Einkaufsliste unverändert und die Seite zeigt eine Meldung.
+- **Rechte:** `KITCHEN_VIEW`, `KITCHEN_RECIPES_EDIT`, `KITCHEN_PLAN`, `KITCHEN_SHOPPING`, `KITCHEN_SETTINGS`; die Rolle
+  „Benutzer“ bekommt alle außer den Einstellungen.
+- **KI:** Über MCP legt ein Assistent Rezepte aus Foto oder Text an (`create_recipe` mit Zutaten als Textzeilen), plant
+  Mahlzeiten und liest Einkaufsliste und Vorrat (`search_foods`, `plan_meal`, `shopping_list`, `list_pantry` u. a.).
+
 ### KI-Anbindung (MCP)
 
 Nestwerk enthält einen MCP-Server unter `https://<nestwerk>/mcp`. Darüber kann ein KI-Assistent wie Claude
-Termine, ToDos, den Haushaltsplan, Kontakte und Benachrichtigungen lesen und bearbeiten. Löschen kann er nichts.
+Termine, ToDos, den Haushaltsplan, die Küche, Kontakte und Benachrichtigungen lesen und bearbeiten. Löschen kann er nichts.
 
 - Der Assistent handelt immer als ein Benutzer und hat genau dessen Rechte. Ein Administrator gibt einer Rolle das
   Recht „KI-Zugang nutzen“. Danach legt jeder Benutzer unter „KI-Zugänge“ (Benutzermenü) ein eigenes Token an.
