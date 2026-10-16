@@ -99,6 +99,11 @@ public class ShoppingItem {
         return Amounts.format(amount, unit);
     }
 
+    /** Ordnet dem Artikel ein Lebensmittel zu (z. B. nach dem Scan des Produkts). */
+    public void assign(Food food) {
+        this.food = food;
+    }
+
     public void change(Double amount, Unit unit) {
         this.amount = amount;
         this.unit = unit;

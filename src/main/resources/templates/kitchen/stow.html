@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Einräumen')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='kitchen')}"></header>
+<main class="event-main kitchen-main">
+    <a class="back-link" th:href="@{/kitchen/shopping}">← Einkauf</a>
+    <div class="page-head">
+        <div>
+            <h1>Einräumen</h1>
+            <p>Gekauftes in den Vorrat legen – Menge, Ort und MHD kannst du anpassen.</p>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <p class="muted" th:if="${#lists.isEmpty(rows)}">Nichts zum Einräumen.</p>
+
+    <form class="sheet" method="post" th:action="@{/kitchen/shopping/stow}" th:unless="${#lists.isEmpty(rows)}">
+        <ul class="stow-list">
+            <li th:each="r : ${rows}" class="stow-row">
+                <label class="stow-name">
+                    <input type="checkbox" name="item" th:value="${r.id}" checked>
+                    <strong th:text="${r.name}">Milch</strong>
+                    <span class="muted small" th:text="${r.amount}">1 l</span>
+                </label>
+                <div class="stow-fields">
+                    <input type="text" inputmode="decimal" th:name="|amount_${r.id}|" th:value="${r.amountPlain}" aria-label="Menge">
+                    <select th:name="|unit_${r.id}|" aria-label="Einheit">
+                        <option th:each="u : ${units}" th:value="${u.name()}" th:text="${u.label}"
+                                th:selected="${u.name() == r.unit}">g</option>
+                    </select>
+                    <input type="text" th:name="|location_${r.id}|" list="stow-places" maxlength="50" placeholder="Ort" aria-label="Ort">
+                    <input type="date" th:name="|best_${r.id}|" th:value="${r.bestBefore}" aria-label="MHD">
+                    <input type="text" inputmode="numeric" th:id="|barcode-${r.id}|" th:name="|barcode_${r.id}|"
+                           placeholder="Barcode" aria-label="Barcode des Produkts">
+                    <button type="button" class="button button-ghost button-small" data-barcode-scan="/kitchen/shopping/stow"
+                            th:attr="data-barcode-target=|#barcode-${r.id}|">Scannen</button>
+                </div>
+            </li>
+        </ul>
+        <datalist id="stow-places"><option value="Kühlschrank"></option><option value="Vorrat"></option><option value="Tiefkühler"></option></datalist>
+        <div class="form-actions" th:if="${canEdit}">
+            <button type="submit" class="button">Einräumen</button>
+        </div>
+    </form>
+</main>
+</body>
+</html>
