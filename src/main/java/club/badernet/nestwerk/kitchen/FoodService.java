@@ -1,11 +1,14 @@
 package club.badernet.nestwerk.kitchen;
 
+import club.badernet.nestwerk.kitchen.integration.OffProduct;
+import club.badernet.nestwerk.kitchen.integration.OpenFoodFacts;
 import club.badernet.nestwerk.user.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 
 /** Pflege der Lebensmittel. */
 @Service
@@ -13,10 +16,56 @@ public class FoodService {
 
     private final FoodRepository foods;
     private final KitchenAccess access;
+    private final OpenFoodFacts off;
 
-    public FoodService(FoodRepository foods, KitchenAccess access) {
+    /** Ergebnis eines Barcode-Scans: das Lebensmittel und ob es gerade aus Open Food Facts angelegt wurde. */
+    public record BarcodeMatch(Food food, boolean created) {
+    }
+
+    public FoodService(FoodRepository foods, KitchenAccess access, OpenFoodFacts off) {
         this.foods = foods;
         this.access = access;
+        this.off = off;
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Food> byBarcode(String code) {
+        return foods.findByBarcode(code == null ? "" : code.strip());
+    }
+
+    /**
+     * Sucht ein Lebensmittel per Barcode: erst in Nestwerk, dann bei Open Food Facts (legt es dann an). Leer, wenn
+     * niemand das Produkt kennt. Ausfälle von Open Food Facts kommen als {@code ExternalServiceException}.
+     */
+    @Transactional
+    public Optional<BarcodeMatch> fromBarcode(String rawCode, User actor) {
+        access.require(actor, KitchenPermission.KITCHEN_VIEW);
+        String code = rawCode == null ? "" : rawCode.replaceAll("\\s", "");
+        if (!code.matches("\\d{6,14}")) {
+            throw new IllegalArgumentException("Der Barcode besteht aus 6 bis 14 Ziffern.");
+        }
+        Optional<Food> known = foods.findByBarcode(code);
+        if (known.isPresent()) {
+            return Optional.of(new BarcodeMatch(known.get(), false));
+        }
+        Optional<OffProduct> product = off.product(code);
+        if (product.isEmpty()) {
+            return Optional.empty();
+        }
+        access.require(actor, KitchenPermission.KITCHEN_RECIPES_EDIT);
+        OffProduct p = product.get();
+        String name = p.name();
+        if (foods.findByNameIgnoreCase(name).isPresent()) {
+            name = p.brand() != null ? name + " (" + p.brand() + ")" : name + " (" + code + ")";
+            if (name.length() > 100 || foods.findByNameIgnoreCase(name).isPresent()) {
+                name = p.name().substring(0, Math.min(p.name().length(), 80)) + " (" + code + ")";
+            }
+        }
+        Food food = new Food(name, FoodCategory.OTHER, FoodSource.OFF);
+        food.setNutrition(p.kcal(), p.protein(), p.fat(), p.carbs());
+        food.setPackageGrams(p.packageGrams());
+        food.setBarcode(code);
+        return Optional.of(new BarcodeMatch(foods.save(food), true));
     }
 
     @Transactional(readOnly = true)

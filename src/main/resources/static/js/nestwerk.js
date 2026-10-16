@@ -821,6 +821,101 @@
 
     /* --- Ruhe-Ziel: Fenster nur bei „freie Zeitfenster“ ---------------------- */
     // Neue Zeit: Wechsel der Art lädt die passenden Vorgaben (Uhrzeiten, Tage, Regeln)
+    /**
+     * Barcode scannen: Kamera mit BarcodeDetector, wo der Browser ihn kennt, sonst Nummer eintippen. Mit
+     * data-barcode-target füllt der Code ein Feld, sonst wird er an die Adresse in data-barcode-scan gesendet.
+     */
+    function initBarcodeScan() {
+        document.querySelectorAll("[data-barcode-scan]").forEach(button => {
+            button.addEventListener("click", () => openScanner(button));
+        });
+    }
+
+    function openScanner(button) {
+        const dialog = document.createElement("dialog");
+        dialog.className = "dialog barcode-dialog";
+        dialog.innerHTML = '<div class="sheet-grip" aria-hidden="true"></div>'
+            + '<h2>Barcode scannen</h2>'
+            + '<video class="barcode-video" playsinline muted hidden></video>'
+            + '<p class="muted barcode-hint">Kamera wird gestartet …</p>'
+            + '<form class="barcode-manual"><label for="barcode-code">Oder Nummer eingeben</label>'
+            + '<div class="barcode-row"><input id="barcode-code" inputmode="numeric" pattern="[0-9 ]{6,20}" required>'
+            + '<button type="submit" class="button">Übernehmen</button></div></form>'
+            + '<div class="form-actions"><button type="button" class="button button-ghost" data-close>Abbrechen</button></div>';
+        document.body.append(dialog);
+        const video = dialog.querySelector("video");
+        const hint = dialog.querySelector(".barcode-hint");
+        let stream = null;
+        let done = false;
+        const close = () => {
+            done = true;
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            dialog.close();
+            dialog.remove();
+        };
+        const finish = code => {
+            close();
+            const clean = String(code).replace(/\D/g, "");
+            const target = button.dataset.barcodeTarget && document.querySelector(button.dataset.barcodeTarget);
+            if (target) {
+                target.value = clean;
+                target.dispatchEvent(new Event("change", {bubbles: true}));
+                return;
+            }
+            const form = document.createElement("form");
+            form.method = "post";
+            form.action = button.dataset.barcodeScan;
+            const add = (name, value) => {
+                const input = document.createElement("input");
+                input.type = "hidden";
+                input.name = name;
+                input.value = value;
+                form.append(input);
+            };
+            add("code", clean);
+            const token = document.querySelector('meta[name="_csrf"]')?.content;
+            if (token) add("_csrf", token);
+            document.body.append(form);
+            form.submit();
+        };
+        dialog.querySelector("[data-close]").addEventListener("click", close);
+        dialog.addEventListener("cancel", close);
+        dialog.querySelector(".barcode-manual").addEventListener("submit", event => {
+            event.preventDefault();
+            finish(dialog.querySelector("#barcode-code").value);
+        });
+        dialog.showModal();
+
+        if (!("BarcodeDetector" in window) || !navigator.mediaDevices?.getUserMedia) {
+            hint.textContent = "Dieser Browser kann keine Barcodes erkennen – bitte die Nummer unter dem Strichcode eintippen.";
+            dialog.querySelector("#barcode-code").focus();
+            return;
+        }
+        const detector = new window.BarcodeDetector({formats: ["ean_13", "ean_8", "upc_a", "upc_e"]});
+        navigator.mediaDevices.getUserMedia({video: {facingMode: "environment"}}).then(media => {
+            stream = media;
+            if (done) {
+                media.getTracks().forEach(t => t.stop());
+                return;
+            }
+            video.srcObject = media;
+            video.hidden = false;
+            hint.textContent = "Strichcode vor die Kamera halten.";
+            return video.play().then(() => {
+                const tick = () => {
+                    if (done) return;
+                    detector.detect(video).then(codes => {
+                        if (codes.length) finish(codes[0].rawValue);
+                        else setTimeout(tick, 250);
+                    }).catch(() => setTimeout(tick, 500));
+                };
+                tick();
+            });
+        }).catch(() => {
+            hint.textContent = "Keine Kamera verfügbar – bitte die Nummer eintippen.";
+        });
+    }
+
     /** Rezeptformular: weitere Zutatenzeile anhängen (Kopie der letzten, Index hochgezählt). */
     function initIngredientRows() {
         document.querySelectorAll("[data-ingredient-rows]").forEach(box => {
@@ -1322,6 +1417,7 @@
         initGoalForms();
         initBlockerKindDefaults();
         initIngredientRows();
+        initBarcodeScan();
         consumeToasts(document);
     });
 })();

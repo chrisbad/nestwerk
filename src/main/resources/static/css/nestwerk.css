@@ -3056,3 +3056,8 @@ a { color: var(--moss); }
 .food-table th, .food-table td { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--line); text-align: left; }
 .food-table td:first-child { display: grid; }
 .small { font-size: var(--step--1); }
+.barcode-dialog { width: min(28rem, calc(100vw - 2rem)); }
+.barcode-video { width: 100%; border-radius: var(--radius-panel); background: #000; aspect-ratio: 4 / 3; object-fit: cover; }
+.barcode-manual { display: grid; gap: 0.35rem; margin-top: 0.75rem; }
+.barcode-row { display: flex; gap: 0.5rem; }
+.barcode-row input { flex: 1; min-width: 0; }

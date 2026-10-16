@@ -11,6 +11,7 @@ import club.badernet.nestwerk.kitchen.Recipe;
 import club.badernet.nestwerk.kitchen.RecipeNutrition;
 import club.badernet.nestwerk.kitchen.RecipeService;
 import club.badernet.nestwerk.kitchen.Unit;
+import club.badernet.nestwerk.kitchen.integration.RecipeImporter;
 import club.badernet.nestwerk.security.CurrentUser;
 import club.badernet.nestwerk.user.User;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -39,9 +40,12 @@ public class RecipeController {
     private final KitchenAccess access;
     private final MarkdownRenderer markdown;
     private final CurrentUser currentUser;
+    private final RecipeImporter importer;
 
     public RecipeController(RecipeService recipes, FoodRepository foods, AttachmentService attachments,
-                            KitchenAccess access, MarkdownRenderer markdown, CurrentUser currentUser) {
+                            KitchenAccess access, MarkdownRenderer markdown, CurrentUser currentUser,
+                            RecipeImporter importer) {
+        this.importer = importer;
         this.recipes = recipes;
         this.foods = foods;
         this.attachments = attachments;
@@ -97,6 +101,27 @@ public class RecipeController {
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", e.getMessage());
             return form(form, null, model);
+        }
+    }
+
+    @GetMapping("/import")
+    @PreAuthorize("hasAuthority('KITCHEN_RECIPES_EDIT')")
+    String importForm() {
+        return "kitchen/recipe-import";
+    }
+
+    /** Liest das Rezept einer Seite und öffnet das Formular vorausgefüllt; gespeichert wird erst nach Prüfung. */
+    @PostMapping("/import")
+    @PreAuthorize("hasAuthority('KITCHEN_RECIPES_EDIT')")
+    String importRecipe(@RequestParam String url, Model model) {
+        try {
+            RecipeForm form = RecipeForm.from(importer.importFrom(url));
+            model.addAttribute("imported", true);
+            return form(form, null, model);
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("error", e.getMessage());
+            model.addAttribute("url", url);
+            return "kitchen/recipe-import";
         }
     }
 

@@ -6,6 +6,7 @@ import club.badernet.nestwerk.kitchen.FoodService;
 import club.badernet.nestwerk.kitchen.FoodSource;
 import club.badernet.nestwerk.kitchen.KitchenAccess;
 import club.badernet.nestwerk.kitchen.KitchenPermission;
+import club.badernet.nestwerk.kitchen.integration.ExternalServiceException;
 import club.badernet.nestwerk.security.CurrentUser;
 import club.badernet.nestwerk.user.User;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -65,6 +66,25 @@ public class FoodController {
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", e.getMessage());
             return form(form, null, model);
+        }
+    }
+
+    @PostMapping("/barcode")
+    @PreAuthorize("hasAuthority('KITCHEN_RECIPES_EDIT')")
+    String barcode(@RequestParam String code, RedirectAttributes redirect) {
+        try {
+            return foods.fromBarcode(code, currentUser.require()).map(match -> {
+                redirect.addFlashAttribute("success", match.created()
+                        ? "„" + match.food().getName() + "“ aus Open Food Facts übernommen – bitte Abteilung prüfen."
+                        : "„" + match.food().getName() + "“ gefunden.");
+                return "redirect:/kitchen/foods/" + match.food().getId();
+            }).orElseGet(() -> {
+                redirect.addFlashAttribute("error", "Produkt unbekannt – bitte von Hand anlegen.");
+                return "redirect:/kitchen/foods/new?barcode=" + code.replaceAll("\\D", "");
+            });
+        } catch (ExternalServiceException | IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+            return "redirect:/kitchen/foods";
         }
     }
 

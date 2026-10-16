@@ -7,6 +7,7 @@ import club.badernet.nestwerk.kitchen.RecipeInput;
 import club.badernet.nestwerk.kitchen.RecipeIngredient;
 import club.badernet.nestwerk.kitchen.RecipeService;
 import club.badernet.nestwerk.kitchen.Unit;
+import club.badernet.nestwerk.kitchen.integration.ImportedRecipe;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,6 +65,19 @@ public class RecipeForm {
             form.rows.add(new Row(i.getAmount() == null ? "" : Amounts.plain(i.getAmount()),
                     i.getUnit() == null ? "" : i.getUnit().name(), i.getText(), i.getNote()));
         }
+        return form;
+    }
+
+    public static RecipeForm from(ImportedRecipe imported) {
+        RecipeForm form = new RecipeForm();
+        form.title = imported.title();
+        form.description = imported.description();
+        form.servings = imported.servings() == null ? 2 : imported.servings();
+        form.minutes = imported.minutes();
+        form.tags = imported.tags();
+        form.sourceUrl = imported.sourceUrl();
+        form.steps = imported.steps();
+        form.addLines(RecipeService.parseLines(String.join("\n", imported.ingredientLines())));
         return form;
     }
 
