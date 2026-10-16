@@ -762,6 +762,33 @@
     let draggedAt = 0;
     const markDragged = () => { draggedAt = Date.now(); };
 
+    /* --- Updates: während des Neustarts auf die App warten -------------------- */
+    // Antwortet die Statusabfrage nicht mehr, startet Nestwerk gerade neu: Hinweis zeigen und neu laden,
+    // sobald /actuator/health wieder antwortet.
+    function initUpdateRestart() {
+        let waiting = false;
+        const onFailure = event => {
+            const section = event.detail?.elt?.closest?.("#update-status");
+            if (!section || waiting) return;
+            waiting = true;
+            section.removeAttribute("hx-trigger");
+            section.querySelector("[data-update-restart]")?.removeAttribute("hidden");
+            const poll = async () => {
+                try {
+                    const response = await fetch("/actuator/health", { cache: "no-store" });
+                    if (response.ok) {
+                        location.reload();
+                        return;
+                    }
+                } catch (e) { /* noch nicht wieder da */ }
+                setTimeout(poll, 3000);
+            };
+            setTimeout(poll, 3000);
+        };
+        document.addEventListener("htmx:sendError", onFailure);
+        document.addEventListener("htmx:responseError", onFailure);
+    }
+
     function initDragClickGuard() {
         document.addEventListener("click", event => {
             if (Date.now() - draggedAt < 350) {
@@ -1212,6 +1239,7 @@
         initCalendarDrag();
         initPlanDrag();
         initDragClickGuard();
+        initUpdateRestart();
         consumeToasts(document);
     });
 })();

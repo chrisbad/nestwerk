@@ -24,7 +24,7 @@ import java.time.temporal.ChronoUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@Import({TestcontainersConfiguration.class, UpdateCheckTest.Fakes.class})
+@Import({TestcontainersConfiguration.class, UpdateCheckTestSupport.Fakes.class})
 @SpringBootTest(properties = {"nestwerk.admin.password=test-admin-pw", "nestwerk.update.current-version=1.4.0",
         "nestwerk.update.dir=target/update-test"})
 @Transactional

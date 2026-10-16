@@ -8,10 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,23 +16,14 @@ import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Import({TestcontainersConfiguration.class, UpdateCheckTest.Fakes.class})
+@Import({TestcontainersConfiguration.class, UpdateCheckTestSupport.Fakes.class})
 @SpringBootTest(properties = {"nestwerk.admin.password=test-admin-pw", "nestwerk.update.current-version=1.4.0"})
 @Transactional
 class UpdateCheckTest {
 
-    @TestConfiguration
-    static class Fakes {
-        @Bean
-        @Primary
-        FakeReleaseSource fakeReleaseSource() {
-            return new FakeReleaseSource();
-        }
-    }
-
     @Autowired UpdateCheck check;
     @Autowired UpdateSettings settings;
-    @Autowired FakeReleaseSource source;
+    @Autowired UpdateCheckTestSupport.Source source;
     @Autowired UserService userService;
     @Autowired UserRepository users;
     @Autowired JdbcTemplate jdbc;
