@@ -10,4 +10,6 @@ public interface PantryRepository extends JpaRepository<PantryItem, Long> {
     List<PantryItem> findByFoodId(Long foodId);
 
     List<PantryItem> findByBestBeforeLessThanEqual(LocalDate day);
+
+    List<PantryItem> findByBestBeforeBetweenOrderByBestBeforeAsc(LocalDate from, LocalDate to);
 }

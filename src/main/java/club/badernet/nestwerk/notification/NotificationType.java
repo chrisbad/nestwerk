@@ -14,6 +14,7 @@ public enum NotificationType {
     CHORE_DUE("Hausarbeit fällig", true),
     CHORE_OVERDUE("Hausarbeit überfällig", true),
     CHORE_ASSIGNED("Hausarbeit bekommen", false),
+    PANTRY_EXPIRING("Vorrat läuft ab", true),
     REWARD_REQUESTED("Belohnung beantragt", false),
     REWARD_DECIDED("Belohnung entschieden", false),
     BACKUP_FAILED("Sicherung fehlgeschlagen", false),

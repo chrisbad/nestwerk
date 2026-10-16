@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Gekocht')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='kitchen')}"></header>
+<main class="event-main kitchen-main">
+    <a class="back-link" th:href="${back}">← Mahlzeit</a>
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+    <div class="page-head">
+        <div>
+            <h1 th:text="|${meal.title} gekocht|">Nudeln gekocht</h1>
+            <p class="muted" th:text="|Für ${portions} Portionen. Das wird vom Vorrat abgebucht – Mengen kannst du anpassen.|">Für 4 Portionen.</p>
+        </div>
+    </div>
+
+    <form class="sheet cook-sheet" method="post" th:action="@{/kitchen/plan/meals/{id}/cook(id=${meal.id})}">
+        <p class="muted" th:if="${#lists.isEmpty(rows)}">Dieses Essen hat keine Zutaten mit Mengen – es wird nur als gekocht markiert.</p>
+        <ul class="cook-list" th:unless="${#lists.isEmpty(rows)}">
+            <li th:each="r : ${rows}" th:classappend="${r.warning} ? 'cook-warning'">
+                <div class="cook-text">
+                    <strong th:text="${r.text}">Mehl</strong>
+                    <span class="muted small" th:if="${r.from != ''}" th:text="|von ${r.from}|">von 500 g Vorrat</span>
+                    <span class="cook-note small" th:if="${r.note}" th:text="${r.note}">Vorrat reicht nicht</span>
+                </div>
+                <label class="cook-amount">
+                    <input type="text" inputmode="decimal" th:name="|amount_${r.ingredientId}|" th:value="${r.neededPlain}"
+                           th:aria-label="|Menge ${r.text}|">
+                    <span th:text="${r.unit}">g</span>
+                </label>
+            </li>
+        </ul>
+        <div class="form-actions">
+            <a class="button button-ghost" th:href="${back}">Abbrechen</a>
+            <button type="submit" class="button button-ghost" formmethod="get"
+                    th:formaction="@{/kitchen/plan/meals/{id}/cook(id=${meal.id})}">Neu berechnen</button>
+            <button type="submit" class="button" th:if="${canPlan}">Abbuchen und als gekocht eintragen</button>
+        </div>
+    </form>
+</main>
+</body>
+</html>
