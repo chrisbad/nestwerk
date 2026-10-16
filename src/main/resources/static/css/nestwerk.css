@@ -3061,3 +3061,91 @@ a { color: var(--moss); }
 .barcode-manual { display: grid; gap: 0.35rem; margin-top: 0.75rem; }
 .barcode-row { display: flex; gap: 0.5rem; }
 .barcode-row input { flex: 1; min-width: 0; }
+
+.plan-week-nav { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0.25rem 0 0; }
+.plan-layout { display: grid; gap: 1rem; }
+@media (min-width: 70rem) { .plan-layout { grid-template-columns: 13rem 1fr; align-items: start; } }
+.plan-recipes {
+    position: sticky;
+    top: 1rem;
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    background: var(--surface);
+}
+.plan-recipes ul { display: grid; gap: 0.35rem; max-height: 60vh; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
+.plan-recipe {
+    display: block;
+    padding: 0.45rem 0.65rem;
+    border-radius: var(--radius-field);
+    background: var(--sage);
+    font-weight: 600;
+    font-size: var(--step--1);
+    cursor: grab;
+    user-select: none;
+}
+@media (max-width: 69.99rem) { .plan-recipes { display: none; } }
+.plan-week { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 11.5rem), 1fr)); }
+.plan-day {
+    display: grid;
+    align-content: start;
+    gap: 0.5rem;
+    padding: 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    background: var(--card-sheen), var(--surface);
+}
+.plan-today { border-color: var(--ok); box-shadow: var(--glow-fresh); }
+.plan-day-head { display: flex; gap: 0.4rem; align-items: baseline; margin: 0; font-size: var(--step-0); }
+.plan-slot { display: grid; gap: 0.3rem; min-height: 2.6rem; padding: 0.35rem; border-radius: var(--radius-field); border: 1px dashed transparent; transition: border-color 0.2s, background 0.2s; }
+.plan-slot.is-drop-target { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 8%, transparent); }
+.plan-slot h3 { margin: 0; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); }
+.meal-chip {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: var(--radius-field);
+    border-left: 3px solid var(--ok);
+    background: var(--sage);
+    color: inherit;
+    text-decoration: none;
+    animation: rise 0.3s var(--ease) both;
+}
+.meal-cooked { opacity: 0.6; }
+.meal-cooked .meal-title { text-decoration: line-through; }
+.meal-title { font-weight: 650; font-size: var(--step--1); overflow-wrap: anywhere; }
+.meal-meta { display: flex; justify-content: space-between; align-items: center; gap: 0.4rem; font-size: 0.75rem; }
+.eaters { display: flex; gap: 0.15rem; }
+.eater {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 0.3rem;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    background: var(--member-color, var(--moss));
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.68rem;
+}
+.eater small { margin-left: 0.1rem; font-size: 0.6rem; }
+.plan-add summary { list-style: none; cursor: pointer; color: var(--ink-soft); font-weight: 700; padding: 0 0.3rem; width: max-content; border-radius: 999px; }
+.plan-add summary::-webkit-details-marker { display: none; }
+.plan-add summary:hover { color: var(--ok); }
+.plan-add form { display: grid; gap: 0.35rem; margin-top: 0.3rem; }
+.balances { display: grid; gap: 0.3rem; margin: 0.3rem 0 0; padding: 0.5rem 0 0; border-top: 1px solid var(--line); list-style: none; font-size: 0.72rem; }
+.balances li { display: grid; grid-template-columns: auto 1fr; gap: 0.1rem 0.4rem; align-items: center; }
+.balance-name { font-weight: 700; }
+.balance-text { grid-column: 1 / -1; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.balance-bar { height: 0.3rem; border-radius: 999px; background: linear-gradient(90deg, var(--member-color) calc(var(--p) * 1%), var(--line) 0); }
+.balance-over .balance-text { color: var(--brick); font-weight: 700; }
+.eater-rows, .goal-grid { display: grid; gap: 0.5rem; }
+.eater-row, .goal-row { display: grid; grid-template-columns: auto 1fr 5.5rem auto; gap: 0.6rem; align-items: center; padding: 0.4rem 0.6rem; border-radius: var(--radius-field); border-left: 3px solid var(--member-color); background: var(--sage); }
+.goal-row { grid-template-columns: 1fr 8rem auto; }
+.eater-name { font-weight: 650; }
+.settings-block { margin-bottom: 1rem; }
+.slot-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--line); }
+.slot-row input[name="name"] { flex: 1 1 10rem; }
+.slot-share input { width: 4.5rem; }

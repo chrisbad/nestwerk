@@ -1137,6 +1137,61 @@
         });
     }
 
+    /* --- Essensplan: Rezepte in Mahlzeiten ziehen, Einträge verschieben ------ */
+
+    function initMealPlanDrag() {
+        const board = document.querySelector('[data-plan-board="true"]');
+        if (!board) return;
+        const filter = board.querySelector("[data-plan-filter]");
+        filter?.addEventListener("input", () => {
+            const q = filter.value.trim().toLowerCase();
+            board.querySelectorAll(".plan-recipes li").forEach(li => {
+                li.hidden = q !== "" && !li.textContent.toLowerCase().includes(q);
+            });
+        });
+        const list = board.querySelector(".plan-recipes ul");
+        if (list) {
+            sortable(list, {
+                group: { name: "meals", pull: "clone", put: false },
+                sort: false,
+                forceFallback: true,
+                fallbackOnBody: true
+            });
+        }
+        board.querySelectorAll(".plan-slot[data-slot]").forEach(slot => {
+            sortable(slot, {
+                group: { name: "meals", pull: true, put: true },
+                sort: false,
+                draggable: ".meal-chip, li",
+                filter: "h3, details",
+                preventOnFilter: false,
+                forceFallback: true,
+                fallbackOnBody: true,
+                onMove: evt => { markDropTarget(evt.to); },
+                onAdd: async evt => {
+                    markDropTarget(null);
+                    const item = evt.item;
+                    const target = { day: slot.dataset.day, slotId: slot.dataset.slot };
+                    haptic(12);
+                    try {
+                        const recipe = item.querySelector("[data-recipe-id]") || (item.dataset.recipeId ? item : null);
+                        if (recipe) {
+                            item.remove();
+                            await postForm("/kitchen/plan/meals", { ...target, recipeId: recipe.dataset.recipeId });
+                        } else {
+                            await postForm(`/kitchen/plan/meals/${item.dataset.mealId}/move`, target);
+                        }
+                        location.reload();
+                    } catch (error) {
+                        if (!item.dataset.mealId) item.remove();
+                        else evt.from.append(item);
+                        showToast(error.message, "error");
+                    }
+                }
+            });
+        });
+    }
+
     /* --- Wischen an Zeilen: rechts erledigen, links öffnen ------------------ */
 
     function initSwipeRows() {
@@ -1418,6 +1473,7 @@
         initBlockerKindDefaults();
         initIngredientRows();
         initBarcodeScan();
+        initMealPlanDrag();
         consumeToasts(document);
     });
 })();

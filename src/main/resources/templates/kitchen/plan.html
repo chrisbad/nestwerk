@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Essensplan')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='kitchen')}"></header>
+<main class="event-main kitchen-main plan-main">
+    <nav th:replace="~{kitchen/fragments :: tabs('plan')}"></nav>
+    <div class="page-head">
+        <div>
+            <h1>Essensplan</h1>
+            <p class="plan-week-nav">
+                <a class="button button-ghost button-small" th:href="@{/kitchen/plan(week=${previous})}" aria-label="Vorige Woche">‹</a>
+                <strong th:text="${weekLabel}">12.10. – 18.10.2026</strong>
+                <a class="button button-ghost button-small" th:href="@{/kitchen/plan(week=${next})}" aria-label="Nächste Woche">›</a>
+                <a class="button button-ghost button-small" th:unless="${monday == thisWeek}" th:href="@{/kitchen/plan}">Heute</a>
+            </p>
+        </div>
+        <div class="page-actions" th:if="${canPlan}">
+            <form method="post" th:action="@{/kitchen/plan/fill}">
+                <input type="hidden" name="week" th:value="${monday}">
+                <button type="submit" class="button">Woche auffüllen</button>
+            </form>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <div class="plan-layout" th:attr="data-plan-board=${canPlan}">
+        <aside class="plan-recipes" th:if="${canPlan and !#lists.isEmpty(recipes)}" aria-label="Rezepte zum Einplanen">
+            <input type="search" placeholder="Rezept suchen" aria-label="Rezept suchen" data-plan-filter>
+            <ul>
+                <li th:each="r : ${recipes}">
+                    <span class="plan-recipe" th:attr="data-recipe-id=${r.id}" th:text="${r.title}"
+                          th:title="|${r.kcal} pro Portion|">Pfannkuchen</span>
+                </li>
+            </ul>
+            <p class="hint">In einen Tag ziehen.</p>
+        </aside>
+
+        <div class="plan-week">
+            <section class="plan-day" th:each="d : ${days}" th:classappend="${d.today} ? 'plan-today'">
+                <h2 class="plan-day-head">
+                    <span th:text="${d.weekday}">Mo</span>
+                    <span class="muted" th:text="${d.label}">12.10.</span>
+                </h2>
+                <div class="plan-slot" th:each="c : ${d.cells}"
+                     th:attr="data-day=${d.date},data-slot=${c.slot.id}">
+                    <h3 th:text="${c.slot.name}">Abendessen</h3>
+                    <a class="meal-chip" th:each="m : ${c.meals}" th:href="@{/kitchen/plan/meals/{id}(id=${m.id})}"
+                       th:classappend="${m.cooked} ? 'meal-cooked'" th:attr="data-meal-id=${m.id}">
+                        <span class="meal-title" th:text="${m.title}">Nudeln</span>
+                        <span class="meal-meta">
+                            <span class="muted" th:if="${m.kcal}" th:text="${m.kcal}">600 kcal</span>
+                            <span class="eaters">
+                                <span class="eater" th:each="e : ${m.eaters}" th:title="${e.name}"
+                                      th:style="|--member-color: ${e.color}|"><span th:text="${e.initial}">L</span><small th:text="${e.portions}"></small></span>
+                            </span>
+                        </span>
+                    </a>
+                    <details class="plan-add" th:if="${canPlan}">
+                        <summary aria-label="Mahlzeit hinzufügen">+</summary>
+                        <form method="post" th:action="@{/kitchen/plan/meals}">
+                            <input type="hidden" name="day" th:value="${d.date}">
+                            <input type="hidden" name="slotId" th:value="${c.slot.id}">
+                            <input type="hidden" name="back" value="1">
+                            <input type="text" name="title" list="plan-recipe-titles" required placeholder="Rezept oder z. B. Reste"
+                                   aria-label="Rezept oder Titel">
+                            <button type="submit" class="button button-small">Eintragen</button>
+                        </form>
+                    </details>
+                </div>
+                <ul class="balances" th:unless="${#lists.isEmpty(d.balances)}">
+                    <li th:each="b : ${d.balances}" th:classappend="${b.over} ? 'balance-over'"
+                        th:style="|--member-color: ${b.color}; --p: ${b.percent}|">
+                        <span class="balance-name" th:text="${b.name}">Lena</span>
+                        <span class="balance-bar" aria-hidden="true"></span>
+                        <span class="balance-text" th:text="${b.text}">600 / 2.000 kcal</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+    </div>
+    <datalist id="plan-recipe-titles">
+        <option th:each="r : ${recipes}" th:value="${r.title}"></option>
+    </datalist>
+</main>
+</body>
+</html>

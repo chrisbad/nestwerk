@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Küche einstellen')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='kitchen')}"></header>
+<main class="event-main kitchen-main">
+    <nav th:replace="~{kitchen/fragments :: tabs('settings')}"></nav>
+    <h1>Einstellungen</h1>
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+
+    <section class="sheet settings-block">
+        <h2>Kalorienziele</h2>
+        <p class="muted">Kalorien pro Tag. Daraus schlägt der Plan Portionen vor und zeigt die Tagesbilanz.</p>
+        <form method="post" th:action="@{/kitchen/settings/goals}" class="goal-grid">
+            <label th:each="m : ${members}" class="goal-row" th:style="|--member-color: ${m.color}|">
+                <span class="eater-name" th:text="${m.name}">Lena</span>
+                <input type="number" min="500" max="10000" step="50" th:name="|goal_${m.id}|"
+                       th:value="${m.kcalGoal}" placeholder="kein Ziel">
+                <span class="muted">kcal</span>
+            </label>
+            <div class="form-actions"><button type="submit" class="button">Ziele speichern</button></div>
+        </form>
+    </section>
+
+    <section class="sheet settings-block">
+        <h2>Mahlzeiten</h2>
+        <p class="muted">Anteil am Tagesbedarf für Portionsvorschläge; „Auffüllen“ plant diese Mahlzeit automatisch.</p>
+        <form class="slot-row" method="post" th:each="s : ${slots}" th:action="@{/kitchen/settings/slots/{id}(id=${s.id})}">
+            <input type="text" name="name" th:value="${s.name}" maxlength="50" required aria-label="Name">
+            <label class="slot-share"><input type="number" name="share" min="0" max="100" th:value="${s.share}" aria-label="Anteil"> %</label>
+            <label class="switch">
+                <input type="checkbox" name="autoFill" value="true" th:checked="${s.autoFill}">
+                <span class="switch-track" aria-hidden="true"></span> Auffüllen
+            </label>
+            <button type="submit" class="button button-ghost button-small">Speichern</button>
+            <button type="submit" class="button button-ghost button-small" th:form="|slot-delete-${s.id}|">Löschen</button>
+        </form>
+        <form th:each="s : ${slots}" th:id="|slot-delete-${s.id}|" method="post" hidden
+              th:action="@{/kitchen/settings/slots/{id}/delete(id=${s.id})}"
+              data-confirm="Mahlzeit samt geplanter Einträge löschen?"></form>
+        <form class="slot-row" method="post" th:action="@{/kitchen/settings/slots}">
+            <input type="text" name="name" maxlength="50" required placeholder="Neue Mahlzeit" aria-label="Name">
+            <label class="slot-share"><input type="number" name="share" min="0" max="100" value="10" aria-label="Anteil"> %</label>
+            <label class="switch">
+                <input type="checkbox" name="autoFill" value="true">
+                <span class="switch-track" aria-hidden="true"></span> Auffüllen
+            </label>
+            <button type="submit" class="button button-small">Anlegen</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>
