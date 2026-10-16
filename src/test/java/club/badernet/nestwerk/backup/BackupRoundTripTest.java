@@ -184,6 +184,26 @@ class BackupRoundTripTest {
     }
 
     @Test
+    void replaceAllRestoresIntoSchemaWithExtraTable() {
+        todoService.create(input("Vor dem Update"), admin);
+        BackupRun run = backups.backupNow(BackupRun.Kind.PRE_UPDATE, null);
+        todoService.create(input("Nach dem Update"), admin);
+        // eine neuere Version hätte z. B. eine Tabelle angelegt
+        jdbc.execute("CREATE TABLE extra_x (id INT)");
+
+        backups.replaceAll(run.getFileName());
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM todos WHERE title = 'Vor dem Update'", Integer.class))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM todos WHERE title = 'Nach dem Update'", Integer.class))
+                .isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.tables WHERE table_name = 'extra_x'",
+                Integer.class)).isZero();
+        assertThat(backups.recentRuns(admin, 1)).first().extracting(BackupRun::getKind)
+                .isEqualTo(BackupRun.Kind.RESTORE);
+    }
+
+    @Test
     void uploadAcceptsOnlyValidBackups() throws IOException {
         BackupRun run = backups.backupNow(BackupRun.Kind.MANUAL, admin);
         String name;

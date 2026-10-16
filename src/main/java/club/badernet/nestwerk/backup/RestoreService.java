@@ -58,6 +58,18 @@ public class RestoreService {
     }
 
     public void restore(BackupArchive archive) {
+        restore(archive, false);
+    }
+
+    /**
+     * Spielt die Sicherung immer in ein leeres Schema ein. Für den Rückfall nach einem Update: Die neuere Version
+     * hat das Schema evtl. schon verändert (Tabellen, Spalten), die Sicherung stammt aus der alten.
+     */
+    public void replaceAll(BackupArchive archive) {
+        restore(archive, true);
+    }
+
+    private void restore(BackupArchive archive, boolean rebuild) {
         check(archive);
         Manifest manifest = archive.manifest();
         Path staging = attachments.createStaging();
@@ -70,8 +82,8 @@ public class RestoreService {
                     }
                 }
             }
-            if (compareToCurrent(manifest) < 0) {
-                log.info("Ältere Sicherung (Schema {}): Datenbank wird neu aufgebaut", manifest.schemaVersion());
+            if (rebuild || compareToCurrent(manifest) < 0) {
+                log.info("Datenbank wird für die Sicherung (Schema {}) neu aufgebaut", manifest.schemaVersion());
                 Flyway admin = Flyway.configure().configuration(flyway.getConfiguration()).cleanDisabled(false)
                         .target(MigrationVersion.fromVersion(manifest.schemaVersion())).load();
                 admin.clean();
