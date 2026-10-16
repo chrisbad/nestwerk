@@ -1,6 +1,10 @@
 package club.badernet.nestwerk.web;
 
 import club.badernet.nestwerk.TestcontainersConfiguration;
+import club.badernet.nestwerk.blocker.RestGoal;
+import club.badernet.nestwerk.blocker.RestGoalRepository;
+import club.badernet.nestwerk.member.FamilyMember;
+import club.badernet.nestwerk.member.FamilyMemberRepository;
 import club.badernet.nestwerk.role.RoleRepository;
 import club.badernet.nestwerk.todo.TodoInput;
 import club.badernet.nestwerk.todo.TodoService;
@@ -36,6 +40,8 @@ class HomeTodoTileTest {
     @Autowired RoleRepository roles;
     @Autowired TodoService todoService;
     @Autowired Clock clock;
+    @Autowired FamilyMemberRepository members;
+    @Autowired RestGoalRepository restGoals;
 
     User mama;
     User papa;
@@ -52,6 +58,19 @@ class HomeTodoTileTest {
     private void todo(String title, User owner, LocalDate from, LocalDate due, boolean privat) {
         todoService.create(new TodoInput(title, null, null, from, due, null, null, privat, null, Set.of(), Set.of(),
                 null), owner);
+    }
+
+    @Test
+    void showsRestGoalRingForOwnPerson() throws Exception {
+        FamilyMember member = members.save(new FamilyMember("Mama", "#aa0000", mama.getId()));
+        restGoals.save(new RestGoal(member.getId(), RestGoal.Kind.WINDOWS, java.time.LocalTime.of(18, 0),
+                java.time.LocalTime.of(23, 59), 2, "Freie Abende"));
+
+        mockMvc.perform(get("/").with(user("mama")))
+                .andExpect(content().string(containsString("Ruhe diese Woche")))
+                .andExpect(content().string(containsString("Freie Abende")));
+        mockMvc.perform(get("/").with(user("papa")))
+                .andExpect(content().string(not(containsString("Ruhe diese Woche"))));
     }
 
     @Test

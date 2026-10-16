@@ -25,7 +25,7 @@ public class HomeController {
     /** Eine Kennzahl als Ring auf der Startseite; {@code percent} füllt den Ring, {@code tone} wählt den Verlauf. */
     public record Ring(String label, String detail, int done, int total, int percent, String tone) {
         static Ring of(String label, String detail, int done, int total, String tone) {
-            return new Ring(label, detail, done, total, total == 0 ? 100 : Math.round(done * 100f / total), tone);
+            return new Ring(label, detail, done, total, total == 0 ? 100 : Math.min(100, Math.round(done * 100f / total)), tone);
         }
     }
 
@@ -38,14 +38,20 @@ public class HomeController {
     private final club.badernet.nestwerk.household.ChoreTaskService choreTasks;
     private final HouseholdViews householdViews;
     private final club.badernet.nestwerk.backup.BackupService backups;
+    private final club.badernet.nestwerk.member.FamilyMemberRepository members;
+    private final club.badernet.nestwerk.blocker.RestGoals restGoals;
 
     public HomeController(CurrentUser currentUser, TodoAccess todoAccess, TodoQuery todoQuery, TodoViews todoViews,
                           ContactService contactService,
                           club.badernet.nestwerk.household.HouseholdAccess householdAccess,
                           club.badernet.nestwerk.household.ChoreTaskService choreTasks,
                           HouseholdViews householdViews,
-                          club.badernet.nestwerk.backup.BackupService backups) {
+                          club.badernet.nestwerk.backup.BackupService backups,
+                          club.badernet.nestwerk.member.FamilyMemberRepository members,
+                          club.badernet.nestwerk.blocker.RestGoals restGoals) {
         this.backups = backups;
+        this.members = members;
+        this.restGoals = restGoals;
         this.householdAccess = householdAccess;
         this.choreTasks = choreTasks;
         this.householdViews = householdViews;
@@ -112,6 +118,13 @@ public class HomeController {
                         (int) week.stream().filter(t -> !t.isOpen()).count(), week.size(), "violet"));
             }
         }
+        me.flatMap(u -> members.findByUserId(u.getId())).ifPresent(member ->
+                restGoals.status(member.getId(), today).stream().findFirst().ifPresent(goal -> {
+                    boolean hours = goal.goal().getKind() == club.badernet.nestwerk.blocker.RestGoal.Kind.HOURS;
+                    rings.add(Ring.of("Ruhe diese Woche", goal.goal().getLabel(),
+                            hours ? goal.reached() / 60 : goal.reached(), hours ? goal.target() / 60 : goal.target(),
+                            goal.met() ? "fresh" : "warm"));
+                }));
         model.addAttribute("rings", rings);
         return "index";
     }
