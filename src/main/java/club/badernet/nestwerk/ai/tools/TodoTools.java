@@ -1,7 +1,7 @@
 package club.badernet.nestwerk.ai.tools;
 
 import club.badernet.nestwerk.contact.Contact;
-import club.badernet.nestwerk.contact.ContactRepository;
+import club.badernet.nestwerk.contact.ContactService;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
 import club.badernet.nestwerk.role.Role;
@@ -56,11 +56,11 @@ public class TodoTools {
     private final TodoCommentService comments;
     private final FamilyMemberRepository members;
     private final RoleRepository roles;
-    private final ContactRepository contacts;
+    private final ContactService contactService;
     private final UserRepository users;
 
     public TodoTools(Tools tools, TodoService todos, TodoQuery query, TodoCommentService comments,
-                     FamilyMemberRepository members, RoleRepository roles, ContactRepository contacts,
+                     FamilyMemberRepository members, RoleRepository roles, ContactService contactService,
                      UserRepository users) {
         this.tools = tools;
         this.todos = todos;
@@ -68,7 +68,7 @@ public class TodoTools {
         this.comments = comments;
         this.members = members;
         this.roles = roles;
-        this.contacts = contacts;
+        this.contactService = contactService;
         this.users = users;
     }
 
@@ -96,7 +96,7 @@ public class TodoTools {
                     Tools.enumValue(TodoTiming.class, timing, "timing"),
                     Tools.enumValue(TodoPriority.class, priority, "priority"),
                     blankToNull(tag), blankToNull(text), Boolean.TRUE.equals(includeClosed));
-            Names names = names();
+            Names names = names(user);
             return query.list(user, filter).stream()
                     .flatMap(g -> g.todos().stream().map(t -> item(t, g.timing(), names)))
                     .limit(MAX_RESULTS).toList();
@@ -202,7 +202,7 @@ public class TodoTools {
             Long id = Tools.required(todoId, "todoId");
             todos.changeStatus(id, Tools.required(Tools.enumValue(TodoStatus.class, status, "status"), "status"),
                     user);
-            return item(todos.get(id, user), null, names());
+            return item(todos.get(id, user), null, names(user));
         });
     }
 
@@ -214,7 +214,7 @@ public class TodoTools {
         return tools.write(context, user -> {
             Long id = Tools.required(todoId, "todoId");
             todos.check(id, user);
-            return item(todos.get(id, user), null, names());
+            return item(todos.get(id, user), null, names(user));
         });
     }
 
@@ -225,7 +225,7 @@ public class TodoTools {
         return tools.write(context, user -> {
             Long id = Tools.required(todoId, "todoId");
             todos.uncheck(id, user);
-            return item(todos.get(id, user), null, names());
+            return item(todos.get(id, user), null, names(user));
         });
     }
 
@@ -296,14 +296,15 @@ public class TodoTools {
                 case ROLE -> roles;
                 case CONTACT -> contacts;
             };
-            return ref.key() + " (" + source.getOrDefault(ref.id(), "?") + ")";
+            return ref.key() + " (" + source.getOrDefault(ref.id(), "nicht sichtbar") + ")";
         }
     }
 
-    private Names names() {
+    /** Kontakte nur, soweit der Benutzer sie sehen darf (wie in der Weboberfläche). */
+    private Names names(User viewer) {
         return new Names(byId(members.findAll(), FamilyMember::getId, FamilyMember::getName),
                 byId(roles.findAll(), Role::getId, Role::getName),
-                byId(contacts.findAll(), Contact::getId, Contact::getName),
+                byId(contactService.findVisible(viewer), Contact::getId, Contact::getName),
                 byId(users.findAll(), User::getId, User::getUsername));
     }
 
@@ -321,7 +322,7 @@ public class TodoTools {
     }
 
     private TodoDetail detail(Todo t, User viewer) {
-        Names names = names();
+        Names names = names(viewer);
         List<Comment> list = comments.forTodo(t.getId(), viewer).stream()
                 .map(c -> new Comment(c.getId(), names.users().getOrDefault(c.getAuthorId(), "?"),
                         String.valueOf(c.getCreatedAt()), c.getBody()))

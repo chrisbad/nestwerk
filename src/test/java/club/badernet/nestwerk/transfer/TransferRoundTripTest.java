@@ -15,6 +15,7 @@ import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
 import club.badernet.nestwerk.role.Role;
 import club.badernet.nestwerk.role.RoleService;
+import club.badernet.nestwerk.security.acl.AclService;
 import club.badernet.nestwerk.todo.AssigneeRef;
 import club.badernet.nestwerk.todo.Todo;
 import club.badernet.nestwerk.todo.TodoFilter;
@@ -64,6 +65,7 @@ class TransferRoundTripTest {
     @Autowired TodoRepository todoRepository;
     @Autowired FamilyMemberRepository members;
     @Autowired RoleService roleService;
+    @Autowired AclService acl;
     @Autowired UserService userService;
     @Autowired UserRepository users;
     @Autowired BackupService backups;
@@ -240,6 +242,26 @@ class TransferRoundTripTest {
         assertThat(window.getStatus()).isEqualTo(TodoStatus.DONE);
         assertThat(window.getPriority()).isEqualTo(TodoPriority.URGENT);
         assertThat(window.assigneeRefs()).containsExactly(AssigneeRef.member(mama.getId()));
+    }
+
+    @Test
+    void todoCsvDoesNotRevealInvisibleContacts() {
+        Role kinder = roleService.create("Kinder", null, Set.of());
+        acl.applyPreset(admin, kinder.getId(), "KIND");
+        User kid = userService.create("kind", "passwort1", Set.of(kinder.getId()));
+        FamilyMember kidMember = members.save(new FamilyMember("Kind", "#0000aa", kid.getId()));
+        Contact secret = contacts.create(new ContactInput("Geheimer Kontakt", null, null, null, null, null, null, null,
+                null, null), admin);
+        todos.create(new TodoInput("Hausaufgaben", null, null, null, null, null, null, false, null, Set.of(),
+                Set.of(AssigneeRef.member(kidMember.getId()), AssigneeRef.contact(secret.getId())), null), admin);
+
+        String export = new String(todoTransfer.exportCsv(kid, TodoFilter.defaults()), StandardCharsets.UTF_8);
+        assertThat(export).contains("Hausaufgaben", "Kontakt: (nicht sichtbar)").doesNotContain("Geheimer Kontakt");
+
+        String csv = "Titel;Zuständige\nTest;Kontakt: Geheimer Kontakt\n";
+        ImportReport report = todoTransfer.importCsv(csv.getBytes(StandardCharsets.UTF_8), kid, false);
+        assertThat(report.rows()).singleElement().extracting(ImportReport.Row::problem).asString()
+                .contains("unbekannte Zuständige");
     }
 
     @Test

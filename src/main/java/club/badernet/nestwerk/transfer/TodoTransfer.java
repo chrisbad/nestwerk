@@ -1,7 +1,7 @@
 package club.badernet.nestwerk.transfer;
 
 import club.badernet.nestwerk.contact.Contact;
-import club.badernet.nestwerk.contact.ContactRepository;
+import club.badernet.nestwerk.contact.ContactService;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
 import club.badernet.nestwerk.role.Role;
@@ -67,20 +67,21 @@ public class TodoTransfer {
     private final TodoRepository repository;
     private final FamilyMemberRepository members;
     private final RoleRepository roles;
-    private final ContactRepository contacts;
+    private final ContactService contactService;
     private final UserRepository users;
     private final RowRunner runner;
 
     public TodoTransfer(TodoQuery query, TodoService todos, TodoAccess access, TodoRepository repository,
                         FamilyMemberRepository members,
-                        RoleRepository roles, ContactRepository contacts, UserRepository users, RowRunner runner) {
+                        RoleRepository roles, ContactService contactService, UserRepository users,
+                        RowRunner runner) {
         this.query = query;
         this.todos = todos;
         this.access = access;
         this.repository = repository;
         this.members = members;
         this.roles = roles;
-        this.contacts = contacts;
+        this.contactService = contactService;
         this.users = users;
         this.runner = runner;
     }
@@ -89,7 +90,7 @@ public class TodoTransfer {
 
     @Transactional(readOnly = true)
     public byte[] exportCsv(User viewer, TodoFilter filter) {
-        Names names = names();
+        Names names = names(viewer);
         StringBuilder out = new StringBuilder("﻿");
         try (CSVPrinter printer = new CSVPrinter(out, ContactTransfer.excel())) {
             printer.printRecord(COLUMNS);
@@ -120,7 +121,7 @@ public class TodoTransfer {
         String text = new String(data, StandardCharsets.UTF_8).replaceFirst("^﻿", "");
         String header = text.lines().findFirst().orElse("");
         char delimiter = header.contains(";") || !header.contains(",") ? ';' : ',';
-        Names names = names();
+        Names names = names(actor);
         List<ImportReport.Row> rows = new ArrayList<>();
         try (CSVParser parser = CSVFormat.EXCEL.builder().setDelimiter(delimiter).setHeader()
                 .setSkipHeaderRecord(true).setIgnoreEmptyLines(true).setTrim(true).get()
@@ -236,7 +237,7 @@ public class TodoTransfer {
             return switch (ref.type()) {
                 case MEMBER -> members.getOrDefault(ref.id(), "?");
                 case ROLE -> ROLE + " " + roles.getOrDefault(ref.id(), "?");
-                case CONTACT -> CONTACT + " " + contacts.getOrDefault(ref.id(), "?");
+                case CONTACT -> CONTACT + " " + contacts.getOrDefault(ref.id(), "(nicht sichtbar)");
             };
         }
 
@@ -257,13 +258,15 @@ public class TodoTransfer {
         }
     }
 
-    private Names names() {
+    /** Kontakte nur, soweit der Benutzer sie sehen darf: sonst verrieten Export und Zuordnung fremde Namen. */
+    private Names names(User viewer) {
         Map<Long, String> userNames = users.findAll().stream().collect(Collectors.toMap(User::getId,
                 User::getUsername));
         return new Names(
                 members.findAll().stream().collect(Collectors.toMap(FamilyMember::getId, FamilyMember::getName)),
                 roles.findAll().stream().collect(Collectors.toMap(Role::getId, Role::getName)),
-                contacts.findAll().stream().collect(Collectors.toMap(Contact::getId, Contact::getName)),
+                contactService.findVisible(viewer).stream()
+                        .collect(Collectors.toMap(Contact::getId, Contact::getName, (a, b) -> a)),
                 userNames,
                 userNames.entrySet().stream().collect(Collectors.toMap(e -> e.getValue().toLowerCase(Locale.ROOT),
                         Map.Entry::getKey)));
