@@ -138,3 +138,11 @@ Gekochtes wird abgebucht. Zu jedem Rezept will der Nutzer die Kalorien sehen und
 - Barcode ohne zusätzliche JS-Bibliothek: `BarcodeDetector`, sonst Nummer eintippen.
 - Rechte als Rollenrechte (nicht ACL wie Haushalt), weil der Nutzer „Rechte über Rollen“ wollte.
 - Mahlzeiten als konfigurierbare Slots mit Anteil am Tagesbedarf; Auffüllen nur für markierte Slots.
+
+## Rezept-Grundstock
+- 65 Alltagsrezepte (rund 78 % vegetarisch/vegan, 14 mit Fleisch oder Fisch) in `src/main/resources/kitchen/recipes-seed.md`;
+  Zutaten sind Textzeilen und werden wie beim Import dem Lebensmittel-Grundstock zugeordnet, Nährwerte stehen sofort.
+- `RecipeSeeder` lädt sie einmalig beim Start (Merker `kitchen.recipesSeeded` in `app_settings`); gelöschte oder geänderte
+  Rezepte kommen nicht zurück. Abschaltbar mit `NESTWERK_SEED_RECIPES=false`; in Tests standardmäßig aus.
+- `V22__kitchen_seed_foods.sql` ergänzt fehlende Lebensmittel (Wasser). `RecipeSeederTest` prüft Vollständigkeit,
+  Nährwerte, Vegetarieranteil und mindestens 15 schnelle Rezepte (≤ 30 Minuten).

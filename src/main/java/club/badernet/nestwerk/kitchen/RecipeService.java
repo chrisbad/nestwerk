@@ -45,7 +45,13 @@ public class RecipeService {
     @Transactional
     public Recipe create(RecipeInput input, User actor) {
         access.require(actor, KitchenPermission.KITCHEN_RECIPES_EDIT);
-        Recipe recipe = new Recipe(title(input), servings(input), actor.getId());
+        return createUnchecked(input, actor.getId());
+    }
+
+    /** Legt ein Rezept ohne Rechteprüfung an – nur für den Rezept-Grundstock beim Start. */
+    @Transactional
+    public Recipe createUnchecked(RecipeInput input, Long createdBy) {
+        Recipe recipe = new Recipe(title(input), servings(input), createdBy);
         apply(recipe, input);
         return recipes.save(recipe);
     }
