@@ -335,6 +335,8 @@ class BackupRoundTripTest {
             List<String> lines = new String(contents.get(path), StandardCharsets.UTF_8).lines()
                     .filter(l -> !l.isEmpty())
                     .filter(l -> !t.name().equals("permissions") || permissionKeys.contains(l.split("\t", -1)[0]))
+                    .filter(l -> !t.name().equals("role_permissions")
+                            || permissionKeys.contains(l.split("\t", -1)[t.columns().indexOf("permission")]))
                     .map(l -> {
                         String[] cells = l.split("\t", -1);
                         return keep.stream().map(i -> cells[i]).collect(Collectors.joining("\t"));
