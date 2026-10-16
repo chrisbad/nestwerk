@@ -100,6 +100,15 @@ class AdminUpdateControllerTest {
     }
 
     @Test
+    void pageShowsThatATokenIsStoredWithoutRevealingIt() throws Exception {
+        settings.update(Channel.RELEASES, "ghp_geheim");
+
+        mockMvc.perform(get("/admin/updates").with(chef()))
+                .andExpect(content().string(containsString("(gespeichert)")))
+                .andExpect(content().string(org.hamcrest.Matchers.not(containsString("ghp_geheim"))));
+    }
+
+    @Test
     void startWithoutKnownVersionFails() throws Exception {
         mockMvc.perform(post("/admin/updates/start").with(csrf()).with(chef()))
                 .andExpect(redirectedUrl("/admin/updates"))

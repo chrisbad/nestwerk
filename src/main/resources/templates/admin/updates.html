@@ -85,8 +85,8 @@
             <div class="field">
                 <label for="update-token">GitHub-Token
                     <span class="hint" th:if="${hasToken}">gespeichert; leer = unverändert</span></label>
-                <input id="update-token" class="input" type="password" name="token" autocomplete="off"
-                       placeholder="github_pat_…">
+                <input id="update-token" class="input" type="password" name="token" autocomplete="new-password"
+                       th:placeholder="${hasToken} ? '•••••••••••• (gespeichert)' : 'github_pat_…'">
             </div>
             <p class="muted field-wide">Nötig, solange das Repository privat ist: ein fein granularer Token nur für
                 <code>chrisbad/nestwerk</code> mit Lesezugriff auf <em>Contents</em> und <em>Actions</em>.</p>
