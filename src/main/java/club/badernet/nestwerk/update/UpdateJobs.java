@@ -31,8 +31,9 @@ import java.util.Optional;
 
 /**
  * Aufträge an den Updater-Container über ein gemeinsames Verzeichnis: die App schreibt
- * {@code jobs/<id>/request.json}, die Dateien der Zielversion und zuletzt {@code ready}; der Updater antwortet mit
- * {@code status.json}, {@code log.txt} und {@code backup}. Er meldet sich über {@code updater.alive}.
+ * nur {@code jobs/<id>/request.json} und zuletzt {@code ready}. Der Updater antwortet in {@code results/<id>/} (für die
+ * App nur lesbar) mit {@code status.json}, {@code log.txt} und {@code backup} und meldet sich über
+ * {@code updater.alive}. Die Installationsdateien der Zielversion bringt sein eigenes Image mit.
  */
 @Component
 public class UpdateJobs {
@@ -43,7 +44,6 @@ public class UpdateJobs {
     private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyz0123456789";
 
     private final Path dir;
-    private final ReleaseSource source;
     private final UpdateRunRepository runs;
     private final UpdateNotifier notifier;
     private final UpdateCheck check;
@@ -51,10 +51,9 @@ public class UpdateJobs {
     private final JsonMapper json = JsonMapper.builder().build();
     private final SecureRandom random = new SecureRandom();
 
-    public UpdateJobs(@Value("${nestwerk.update.dir:/data/updater}") Path dir, ReleaseSource source,
-                      UpdateRunRepository runs, UpdateNotifier notifier, UpdateCheck check, Clock clock) {
+    public UpdateJobs(@Value("${nestwerk.update.dir:/data/updater}") Path dir, UpdateRunRepository runs,
+                      UpdateNotifier notifier, UpdateCheck check, Clock clock) {
         this.dir = dir.toAbsolutePath().normalize();
-        this.source = source;
         this.runs = runs;
         this.notifier = notifier;
         this.check = check;
@@ -84,15 +83,11 @@ public class UpdateJobs {
         if (open().isPresent()) {
             throw new IllegalStateException("Es läuft bereits ein Update.");
         }
-        Map<String, byte[]> files = source.files(update.ref());
         Instant now = clock.instant();
         String id = ID.format(now) + "-" + suffix();
         Path job = dir.resolve("jobs").resolve(id);
         try {
-            Files.createDirectories(job.resolve("files"));
-            for (Map.Entry<String, byte[]> file : files.entrySet()) {
-                Files.write(job.resolve("files").resolve(file.getKey()), file.getValue());
-            }
+            Files.createDirectories(job);
             Map<String, Object> request = new LinkedHashMap<>();
             request.put("id", id);
             request.put("fromVersion", check.current().raw());
@@ -111,7 +106,7 @@ public class UpdateJobs {
 
     /** Stand des Auftrags; fehlt {@code status.json} oder ist sie unvollständig, ist er unbekannt. */
     public Optional<JobStatus> status(String jobId) {
-        Path file = jobDir(jobId).resolve("status.json");
+        Path file = resultDir(jobId).resolve("status.json");
         try {
             JsonNode node = json.readTree(Files.readString(file, StandardCharsets.UTF_8));
             UpdateRun.Status status = UpdateRun.Status.valueOf(node.path("status").asString());
@@ -135,8 +130,8 @@ public class UpdateJobs {
             if (status.isEmpty()) {
                 continue;
             }
-            Path job = jobDir(run.getJobId());
-            boolean finished = run.apply(status.get(), read(job.resolve("log.txt")), read(job.resolve("backup")),
+            Path result = resultDir(run.getJobId());
+            boolean finished = run.apply(status.get(), read(result.resolve("log.txt")), read(result.resolve("backup")),
                     clock.instant());
             if (finished) {
                 notifier.finished(run);
@@ -145,14 +140,14 @@ public class UpdateJobs {
     }
 
     public Optional<String> log(String jobId) {
-        return Optional.ofNullable(read(jobDir(jobId).resolve("log.txt")));
+        return Optional.ofNullable(read(resultDir(jobId).resolve("log.txt")));
     }
 
-    private Path jobDir(String jobId) {
+    private Path resultDir(String jobId) {
         if (jobId == null || !jobId.matches("\\d{8}-\\d{6}-[a-z0-9]{4}")) {
             throw new IllegalArgumentException("Ungültiger Auftrag.");
         }
-        return dir.resolve("jobs").resolve(jobId);
+        return dir.resolve("results").resolve(jobId);
     }
 
     private static String read(Path file) {

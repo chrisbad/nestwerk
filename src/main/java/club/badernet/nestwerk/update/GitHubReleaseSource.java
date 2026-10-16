@@ -15,9 +15,6 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -29,8 +26,6 @@ import java.util.stream.StreamSupport;
  */
 @Component
 public class GitHubReleaseSource implements ReleaseSource {
-
-    static final List<String> FILES = List.of("compose.prod.yaml", "compose.proxy.yaml", "update.sh");
 
     private final RestClient client;
     private final Supplier<Optional<String>> token;
@@ -114,21 +109,6 @@ public class GitHubReleaseSource implements ReleaseSource {
         String shortSha = sha.substring(0, 7);
         return Optional.of(new AvailableUpdate("0.0.0-" + shortSha, "sha-" + shortSha, sha, notes,
                 instant(run, "updated_at")));
-    }
-
-    @Override
-    public Map<String, byte[]> files(String ref) {
-        Map<String, byte[]> files = new LinkedHashMap<>();
-        for (String name : FILES) {
-            try {
-                files.put(name, call(() -> client.get().uri("/contents/{path}?ref={ref}", name, ref)
-                        .headers(this::auth).header(HttpHeaders.ACCEPT, "application/vnd.github.raw")
-                        .retrieve().body(byte[].class)));
-            } catch (HttpClientErrorException.NotFound e) {
-                throw new UpdateSourceException("Die Datei " + name + " fehlt in Version " + ref + ".", e);
-            }
-        }
-        return files;
     }
 
     private JsonNode getJson(String path) {

@@ -93,7 +93,8 @@ jobs:
       - name: Updater-Image (gleiche Tags wie die App)
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
-          context: updater
+          context: .
+          file: updater/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta-updater.outputs.tags }}

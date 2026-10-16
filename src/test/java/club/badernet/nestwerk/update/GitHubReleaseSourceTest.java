@@ -7,8 +7,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -124,19 +122,5 @@ class GitHubReleaseSourceTest {
 
         assertThatThrownBy(() -> source.latest(Channel.MAIN, AppVersion.of("0.0.0-abc1234")))
                 .isInstanceOf(UpdateSourceException.class).hasMessageContaining("GitHub-Token hinterlegen");
-    }
-
-    @Test
-    void loadsInstallationFilesOfAVersion() {
-        for (String file : GitHubReleaseSource.FILES) {
-            server.expect(requestTo(API + "/contents/" + file + "?ref=v1.5.0"))
-                    .andExpect(header("Accept", "application/vnd.github.raw"))
-                    .andRespond(withSuccess("inhalt " + file, MediaType.TEXT_PLAIN));
-        }
-
-        Map<String, byte[]> files = source.files("v1.5.0");
-
-        assertThat(files).containsOnlyKeys("compose.prod.yaml", "compose.proxy.yaml", "update.sh");
-        assertThat(new String(files.get("update.sh"), StandardCharsets.UTF_8)).isEqualTo("inhalt update.sh");
     }
 }

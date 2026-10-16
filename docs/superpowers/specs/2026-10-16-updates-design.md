@@ -45,7 +45,6 @@ schief, läuft danach wieder die alte Version mit den alten Daten.
   - Releases: neuestes Release → Version, Release-Notes (Markdown), Tag.
   - main: letzter erfolgreicher Lauf von `release.yml` auf main → Commit-SHA; Änderungen = Commit-Nachrichten aus
     der Compare-API zwischen laufendem SHA und neuem SHA.
-  - Dateien einer Version: `compose.prod.yaml`, `compose.proxy.yaml`, `update.sh` über die Contents-API am Tag/SHA.
 - `UpdateCheck` prüft alle 6 Stunden und auf Knopfdruck. Neue Version → Benachrichtigung an alle mit
   `UPDATE_MANAGE` (einmal je Version), neuer Benachrichtigungstyp `UPDATE_AVAILABLE`.
 - Version „neuer?“: Releases per SemVer-Vergleich; main per SHA-Ungleichheit (und nur, wenn der Lauf nach dem Build
@@ -54,9 +53,14 @@ schief, läuft danach wieder die alte Version mit den alten Daten.
 ### Auftrag an den Updater
 - Gemeinsames Volume `updater` (App: `/data/updater`, Updater: `/work`). Keine Netzwerkschnittstelle, kein Token:
   nur App und Updater hängen das Volume ein.
-- Die App legt `jobs/<id>/` an mit `request.json` (Zielversion als Image-Tag, Kanal, wer, wann) und `files/` (die
-  Compose-Dateien und `update.sh` der Zielversion, von der App über die GitHub-API geholt), zuletzt `ready`.
-- Der Updater schreibt `jobs/<id>/status.json` (Schritt, Zustand, Zeitstempel, Meldung) und `log.txt`.
+- **Vertrauensgrenze:** Die App läuft unprivilegiert, der Updater als root mit Docker-Socket. Die App darf deshalb
+  nur `jobs/` beschreiben und liefert dort `jobs/<id>/request.json` (Zielversion als Image-Tag, Kanal, wer, wann)
+  und zuletzt `ready`. Der Updater übernimmt daraus ausschließlich den per Muster geprüften Tag, liest nur reguläre
+  Dateien (keine Symlinks) und schreibt alles Eigene nach `results/<id>/` (nur root, für die App lesbar):
+  `status.json` (Schritt, Zustand, Zeitstempel, Meldung), `log.txt`, `backup`, `previous/`, `files/`.
+- Die Installationsdateien (`compose.prod.yaml`, `compose.proxy.yaml`, `update.sh`) stecken im **Updater-Image der
+  Zielversion** unter `/nestwerk/`; der Updater holt sie per `docker create`/`docker cp`. Sie kommen damit aus
+  derselben Quelle wie das App-Image und nie von der App.
 - Die App liest den Status (Admin-Seite pollt per htmx) und übernimmt das Ergebnis nach dem Neustart in die Tabelle
   `update_runs` (Version vorher/nachher, Zustand, Protokoll, Sicherungsdatei, wer). Benachrichtigung über das
   Ergebnis (`UPDATE_DONE`, `UPDATE_FAILED`).
@@ -72,14 +76,16 @@ schief, läuft danach wieder die alte Version mit den alten Daten.
   1. **Sicherung** mit dem laufenden Image: `docker compose run --rm --no-deps -T app
      --nestwerk.backup.run-and-exit=true --nestwerk.backup.result-file=/data/updater/jobs/<id>/backup` → Dateiname.
      Schlägt sie fehl, wird abgebrochen (anders als `update.sh` keine Rückfrage).
-  2. **Stand merken**: `.env`, Compose-Dateien und `update.sh` nach `jobs/<id>/previous/`; höchste Flyway-Version
-     per `psql` im db-Container.
-  3. **Dateien tauschen**: neue Dateien aus `files/` ins Installationsverzeichnis, `NESTWERK_VERSION` setzen.
-     `.env` wird sonst nicht verändert – neue Variablen müssen in den Compose-Dateien einen Standardwert haben.
-  4. **Starten**: `docker compose pull app updater`, `docker compose up -d --wait --wait-timeout 300 db app`.
-  5. **Erfolg** → Status `DONE`. Hat sich der Updater selbst geändert, ersetzt er sich als letzten Schritt
+  2. **Stand merken**: `.env`, Compose-Dateien und `update.sh` nach `results/<id>/previous/`; höchste
+     Flyway-Version per `psql` im db-Container.
+  3. **Laden**: App- und Updater-Image der Zielversion ziehen, Installationsdateien aus dem Updater-Image holen.
+     Schlägt das fehl, ist noch nichts verändert (Status `FAILED`).
+  4. **Dateien tauschen**: neue Dateien ins Installationsverzeichnis, `NESTWERK_VERSION` setzen. `.env` wird sonst
+     nicht verändert – neue Variablen müssen in den Compose-Dateien einen Standardwert haben.
+  5. **Starten**: `docker compose up -d --wait --wait-timeout 300 db app`.
+  6. **Erfolg** → Status `DONE`. Hat sich der Updater selbst geändert, ersetzt er sich als letzten Schritt
      (`docker compose up -d --no-deps updater`); der Status ist dann schon geschrieben.
-  6. **Fehlschlag** (Pull, Start oder Gesundheit) → **Rückfall**: alte Dateien zurück, `NESTWERK_VERSION` alt.
+  7. **Fehlschlag** (Start oder Gesundheit) → **Rückfall**: alte Dateien zurück, `NESTWERK_VERSION` alt.
      Ist die Flyway-Version gestiegen, wird mit dem alten Image die Sicherung aus Schritt 1 vollständig eingespielt
      (`--nestwerk.backup.restore-and-exit=<datei>`), danach `up -d --wait db app`. Status `ROLLED_BACK` mit Meldung;
      gelingt auch das nicht: `FAILED` mit Protokoll und Hinweis auf manuelle Schritte.
@@ -100,7 +106,8 @@ schief, läuft danach wieder die alte Version mit den alten Daten.
 - Während des Neustarts zeigt die Seite „Nestwerk wird aktualisiert …“ und lädt neu, sobald `/actuator/health`
   wieder antwortet.
 - Für alle anderen: `proxy/nestwerk-vhost.conf` bekommt eine Wartungsseite für 502/503/504 (inline per
-  `return 503 '<html>…'`, lädt sich alle 5 s neu).
+  `return 503 '<html>…'`, lädt sich alle 5 s neu). Sie greift, solange der neue Container hochfährt; im kurzen
+  Moment, in dem er neu angelegt wird, antwortet nginx-proxy mit seiner Standardseite.
 
 ### Installation und Übergang
 - `install.sh` schreibt `NESTWERK_DIR` in `.env`. `update.sh` holt künftig auch Compose-Dateien und `update.sh` der
@@ -119,7 +126,8 @@ schief, läuft danach wieder die alte Version mit den alten Daten.
 ## Entscheidungen, die ich getroffen habe
 - Auftrag über ein gemeinsames Volume statt HTTP mit Token: weniger bewegliche Teile, gleiche Sicherheit.
 - `sha-<sha7>`-Tags für main, damit der Rückfall auch im main-Kanal eine feste Version hat.
-- Die App holt die Compose-Dateien (sie hat den GitHub-Token); der Updater braucht nur Docker.
+- Installationsdateien aus dem Updater-Image statt von der App (Sicherheitsprüfung: die unprivilegierte App darf
+  dem root-Updater nichts Ausführbares unterschieben). Der GitHub-Token bleibt damit nur für die Versionsprüfung.
 - `.env` wird nur bei `NESTWERK_VERSION` (und einmalig `NESTWERK_DIR`) angefasst.
 - Sicherung fehlgeschlagen → Abbruch statt Rückfrage.
 - Wartungsseite über den Proxy statt eines eigenen Containers.

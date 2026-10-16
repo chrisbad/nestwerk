@@ -4,9 +4,6 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 
-import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Optional;
 
 /** Ersetzt GitHub in Tests durch eine Quelle, die liefert, was der Test vorgibt. */
@@ -47,18 +44,6 @@ public final class UpdateCheckTestSupport {
                 throw failure;
             }
             return Optional.ofNullable(next);
-        }
-
-        @Override
-        public Map<String, byte[]> files(String ref) {
-            if (failure != null) {
-                throw failure;
-            }
-            Map<String, byte[]> files = new LinkedHashMap<>();
-            for (String name : GitHubReleaseSource.FILES) {
-                files.put(name, ("# " + name + " @ " + ref).getBytes(StandardCharsets.UTF_8));
-            }
-            return files;
         }
     }
 }

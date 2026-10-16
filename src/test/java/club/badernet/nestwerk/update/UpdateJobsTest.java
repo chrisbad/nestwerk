@@ -48,7 +48,7 @@ class UpdateJobsTest {
     }
 
     @Test
-    void startWritesRequestFilesAndReadyLast() throws IOException {
+    void startWritesOnlyTheRequestAndReadyLast() throws IOException {
         UpdateRun run = jobs.start(update, Channel.RELEASES, admin);
 
         Path job = DIR.resolve("jobs").resolve(run.getJobId());
@@ -57,7 +57,8 @@ class UpdateJobsTest {
         assertThat(run.getFromVersion()).isEqualTo("1.4.0");
         assertThat(Files.readString(job.resolve("request.json")))
                 .contains("\"imageTag\":\"1.5.0\"", "\"toVersion\":\"1.5.0\"", "\"channel\":\"RELEASES\"");
-        assertThat(Files.readString(job.resolve("files/update.sh"))).isEqualTo("# update.sh @ v1.5.0");
+        // Installationsdateien bringt das Updater-Image mit, nicht die App
+        assertThat(job.resolve("files")).doesNotExist();
         assertThat(job.resolve("ready")).exists();
         // ready ist die jüngste Datei: der Updater sieht den Auftrag erst, wenn alles geschrieben ist
         assertThat(Files.getLastModifiedTime(job.resolve("ready")))
@@ -75,12 +76,16 @@ class UpdateJobsTest {
     @Test
     void syncTakesOverFinishedStatusAndNotifies() throws IOException {
         UpdateRun run = jobs.start(update, Channel.RELEASES, admin);
-        Path job = DIR.resolve("jobs").resolve(run.getJobId());
-        Files.writeString(job.resolve("status.json"), """
+        // Ergebnisse schreibt der Updater in ein eigenes Verzeichnis, das die App nur lesen kann
+        Path result = Files.createDirectories(DIR.resolve("results").resolve(run.getJobId()));
+        Files.writeString(result.resolve("status.json"), """
                 {"status":"DONE","step":"START","message":"Version 1.5.0 läuft.","updatedAt":"2026-10-16T12:00:00Z"}
                 """);
-        Files.writeString(job.resolve("log.txt"), "Sicherung …\nfertig\n", StandardCharsets.UTF_8);
-        Files.writeString(job.resolve("backup"), "nestwerk-vor-update.zip");
+        Files.writeString(result.resolve("log.txt"), "Sicherung …\nfertig\n", StandardCharsets.UTF_8);
+        Files.writeString(result.resolve("backup"), "nestwerk-vor-update.zip");
+        // eine Statusdatei im Auftragsverzeichnis (von der App beschreibbar) zählt nicht
+        Files.writeString(DIR.resolve("jobs").resolve(run.getJobId()).resolve("status.json"),
+                "{\"status\":\"FAILED\"}");
 
         jobs.sync();
 
@@ -99,7 +104,8 @@ class UpdateJobsTest {
     @Test
     void brokenStatusFileIsIgnored() throws IOException {
         UpdateRun run = jobs.start(update, Channel.RELEASES, admin);
-        Files.writeString(DIR.resolve("jobs").resolve(run.getJobId()).resolve("status.json"), "{\"status\":");
+        Path result = Files.createDirectories(DIR.resolve("results").resolve(run.getJobId()));
+        Files.writeString(result.resolve("status.json"), "{\"status\":");
 
         assertThat(jobs.status(run.getJobId())).isEmpty();
         jobs.sync();

@@ -9,7 +9,6 @@ import club.badernet.nestwerk.update.UpdateCheck;
 import club.badernet.nestwerk.update.UpdateJobs;
 import club.badernet.nestwerk.update.UpdateRun;
 import club.badernet.nestwerk.update.UpdateSettings;
-import club.badernet.nestwerk.update.UpdateSourceException;
 import club.badernet.nestwerk.user.User;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.access.AccessDeniedException;
@@ -45,7 +44,7 @@ public class AdminUpdateController {
             UpdateRun.Status.DONE, "eingespielt", UpdateRun.Status.ROLLED_BACK, "zurückgenommen",
             UpdateRun.Status.FAILED, "fehlgeschlagen");
     private static final List<Map.Entry<String, String>> STEPS = List.of(
-            Map.entry("BACKUP", "Sicherung"), Map.entry("FILES", "Dateien"), Map.entry("PULL", "Herunterladen"),
+            Map.entry("BACKUP", "Sicherung"), Map.entry("PULL", "Herunterladen"), Map.entry("FILES", "Dateien"),
             Map.entry("START", "Neustart"));
 
     private final UpdateCheck check;
@@ -137,7 +136,7 @@ public class AdminUpdateController {
             jobs.start(update.get(), settings.channel(), actor);
             redirect.addFlashAttribute("success", "Das Update auf " + update.get().version()
                     + " ist beauftragt. Nestwerk startet gleich neu.");
-        } catch (IllegalStateException | UpdateSourceException e) {
+        } catch (IllegalStateException e) {
             redirect.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/admin/updates";
