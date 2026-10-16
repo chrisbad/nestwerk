@@ -167,11 +167,11 @@ class BackupRoundTripTest {
         Path older = rewrite(original, "nestwerk-alt.zip", (name, data) -> {
             if (name.equals("db/permissions.copy")) {
                 return new String(data, StandardCharsets.UTF_8).lines()
-                        .filter(l -> !l.startsWith("BACKUP_MANAGE\t"))
+                        .filter(l -> !l.startsWith("BACKUP_MANAGE\t") && !l.startsWith("UPDATE_MANAGE\t"))
                         .collect(Collectors.joining("\n", "", "\n")).getBytes(StandardCharsets.UTF_8);
             }
             return data;
-        }, "db/backup_runs.copy", "17");
+        }, Set.of("db/backup_runs.copy", "db/update_runs.copy"), "17");
 
         backups.restore(older.getFileName().toString(), admin);
 
@@ -181,6 +181,26 @@ class BackupRoundTripTest {
                 Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT max(version::int) FROM flyway_schema_history", Integer.class))
                 .isGreaterThanOrEqualTo(18);
+    }
+
+    @Test
+    void backupNotMatchingItsSchemaVersionLeavesDatabaseUntouched() throws IOException {
+        todoService.create(input("Bleibt stehen"), admin);
+        BackupRun run = backups.backupNow(BackupRun.Kind.MANUAL, admin);
+        Path original = backups.file(run.getFileName(), admin);
+        // behauptet Version 17, enthält aber noch die Tabelle update_runs (erst seit V19)
+        Path inconsistent = rewrite(original, "nestwerk-inkonsistent.zip", (name, data) -> data,
+                Set.of("db/backup_runs.copy"), "17");
+
+        assertThatThrownBy(() -> backups.replaceAll(inconsistent.getFileName().toString()))
+                .isInstanceOf(InvalidBackupException.class).hasMessageContaining("update_runs");
+
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM todos WHERE title = 'Bleibt stehen'", Integer.class))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT max(version::int) FROM flyway_schema_history", Integer.class))
+                .isGreaterThanOrEqualTo(19);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM information_schema.schemata "
+                + "WHERE schema_name LIKE 'nestwerk_restore%'", Integer.class)).isZero();
     }
 
     @Test
@@ -225,15 +245,15 @@ class BackupRoundTripTest {
     }
 
     private Path rewrite(Path source, String targetName, Transform transform) throws IOException {
-        return rewrite(source, targetName, transform, null, null);
+        return rewrite(source, targetName, transform, Set.of(), null);
     }
 
     /**
      * Schreibt eine Sicherung um; Prüfsummen im Manifest werden nur angepasst, wenn {@code fixChecksums} gesetzt
      * ist (über eine neue Schemaversion), sonst bleibt die Datei absichtlich inkonsistent.
      */
-    private Path rewrite(Path source, String targetName, Transform transform, String dropEntry, String version)
-            throws IOException {
+    private Path rewrite(Path source, String targetName, Transform transform, Set<String> dropEntries,
+                         String version) throws IOException {
         Path target = source.resolveSibling(targetName);
         boolean fix = version != null;
         Map<String, byte[]> contents = new java.util.LinkedHashMap<>();
@@ -241,7 +261,7 @@ class BackupRoundTripTest {
             Enumeration<? extends ZipEntry> entries = zip.entries();
             while (entries.hasMoreElements()) {
                 ZipEntry e = entries.nextElement();
-                if (e.getName().equals(dropEntry)) {
+                if (dropEntries.contains(e.getName())) {
                     continue;
                 }
                 try (InputStream in = zip.getInputStream(e)) {

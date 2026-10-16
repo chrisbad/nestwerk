@@ -7,6 +7,7 @@ import org.postgresql.PGConnection;
 import org.postgresql.copy.CopyManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
@@ -17,6 +18,7 @@ import java.nio.file.Path;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +35,7 @@ import java.util.stream.Collectors;
 public class RestoreService {
 
     private static final Logger log = LoggerFactory.getLogger(RestoreService.class);
+    private static final String CHECK_SCHEMA = "nestwerk_restore_check";
 
     private final DataSource dataSource;
     private final DatabaseSchema schema;
@@ -83,6 +86,7 @@ public class RestoreService {
                 }
             }
             if (rebuild || compareToCurrent(manifest) < 0) {
+                requireMatchingSchema(manifest);
                 log.info("Datenbank wird für die Sicherung (Schema {}) neu aufgebaut", manifest.schemaVersion());
                 Flyway admin = Flyway.configure().configuration(flyway.getConfiguration()).cleanDisabled(false)
                         .target(MigrationVersion.fromVersion(manifest.schemaVersion())).load();
@@ -103,6 +107,39 @@ public class RestoreService {
         attachments.replaceWith(staging);
         log.info("Sicherung vom {} wiederhergestellt ({} Zeilen, {} Anhänge)", manifest.createdAt(),
                 manifest.rowCount(), manifest.attachmentCount());
+    }
+
+    /**
+     * Prüft vor dem Leeren der Datenbank, ob Tabellen und Spalten der Sicherung zum Schema ihrer Version passen:
+     * baut dieses Schema dafür in einem Hilfsschema auf und verwirft es danach. Sonst bliebe nach einem Fehler beim
+     * Laden eine leere, halb migrierte Datenbank zurück.
+     */
+    private void requireMatchingSchema(Manifest manifest) {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.execute("DROP SCHEMA IF EXISTS " + CHECK_SCHEMA + " CASCADE");
+        try {
+            Flyway.configure().configuration(flyway.getConfiguration()).schemas(CHECK_SCHEMA)
+                    .defaultSchema(CHECK_SCHEMA).createSchemas(true)
+                    .target(MigrationVersion.fromVersion(manifest.schemaVersion())).load().migrate();
+            Map<String, Set<String>> columns = new HashMap<>();
+            jdbc.query("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = ?",
+                    rs -> {
+                        columns.computeIfAbsent(rs.getString(1), k -> new HashSet<>()).add(rs.getString(2));
+                    }, CHECK_SCHEMA);
+            for (Manifest.Table table : manifest.tables()) {
+                Set<String> known = columns.get(table.name());
+                if (known == null) {
+                    throw new InvalidBackupException("Die Sicherung passt nicht zu ihrer Version "
+                            + manifest.schemaVersion() + ": unbekannte Tabelle " + table.name() + ".");
+                }
+                if (!known.containsAll(table.columns())) {
+                    throw new InvalidBackupException("Die Sicherung passt nicht zu ihrer Version "
+                            + manifest.schemaVersion() + ": unbekannte Spalten in " + table.name() + ".");
+                }
+            }
+        } finally {
+            jdbc.execute("DROP SCHEMA IF EXISTS " + CHECK_SCHEMA + " CASCADE");
+        }
     }
 
     private int compareToCurrent(Manifest manifest) {

@@ -120,13 +120,45 @@ Termine, ToDos, den Haushaltsplan, Kontakte und Benachrichtigungen lesen und bea
 
 ### Update
 
+**In Nestwerk:** Benutzermenü → „Updates“ (Recht „Updates verwalten“). Nestwerk prüft alle 6 Stunden, ob es eine
+neue Version gibt, und meldet sie den Admins. Ein Klick auf „Jetzt aktualisieren“ beauftragt den Dienst `updater`:
+
+1. Sicherung mit der laufenden Version (Art „vor einem Update“),
+2. App- und Updater-Image der neuen Version laden, Installationsdateien (`compose.*.yaml`, `update.sh`) aus dem
+   Updater-Image übernehmen, `NESTWERK_VERSION` in `.env` setzen,
+3. Neustart und Warten, bis die App gesund ist.
+
+Kommt die neue Version nicht hoch, startet der Updater die alte wieder; hatte die neue die Datenbank schon migriert,
+spielt er vorher die Sicherung aus Schritt 1 ein. Ergebnis und Protokoll stehen auf der Seite „Updates“.
+
+- **Kanal:** *Releases* (Tags `vX.Y.Z`, Standard) oder *main* (jeder erfolgreiche Build von main, Image-Tag
+  `sha-<commit>`).
+- **GitHub-Token:** Solange das Repository privat ist, braucht die Versionsprüfung einen fein granularen Token nur für
+  `chrisbad/nestwerk` mit Lesezugriff auf *Contents* und *Actions*. Er wird verschlüsselt gespeichert.
+- **Sicherheit:** Die App hat keinen Zugriff auf Docker. Sie legt nur einen Auftrag mit der Zielversion ab; der
+  Updater prüft ihn und nimmt alles andere aus seinem eigenen Image.
+
+**Per SSH** (erste Einrichtung des Updaters, oder wenn die App nicht mehr startet):
+
 ```bash
-sudo /opt/nestwerk/update.sh          # neueste Version
-sudo /opt/nestwerk/update.sh 1.4.0    # bestimmte Version
+sudo GITHUB_TOKEN=… /opt/nestwerk/update.sh          # eingestellte Version (Standard: latest)
+sudo GITHUB_TOKEN=… /opt/nestwerk/update.sh 1.4.0    # bestimmte Version
 ```
 
-`update.sh` sichert zuerst mit der laufenden Version (Art „vor einem Update“), lädt dann das neue Image und startet
-neu. Datenbank-Migrationen laufen beim Start automatisch.
+`update.sh` holt die Installationsdateien der Zielversion (bei privatem Repository mit `GITHUB_TOKEN`), ergänzt
+`NESTWERK_DIR` in `.env`, sichert mit der laufenden Version, lädt die neuen Images und startet neu.
+
+**Bestehende Installation auf den Updater umstellen (einmalig):** die neue `update.sh` aus dem Repository nach
+`/opt/nestwerk/` kopieren und wie oben ausführen. Danach läuft der Dienst `updater`, und Updates gehen in Nestwerk.
+Hinter nginx-proxy zusätzlich `proxy/nestwerk-vhost.conf` erneut nach `/opt/proxy/vhost.d/<domain>` kopieren und
+`docker exec nginx-proxy nginx -s reload` ausführen: Dann sehen alle während des Neustarts eine Wartungsseite.
+
+**Regeln für neue Versionen**, damit Updates nie Daten verlieren:
+- Migrationen nur hinzufügend oder mit Datenübernahme; `MigrationUpgradeTest` migriert Bestandsdaten von V18 auf den
+  neuesten Stand und vergleicht die Zeilen. Bei jedem Release einen weiteren Snapshot unter
+  `src/test/resources/db/upgrade/` ergänzen.
+- Neue Variablen in den Compose-Dateien immer mit Standardwert (`${VAR:-…}`): Ein Update ändert `.env` nur bei
+  `NESTWERK_VERSION`.
 
 ### Sicherungen
 
