@@ -15,12 +15,14 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
  * Legt die konkreten Aufgaben einer Hausarbeit im Planungshorizont an und verteilt sie. Die Planung ist
- * idempotent: je Hausarbeit und Termin ({@code slot_key}) gibt es höchstens eine Aufgabe.
+ * idempotent: je Hausarbeit und Termin ({@code slot_key}) gibt es höchstens eine Aufgabe. Jede Aufgabe bekommt die
+ * früheste freie Uhrzeit der zuständigen Person ({@link Availability}); wer keine Lücke hat, wird übersprungen.
  */
 @Component
 public class ChorePlanner {
@@ -34,16 +36,24 @@ public class ChorePlanner {
         }
     }
 
+    /** Wer die Aufgabe übernimmt und wann; beides leer, wenn niemand Zeit hat. */
+    private record Placement(Long member, LocalTime time) {
+        static final Placement NONE = new Placement(null, null);
+    }
+
     private final ChoreRepository chores;
     private final ChoreTaskRepository tasks;
     private final ChoreDateRepository dates;
     private final Absences absences;
+    private final Availability availability;
     private final NamedParameterJdbcTemplate jdbc;
     private final EntityManager entityManager;
     private final Clock clock;
 
     public ChorePlanner(ChoreRepository chores, ChoreTaskRepository tasks, ChoreDateRepository dates,
-                        Absences absences, NamedParameterJdbcTemplate jdbc, EntityManager entityManager, Clock clock) {
+                        Absences absences, Availability availability, NamedParameterJdbcTemplate jdbc,
+                        EntityManager entityManager, Clock clock) {
+        this.availability = availability;
         this.chores = chores;
         this.tasks = tasks;
         this.dates = dates;
@@ -103,8 +113,11 @@ public class ChorePlanner {
             if (existing.containsKey(slot.key())) {
                 continue;
             }
-            Long assignee = choose(chore, slot.day(), previous, absent, today);
-            ChoreTask task = tasks.save(new ChoreTask(chore, slot.day(), slot.time(), assignee));
+            Placement placed = place(chore, slot.day(), candidates(chore, slot.day(), previous, absent, today), null);
+            Long assignee = placed.member();
+            ChoreTask task = new ChoreTask(chore, slot.day(), slot.time(), assignee);
+            task.plan(assignee, placed.time());
+            task = tasks.save(task);
             existing.put(task.getSlotKey(), task);
             if (chore.getDistribution() == Distribution.BALANCED) {
                 tasks.flush();
@@ -162,24 +175,36 @@ public class ChorePlanner {
                         ? chore.getStartsOn() : today);
     }
 
-    /** Verteilt künftige offene Aufgaben reihum/ausgleichend neu, wenn der Zuständige abwesend ist. */
+    /**
+     * Prüft künftige offene Aufgaben nach Änderungen an Abwesenheiten, Blockern oder Terminen: Hat der Zuständige
+     * keine Zeit mehr, wird reihum/ausgleichend neu verteilt (feste Zuweisung: niemand); sonst nur die Uhrzeit
+     * aktualisiert.
+     */
     @Transactional
     public void reassignAbsent(LocalDate today) {
         Absences.AbsenceMap absent = absences.between(today, today.plusDays(HORIZON_DAYS));
         List<ChoreTask> open = new ArrayList<>(tasks.findAllByStatusAndDueOnGreaterThanEqual(ChoreTaskStatus.OPEN, today));
         open.sort(Comparator.comparing(ChoreTask::getDueOn));
         for (ChoreTask task : open) {
-            Distribution distribution = task.getChore().getDistribution();
-            if (distribution != Distribution.ROTATION && distribution != Distribution.BALANCED) {
+            Chore chore = task.getChore();
+            Distribution distribution = chore.getDistribution();
+            if (distribution == Distribution.OPEN || task.isAdHoc()) {
                 continue;
             }
             Long current = task.getAssigneeMemberId();
             if (current != null && !absent.isAbsent(current, task.getDueOn())) {
-                continue;
+                Optional<LocalTime> gap = availability.firstGap(current, task.getDueOn(), chore, task.getId());
+                if (gap.isPresent()) {
+                    if (!gap.get().equals(task.getPlannedAt())) {
+                        task.plan(current, gap.get());
+                    }
+                    continue;
+                }
             }
-            Long replacement = choose(task.getChore(), task.getDueOn(), current, absent, today);
-            if (replacement != null || current != null) {
-                task.assign(replacement);
+            Placement placed = place(chore, task.getDueOn(),
+                    candidates(chore, task.getDueOn(), current, absent, today), task.getId());
+            if (placed.member() != null || current != null || task.getPlannedAt() != null) {
+                task.plan(placed.member(), placed.time());
                 if (distribution == Distribution.BALANCED) {
                     tasks.flush();
                 }
@@ -187,28 +212,46 @@ public class ChorePlanner {
         }
     }
 
-    Long choose(Chore chore, LocalDate day, Long previous, Absences.AbsenceMap absent, LocalDate today) {
-        List<Long> candidates = chore.getMemberIds();
+    /** Weist die Aufgabe von Hand zu und sucht für die neue Person eine freie Uhrzeit (sonst ohne Uhrzeit). */
+    void assignWithTime(ChoreTask task, Long memberId) {
+        LocalTime at = memberId == null ? null
+                : availability.firstGap(memberId, task.getDueOn(), task.getChore(), task.getId()).orElse(null);
+        task.plan(memberId, at);
+    }
+
+    /** Die erste Person der Reihenfolge mit freier Lücke an diesem Tag. */
+    private Placement place(Chore chore, LocalDate day, List<Long> candidates, Long ignoreTaskId) {
+        for (Long candidate : candidates) {
+            Optional<LocalTime> gap = availability.firstGap(candidate, day, chore, ignoreTaskId);
+            if (gap.isPresent()) {
+                return new Placement(candidate, gap.get());
+            }
+        }
+        return Placement.NONE;
+    }
+
+    /** Wer infrage kommt, in der Reihenfolge der Verteilung (ohne Abwesende). */
+    List<Long> candidates(Chore chore, LocalDate day, Long previous, Absences.AbsenceMap absent, LocalDate today) {
+        List<Long> members = chore.getMemberIds();
         return switch (chore.getDistribution()) {
-            case OPEN -> null;
-            case FIXED -> candidates.isEmpty() ? null : candidates.getFirst();
+            case OPEN -> List.of();
+            case FIXED -> members.isEmpty() || absent.isAbsent(members.getFirst(), day) ? List.of()
+                    : List.of(members.getFirst());
             case ROTATION -> {
-                int start = previous == null ? -1 : candidates.indexOf(previous);
-                for (int k = 1; k <= candidates.size(); k++) {
-                    Long candidate = candidates.get(Math.floorMod(start + k, candidates.size()));
+                int start = previous == null ? -1 : members.indexOf(previous);
+                List<Long> order = new ArrayList<>();
+                for (int k = 1; k <= members.size(); k++) {
+                    Long candidate = members.get(Math.floorMod(start + k, members.size()));
                     if (!absent.isAbsent(candidate, day)) {
-                        yield candidate;
+                        order.add(candidate);
                     }
                 }
-                yield null;
+                yield order;
             }
             case BALANCED -> {
-                List<Long> present = candidates.stream().filter(c -> !absent.isAbsent(c, day)).toList();
-                if (present.isEmpty()) {
-                    yield null;
-                }
                 Map<Long, Integer> load = load(today);
-                yield present.stream().min(Comparator.comparingInt(c -> load.getOrDefault(c, 0))).orElseThrow();
+                yield members.stream().filter(c -> !absent.isAbsent(c, day))
+                        .sorted(Comparator.comparingInt(c -> load.getOrDefault(c, 0))).toList();
             }
         };
     }

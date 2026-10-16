@@ -20,6 +20,7 @@
             <ul th:replace="~{calendar/fragments :: bands(${bands[cell.date]}, false)}"></ul>
             <div class="day-events" th:attr="data-drop-date=${cell.date}">
                 <th:block th:each="o : ${cell.occurrences}"><a th:replace="~{calendar/fragments :: occurrence(${o})}"></a></th:block>
+                <th:block th:each="c : ${choresByDay[cell.date]}"><a th:replace="~{calendar/fragments :: chore(${c})}"></a></th:block>
                 <th:block th:each="t : ${todosByDay[cell.date]}"><a th:replace="~{calendar/fragments :: todo(${t})}"></a></th:block>
                 <p class="day-empty" th:if="${cell.occurrences.isEmpty()}">Frei</p>
             </div>

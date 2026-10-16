@@ -26,6 +26,10 @@ public class ChoreForm {
     private LocalDate startsOn;
     @DateTimeFormat(iso = DateTimeFormat.ISO.TIME)
     private LocalTime dueTime;
+    @DateTimeFormat(iso = DateTimeFormat.ISO.TIME)
+    private LocalTime windowStart;
+    @DateTimeFormat(iso = DateTimeFormat.ISO.TIME)
+    private LocalTime windowEnd;
     private Integer intervalDays = 7;
     private Distribution distribution = Distribution.ROTATION;
     private List<Long> memberIds = new ArrayList<>();
@@ -46,6 +50,8 @@ public class ChoreForm {
         f.rrule = c.getRrule();
         f.startsOn = c.getStartsOn();
         f.dueTime = c.getDueTime();
+        f.windowStart = c.getWindowStart();
+        f.windowEnd = c.getWindowEnd();
         f.intervalDays = c.getIntervalDays();
         f.distribution = c.getDistribution();
         f.memberIds = new ArrayList<>(c.getMemberIds());
@@ -54,7 +60,7 @@ public class ChoreForm {
 
     public ChoreInput toInput() {
         return new ChoreInput(title, area, description, minutesEasy, minutesMedium, minutesHard, kind, rrule, startsOn,
-                dueTime, intervalDays, distribution, memberIds);
+                dueTime, intervalDays, distribution, memberIds, windowStart, windowEnd);
     }
 
     public String getTitle() { return title; }
@@ -76,6 +82,10 @@ public class ChoreForm {
     public LocalDate getStartsOn() { return startsOn; }
     public void setStartsOn(LocalDate startsOn) { this.startsOn = startsOn; }
     public LocalTime getDueTime() { return dueTime; }
+    public LocalTime getWindowStart() { return windowStart; }
+    public void setWindowStart(LocalTime windowStart) { this.windowStart = windowStart; }
+    public LocalTime getWindowEnd() { return windowEnd; }
+    public void setWindowEnd(LocalTime windowEnd) { this.windowEnd = windowEnd; }
     public void setDueTime(LocalTime dueTime) { this.dueTime = dueTime; }
     public Integer getIntervalDays() { return intervalDays; }
     public void setIntervalDays(Integer intervalDays) { this.intervalDays = intervalDays; }

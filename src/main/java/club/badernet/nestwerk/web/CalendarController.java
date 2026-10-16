@@ -73,11 +73,17 @@ public class CalendarController {
     private final TodoEventLinks todoLinks;
     private final BlockerConflicts blockerConflicts;
     private final BlockerBands blockerBands;
+    private final club.badernet.nestwerk.household.ChoreTaskService choreTasks;
+    private final club.badernet.nestwerk.household.HouseholdAccess householdAccess;
 
     public CalendarController(CalendarEventService events, FamilyMemberService members,
                               CurrentUser currentUser, CalendarSettings settings, TodoQuery todoQuery,
                               TodoAccess todoAccess, TodoService todoService, TodoEventLinks todoLinks,
-                              BlockerConflicts blockerConflicts, BlockerBands blockerBands) {
+                              BlockerConflicts blockerConflicts, BlockerBands blockerBands,
+                              club.badernet.nestwerk.household.ChoreTaskService choreTasks,
+                              club.badernet.nestwerk.household.HouseholdAccess householdAccess) {
+        this.choreTasks = choreTasks;
+        this.householdAccess = householdAccess;
         this.blockerConflicts = blockerConflicts;
         this.blockerBands = blockerBands;
         this.events = events;
@@ -123,6 +129,7 @@ public class CalendarController {
         }
         model.addAttribute("weeks", weeks);
         model.addAttribute("bands", blockerBands.between(days.getFirst(), days.getLast(), currentUser.require()));
+        addChores(model, days.getFirst(), days.getLast());
         addTodos(model, days.getFirst(), days.getLast());
         model.addAttribute("month", month);
         model.addAttribute("prev", month.minusMonths(1).atDay(1));
@@ -141,6 +148,7 @@ public class CalendarController {
         List<DayCell> cells = days.stream()
                 .map(d -> new DayCell(d, true, d.equals(today), byDay.get(d))).toList();
         model.addAttribute("bands", blockerBands.between(days.getFirst(), days.getLast(), currentUser.require()));
+        addChores(model, days.getFirst(), days.getLast());
         model.addAttribute("days", cells);
         addTodos(model, days.getFirst(), days.getLast());
         model.addAttribute("first", days.getFirst());
@@ -327,6 +335,31 @@ public class CalendarController {
             redirect.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/calendar/month";
+    }
+
+    /** Eine eingeplante Hausarbeit im Kalender der zuständigen Person. */
+    public record ChoreEntry(Long id, String title, String time, String color) {
+    }
+
+    /** Offene Hausarbeiten mit vom Planer gewählter Uhrzeit, wenn der Betrachter den Haushaltsplan nutzen darf. */
+    private void addChores(Model model, LocalDate from, LocalDate to) {
+        User viewer = currentUser.require();
+        Map<LocalDate, List<ChoreEntry>> byDay = new LinkedHashMap<>();
+        if (householdAccess.mayOpen(viewer.getUsername())) {
+            Map<Long, FamilyMember> people = members.findAll().stream()
+                    .collect(java.util.stream.Collectors.toMap(FamilyMember::getId, m -> m));
+            for (club.badernet.nestwerk.household.ChoreTask t : choreTasks.between(viewer, from, to)) {
+                if (!t.isOpen() || t.getPlannedAt() == null || t.getAssigneeMemberId() == null) {
+                    continue;
+                }
+                FamilyMember who = people.get(t.getAssigneeMemberId());
+                LocalTime end = t.getPlannedAt().plusMinutes(Math.max(5, t.getChore().getMinutesMedium()));
+                byDay.computeIfAbsent(t.getDueOn(), d -> new ArrayList<>()).add(new ChoreEntry(t.getId(),
+                        t.getChore().getTitle() + (who == null ? "" : " · " + who.getName()),
+                        TIME.format(t.getPlannedAt()) + "–" + TIME.format(end), who == null ? null : who.getColor()));
+            }
+        }
+        model.addAttribute("choresByDay", byDay);
     }
 
     /** Freie Zeit als Vorschlag im Formular. */

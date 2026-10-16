@@ -71,6 +71,18 @@
     </span>
 </a>
 
+<!-- Eine eingeplante Hausarbeit; Farbe der zuständigen Person -->
+<a th:fragment="chore(c)" class="occ occ-chore" th:href="@{/household/tasks/{id}(id=${c.id})}"
+   th:style="${c.color != null} ? |--occ-color: ${c.color}|">
+    <span class="occ-time" th:text="${c.time}">18:30–18:55</span>
+    <span class="occ-title">
+        <svg class="occ-lock" viewBox="0 0 24 24" role="img" aria-label="Hausarbeit">
+            <path d="M4.5 20V10l7.5-6 7.5 6v10z"/><path d="M9.5 20v-5h5v5"/>
+        </svg>
+        <span th:text="${c.title}">Bad putzen · Lena</span>
+    </span>
+</a>
+
 <!-- Ein Vorkommen als Eintrag; Farbe vom ersten zugewiesenen Mitglied -->
 <a th:fragment="occurrence(o)" class="occ"
    th:classappend="${o.allDay} ? 'occ-allday'"

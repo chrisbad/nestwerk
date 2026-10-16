@@ -10,6 +10,8 @@ public interface ChoreTaskRepository extends JpaRepository<ChoreTask, Long> {
 
     List<ChoreTask> findAllByChoreId(Long choreId);
 
+    List<ChoreTask> findAllByAssigneeMemberIdAndDueOn(Long memberId, LocalDate day);
+
     Optional<ChoreTask> findByChoreIdAndSlotKey(Long choreId, String slotKey);
 
     List<ChoreTask> findAllByChoreIdAndStatus(Long choreId, ChoreTaskStatus status);

@@ -2963,3 +2963,4 @@ a { color: var(--moss); }
 .day-chip input:checked + span { background: var(--grad-violet); color: #fff; border-color: transparent; box-shadow: var(--glow-violet); }
 .day-chip input:focus-visible + span { outline: 2px solid var(--moss); outline-offset: 2px; }
 .day-chip:active span { transform: scale(0.9); }
+.occ-chore { border-style: dashed; background: color-mix(in srgb, var(--occ-color, var(--ok)) 10%, var(--surface)); }
