@@ -175,6 +175,7 @@ main() {
 COMPOSE_FILE=$compose_file
 COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-nestwerk}
 NESTWERK_VERSION=$VERSION
+NESTWERK_DIR=$INSTALL_DIR
 POSTGRES_DB=nestwerk
 POSTGRES_USER=nestwerk
 POSTGRES_PASSWORD=$db_password
@@ -225,7 +226,7 @@ EOF
 
     bold "Nestwerk starten"
     cd "$INSTALL_DIR"
-    if [ "${NESTWERK_SKIP_PULL:-0}" != "1" ] && ! docker compose pull app >/dev/null 2>&1; then
+    if [ "${NESTWERK_SKIP_PULL:-0}" != "1" ] && ! docker compose pull app updater >/dev/null 2>&1; then
         warn "Das Image ghcr.io/$REPO:$VERSION ließ sich nicht laden (privates Paket?)."
         local gh_user gh_token
         ask gh_user "GitHub-Benutzername" ""
@@ -238,7 +239,7 @@ EOF
         [ -n "$gh_token" ] || die "Ohne Zugang zu ghcr.io kein Image."
         printf '%s' "$gh_token" | docker login ghcr.io -u "$gh_user" --password-stdin >/dev/null \
             || die "Anmeldung bei ghcr.io fehlgeschlagen."
-        docker compose pull app || die "Das Image ließ sich auch nach der Anmeldung nicht laden."
+        docker compose pull app updater || die "Das Image ließ sich auch nach der Anmeldung nicht laden."
     fi
     docker compose up -d --wait || {
         docker compose logs --tail 50 app
@@ -260,7 +261,7 @@ EOF
     say "Administrator:  $NESTWERK_ADMIN_USERNAME"
     say "Passwort:       $admin_password   (jetzt notieren und nach dem ersten Login ändern)"
     say "Einstellungen:  $INSTALL_DIR/.env  (enthält NESTWERK_SECRET_KEY – mit sichern!)"
-    say "Aktualisieren:  $INSTALL_DIR/update.sh"
+    say "Aktualisieren:  in Nestwerk unter „Updates“ (oder $INSTALL_DIR/update.sh)"
     [ "$MODE" = "direct" ] && say "Eigener Proxy:  Domain an http://${APP_BIND:-127.0.0.1:8080} weiterleiten."
     say "Sicherungen richtest du in Nestwerk unter „Sicherungen“ im Benutzermenü ein."
 }

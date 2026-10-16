@@ -14,10 +14,14 @@ public enum NotificationType {
     CHORE_DUE("Hausarbeit fällig", true),
     CHORE_OVERDUE("Hausarbeit überfällig", true),
     CHORE_ASSIGNED("Hausarbeit bekommen", false),
+    PANTRY_EXPIRING("Vorrat läuft ab", true),
     REWARD_REQUESTED("Belohnung beantragt", false),
     REWARD_DECIDED("Belohnung entschieden", false),
     BACKUP_FAILED("Sicherung fehlgeschlagen", false),
-    BACKUP_DONE("Sicherung erstellt", false);
+    BACKUP_DONE("Sicherung erstellt", false),
+    UPDATE_AVAILABLE("Update verfügbar", false),
+    UPDATE_DONE("Update eingespielt", false),
+    UPDATE_FAILED("Update fehlgeschlagen", false);
 
     private final String label;
     private final boolean reminder;

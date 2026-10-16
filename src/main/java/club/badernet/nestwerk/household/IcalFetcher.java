@@ -73,7 +73,7 @@ public class IcalFetcher {
         return uri;
     }
 
-    static boolean isInternal(InetAddress address) {
+    public static boolean isInternal(InetAddress address) {
         if (address.isAnyLocalAddress() || address.isLoopbackAddress() || address.isLinkLocalAddress()
                 || address.isSiteLocalAddress() || address.isMulticastAddress()) {
             return true;

@@ -29,6 +29,8 @@ public class EventForm {
     private boolean absence;
     private Set<Long> memberIds = new HashSet<>();
     private Long todoId;
+    /** „Trotzdem speichern“ nach einer Warnung von Blockern. */
+    private boolean confirmBlockers;
 
     public static EventForm forNew(LocalDate date) {
         EventForm f = new EventForm();
@@ -68,6 +70,8 @@ public class EventForm {
                 allDay, rrule, privateEvent, memberIds, absence);
     }
 
+    public boolean isConfirmBlockers() { return confirmBlockers; }
+    public void setConfirmBlockers(boolean confirmBlockers) { this.confirmBlockers = confirmBlockers; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getDescription() { return description; }

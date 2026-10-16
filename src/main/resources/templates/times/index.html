@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Zeiten')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='times')}"></header>
+<main class="event-main times-main">
+    <div class="page-head">
+        <div>
+            <h1>Zeiten</h1>
+            <p>Arbeit, Schlaf, Ruhe und Freizeit: Nestwerk achtet darauf, wenn jemand eingeplant wird, und hält
+                Ruhezeiten frei.</p>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <nav class="kind-picker" th:if="${canCreate}" aria-label="Neue Zeit">
+        <a th:each="k : ${kinds}" class="kind-tile" th:classappend="'kind-' + ${#strings.toLowerCase(k.name())}"
+           th:href="@{/times/new(kind=${k.name()})}">
+            <span class="kind-dot" aria-hidden="true"></span>
+            <span th:text="${k.label()}">Arbeit</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </a>
+    </nav>
+
+    <section class="person-times" th:each="p : ${people}" th:style="|--member-color: ${p.member.color}|">
+        <h2 class="person-times-head">
+            <span class="avatar" th:text="${#strings.substring(p.member.name, 0, 1)}">L</span>
+            <span th:text="${p.member.name}">Lena</span>
+            <span class="badge" th:if="${p.own}">du</span>
+        </h2>
+
+        <p class="muted" th:if="${#lists.isEmpty(p.blockers)}">Keine festen Zeiten.</p>
+        <ul class="blocker-list" th:unless="${#lists.isEmpty(p.blockers)}">
+            <li class="blocker-card" th:each="b : ${p.blockers}" th:classappend="'kind-' + ${b.kind}">
+                <span class="kind-dot" aria-hidden="true"></span>
+                <div class="blocker-main">
+                    <strong th:text="${b.title}">Büro</strong>
+                    <span class="blocker-when"><span th:text="${b.times}">08:00–16:00</span> · <span th:text="${b.days}">Mo–Fr</span></span>
+                    <span class="muted blocker-notes">
+                        <span th:text="${b.kindLabel}">Arbeit</span> · <span th:text="${b.strength}">Warnen</span><span th:unless="${#strings.isEmpty(b.notes)}" th:text="| · ${b.notes}|"></span>
+                    </span>
+                </div>
+                <a class="button button-ghost button-small" th:if="${b.canEdit}"
+                   th:href="@{/times/{id}(id=${b.id})}">Ändern</a>
+            </li>
+        </ul>
+
+        <div class="goals">
+            <div class="goal" th:each="g : ${p.goals}" th:classappend="${g.met} ? 'goal-met' : 'goal-short'">
+                <span class="ring" th:style="|--p: ${g.percent}|" aria-hidden="true">
+                    <span class="ring-value" th:text="${g.percent} + '%'">80%</span>
+                </span>
+                <div class="goal-main">
+                    <strong th:text="${g.label}">Freie Abende</strong>
+                    <span th:text="|${g.text} diese Woche|">2 von 3 diese Woche</span>
+                </div>
+                <form method="post" th:if="${p.canEditGoals}" th:action="@{/times/goals/{id}/delete(id=${g.id})}"
+                      th:attr="data-confirm=|Ruhe-Ziel „${g.label}“ löschen?|">
+                    <button type="submit" class="icon-button" title="Löschen">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                        <span class="visually-hidden">Löschen</span>
+                    </button>
+                </form>
+            </div>
+            <details class="goal-new" th:if="${p.canEditGoals}">
+                <summary>Ruhe-Ziel hinzufügen</summary>
+                <form method="post" th:action="@{/times/goals}" class="backup-form" data-goal-form>
+                    <input type="hidden" name="memberId" th:value="${p.member.id}">
+                    <div class="field">
+                        <label th:for="|goal-kind-${p.member.id}|">Art</label>
+                        <select th:id="|goal-kind-${p.member.id}|" name="kind" data-goal-kind>
+                            <option value="WINDOWS">Freie Zeitfenster pro Woche</option>
+                            <option value="HOURS">Stunden Ruhe pro Woche</option>
+                        </select>
+                    </div>
+                    <div class="field" data-goal-window>
+                        <label>Fenster</label>
+                        <div class="field-row">
+                            <input type="time" name="windowStart" value="18:00" aria-label="Fenster von">
+                            <input type="time" name="windowEnd" value="23:59" aria-label="Fenster bis">
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label th:for="|goal-target-${p.member.id}|">Ziel <span class="hint" data-goal-unit>Anzahl</span></label>
+                        <input th:id="|goal-target-${p.member.id}|" type="number" name="target" min="1" max="168" value="2">
+                    </div>
+                    <div class="field">
+                        <label th:for="|goal-label-${p.member.id}|">Bezeichnung</label>
+                        <input th:id="|goal-label-${p.member.id}|" type="text" name="label" maxlength="100"
+                               value="Freie Abende">
+                    </div>
+                    <button type="submit" class="button">Ziel speichern</button>
+                </form>
+            </details>
+        </div>
+    </section>
+
+    <section class="sheet event-form settings-section" th:if="${canManageSettings}">
+        <h2>Feiertage</h2>
+        <p>Zeiten mit „an Feiertagen frei“ entfallen an gesetzlichen Feiertagen dieses Bundeslands.</p>
+        <form method="post" th:action="@{/times/state}" class="inline-form">
+            <div class="field">
+                <label for="state">Bundesland</label>
+                <select id="state" name="state">
+                    <option value="">keins (keine Feiertage)</option>
+                    <option th:each="s : ${states}" th:value="${s.key}" th:text="${s.value}"
+                            th:selected="${s.key == state}">Bayern</option>
+                </select>
+            </div>
+            <button type="submit" class="button">Speichern</button>
+        </form>
+    </section>
+</main>
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

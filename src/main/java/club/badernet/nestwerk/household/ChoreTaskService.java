@@ -228,7 +228,7 @@ public class ChoreTaskService {
             }
         }
         Long previous = task.getAssigneeMemberId();
-        task.assign(memberId);
+        planner.assignWithTime(task, memberId);
         if (memberId != null && !memberId.equals(previous)
                 && !memberId.equals(access.memberId(actor).orElse(null))) {
             notifier.assigned(task, actor);

@@ -110,6 +110,8 @@
         <span class="chore-meta">
             <span th:if="${showDay != null and showDay}" th:text="${c.dayLabel}">heute</span>
             <span th:if="${c.time != null}" th:text="${c.time}">19:00</span>
+            <span class="pill pill-blocked" th:if="${c.noOneFree}"
+                  title="Niemand hat im Zeitfenster genug freie Zeit">niemand frei</span>
             <span th:text="${c.minutes} + ' Min'">15 Min</span>
             <th:block th:if="${c.effort != null}">
                 <span th:replace="~{household/fragments :: effort(${c.effort}, ${c.effortLabel})}"></span>

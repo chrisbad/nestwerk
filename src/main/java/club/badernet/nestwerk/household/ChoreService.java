@@ -222,8 +222,11 @@ public class ChoreService {
         if ((distribution == Distribution.ROTATION || distribution == Distribution.BALANCED) && ids.isEmpty()) {
             throw new IllegalArgumentException("Bitte mindestens ein Mitglied auswählen.");
         }
+        if (in.windowStart() != null && in.windowEnd() != null && !in.windowEnd().isAfter(in.windowStart())) {
+            throw new IllegalArgumentException("„Spätestens“ muss nach „frühestens“ liegen.");
+        }
         return new ChoreInput(title, area, description, in.minutesEasy(), in.minutesMedium(), in.minutesHard(),
-                in.kind(), rrule, startsOn, time, interval, distribution, ids);
+                in.kind(), rrule, startsOn, time, interval, distribution, ids, in.windowStart(), in.windowEnd());
     }
 
     private static void requireMinutes(Integer minutes, ChoreEffort effort) {

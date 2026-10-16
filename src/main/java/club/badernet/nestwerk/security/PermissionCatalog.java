@@ -1,6 +1,7 @@
 package club.badernet.nestwerk.security;
 
 import club.badernet.nestwerk.calendar.CalendarPermission;
+import club.badernet.nestwerk.kitchen.KitchenPermission;
 import club.badernet.nestwerk.role.Role;
 import club.badernet.nestwerk.user.User;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -31,7 +32,7 @@ public class PermissionCatalog {
     /** Alle Schlüssel, die der Code prüft. Jedes Modul-Enum wird hier ergänzt. */
     public static Set<String> codeKeys() {
         Set<String> keys = new LinkedHashSet<>();
-        Stream.of(AdminPermission.values(), CalendarPermission.values())
+        Stream.of(AdminPermission.values(), CalendarPermission.values(), KitchenPermission.values())
                 .flatMap(Arrays::stream)
                 .forEach(p -> keys.add(p.name()));
         return keys;

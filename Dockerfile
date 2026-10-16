@@ -22,7 +22,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 1001 nestwerk \
-    && mkdir -p /data/attachments /data/backups /data/external \
+    && mkdir -p /data/attachments /data/backups /data/external /data/updater \
     && chown -R nestwerk /data
 
 WORKDIR /app

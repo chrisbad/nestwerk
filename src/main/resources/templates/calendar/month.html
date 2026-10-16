@@ -3,7 +3,7 @@
 <head th:replace="~{fragments/layout :: head('Kalender')}"></head>
 <body>
 <header th:replace="~{fragments/layout :: nav(active='calendar')}"></header>
-<main class="cal-main" id="calendar">
+<main class="cal-main" id="calendar" data-swipe-area>
     <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
     <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
     <div th:replace="~{calendar/fragments :: toolbar(
@@ -23,9 +23,11 @@
                 <a class="day-num" th:href="@{/calendar/week(date=${cell.date})}"
                    th:attr="aria-label=${#temporals.format(cell.date, 'EEEE, d. MMMM')}"
                    th:text="${cell.date.dayOfMonth}">1</a>
-                <div class="day-events">
+                <ul th:replace="~{calendar/fragments :: bands(${bands[cell.date]}, true)}"></ul>
+                <div class="day-events" th:attr="data-drop-date=${cell.date}">
                     <th:block th:each="o : ${cell.occurrences}"><a th:replace="~{calendar/fragments :: occurrence(${o})}"></a></th:block>
-                    <th:block th:each="t : ${todosByDay[cell.date]}"><a th:replace="~{calendar/fragments :: todo(${t})}"></a></th:block>
+                    <th:block th:each="c : ${choresByDay[cell.date]}"><a th:replace="~{calendar/fragments :: chore(${c})}"></a></th:block>
+                <th:block th:each="t : ${todosByDay[cell.date]}"><a th:replace="~{calendar/fragments :: todo(${t})}"></a></th:block>
                 </div>
             </div>
         </div>

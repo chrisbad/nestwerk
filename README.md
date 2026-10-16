@@ -87,10 +87,28 @@ Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich:
   Nestwerk über „Teilen → Zum Home-Bildschirm“ installiert sein.
 - Welche Wege standardmäßig gelten, legt ein Administrator unter „Benachrichtigungen einstellen“ fest.
 
+### Zeiten (Arbeit, Schlaf, Ruhe, Freizeit)
+
+- Unter „Zeiten“ trägt jede Person wiederkehrende Zeiten ein: Art, Uhrzeit (über Mitternacht möglich), Wochentage,
+  gültig ab/bis und einzelne Ausnahmetage (Urlaub). Rechte wie bei Terminen.
+- **Beim Einplanen:** *Nur anzeigen*, *Warnen* (das Formular fragt einmal nach und schlägt freie Zeiten vor) oder
+  *Sperren* (für andere; man selbst bekommt höchstens eine Warnung). Ausgewählte Personen dürfen trotzdem einplanen.
+  Das gilt für Formular, Ziehen im Kalender, MCP und iCal-Import.
+- **Sichtbarkeit:** mit Titel, nur „belegt“ oder unsichtbar; Betroffene und Admins sehen immer den Titel.
+  Im Kalender erscheinen Zeiten als Bänder (Woche, Monat).
+- **Ruhe-Modus:** Push und Mail warten bis zum Ende der Zeit. **Feiertage:** Zeiten mit „an Feiertagen frei“
+  entfallen an den gesetzlichen Feiertagen des eingestellten Bundeslands.
+- **Ruhe-Ziele:** z. B. „mind. 2 freie Abende“ oder „mind. 6 Stunden Ruhe pro Woche“; Stand auf „Zeiten“ und der
+  Startseite, Warnung beim Einplanen, wenn ein Ziel kippen würde.
+
 ### Haushalt und Wand-Tablet
 
 - Der Haushaltsplan plant drei Wochen im Voraus. Wer im Kalender an einem Termin mit dem Häkchen „Abwesend“
   teilnimmt, wird beim Verteilen übersprungen.
+- Jede Aufgabe bekommt eine Uhrzeit: die früheste freie Lücke der zuständigen Person im Zeitfenster der Hausarbeit
+  (frühestens/spätestens, sonst 07:00 bis Fälligkeit bzw. 21:00), außerhalb von Terminen, Zeiten mit Warnung oder
+  Sperre und anderen Hausarbeiten. Wer keine Lücke hat, wird übersprungen; hat niemand Zeit, bleibt sie offen
+  („niemand frei“). Eingeplante Aufgaben stehen auch im Kalender der Person.
 - **Wand-Tablet koppeln:** Unter „Wand-Tablets“ (Benutzermenü, Recht „Wand-Tablets koppeln“) einen Code
   erzeugen, auf dem Tablet `https://<nestwerk>/tablet/pair` öffnen und den Code eingeben. Das Tablet sieht
   danach nur den Haushaltsplan von heute und morgen; abgemeldet wird es dort mit einem Klick.
@@ -99,10 +117,33 @@ Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich:
 - Abfuhrkalender lassen sich bei einer Hausarbeit mit festen Terminen als `.ics`-Datei oder Abo-Adresse
   übernehmen; Abos werden täglich aktualisiert.
 
+### Küche
+
+- **Rezepte und Lebensmittel:** Zu jedem Rezept zeigt Nestwerk Kalorien, Eiweiß, Fett und Kohlenhydrate pro Portion und
+  rechnet die Zutaten auf eine andere Portionenzahl um. Die Nährwerte stammen aus einem Grundstock von rund 150
+  Lebensmitteln, aus Open Food Facts (Barcode-Scan) oder eigener Pflege. Zutaten, die sich nicht umrechnen lassen,
+  werden markiert („Nährwerte unvollständig“) und nicht als 0 kcal gezählt.
+- **Rezept-Import:** Ein Link zu einer Rezeptseite (auch Cookidoo-Seiten, die öffentlich lesbar sind) füllt das
+  Rezeptformular vor; gespeichert wird erst nach dem Prüfen. Ein Login bei Cookidoo ist nicht nötig.
+- **Essensplan:** Wochenansicht mit frei einstellbaren Mahlzeiten, Mitessern und Portionen, Drag & Drop und
+  „Woche auffüllen“. Kalorienziele (Küche → Einstellungen) liefern Portionsvorschläge und die Tagesbilanz je Person.
+- **Vorrat:** Menge, Ort und MHD; „Gekocht“ zeigt vorher, was abgebucht wird (ältestes MHD zuerst), Mengen sind
+  korrigierbar. Täglich um 8 Uhr kommt eine Sammelnachricht, wenn etwas in den nächsten zwei Tagen abläuft.
+- **Einkauf:** „Aus Plan erzeugen“ = Bedarf aller ungekochten Mahlzeiten minus Vorrat, dazu freie Artikel. Gekaufte
+  Artikel werden über „Einräumen“ in den Vorrat übernommen.
+- **Bring!:** Unter Küche → Einstellungen E-Mail und Passwort des Bring!-Kontos eintragen und eine Liste wählen. Das
+  Passwort wird verschlüsselt gespeichert (Schlüssel wie bei den Sicherungen). „An Bring! senden“ schickt die offenen
+  Artikel; was bei Bring! nicht mehr „zu kaufen“ ist, gilt als gekauft (Knopf und alle 15 Minuten). Nestwerk nutzt die
+  inoffizielle Web-API von Bring!; fällt sie aus, bleibt die Einkaufsliste unverändert und die Seite zeigt eine Meldung.
+- **Rechte:** `KITCHEN_VIEW`, `KITCHEN_RECIPES_EDIT`, `KITCHEN_PLAN`, `KITCHEN_SHOPPING`, `KITCHEN_SETTINGS`; die Rolle
+  „Benutzer“ bekommt alle außer den Einstellungen.
+- **KI:** Über MCP legt ein Assistent Rezepte aus Foto oder Text an (`create_recipe` mit Zutaten als Textzeilen), plant
+  Mahlzeiten und liest Einkaufsliste und Vorrat (`search_foods`, `plan_meal`, `shopping_list`, `list_pantry` u. a.).
+
 ### KI-Anbindung (MCP)
 
 Nestwerk enthält einen MCP-Server unter `https://<nestwerk>/mcp`. Darüber kann ein KI-Assistent wie Claude
-Termine, ToDos, den Haushaltsplan, Kontakte und Benachrichtigungen lesen und bearbeiten. Löschen kann er nichts.
+Termine, ToDos, den Haushaltsplan, die Küche, Kontakte und Benachrichtigungen lesen und bearbeiten. Löschen kann er nichts.
 
 - Der Assistent handelt immer als ein Benutzer und hat genau dessen Rechte. Ein Administrator gibt einer Rolle das
   Recht „KI-Zugang nutzen“. Danach legt jeder Benutzer unter „KI-Zugänge“ (Benutzermenü) ein eigenes Token an.
@@ -120,13 +161,45 @@ Termine, ToDos, den Haushaltsplan, Kontakte und Benachrichtigungen lesen und bea
 
 ### Update
 
+**In Nestwerk:** Benutzermenü → „Updates“ (Recht „Updates verwalten“). Nestwerk prüft alle 6 Stunden, ob es eine
+neue Version gibt, und meldet sie den Admins. Ein Klick auf „Jetzt aktualisieren“ beauftragt den Dienst `updater`:
+
+1. Sicherung mit der laufenden Version (Art „vor einem Update“),
+2. App- und Updater-Image der neuen Version laden, Installationsdateien (`compose.*.yaml`, `update.sh`) aus dem
+   Updater-Image übernehmen, `NESTWERK_VERSION` in `.env` setzen,
+3. Neustart und Warten, bis die App gesund ist.
+
+Kommt die neue Version nicht hoch, startet der Updater die alte wieder; hatte die neue die Datenbank schon migriert,
+spielt er vorher die Sicherung aus Schritt 1 ein. Ergebnis und Protokoll stehen auf der Seite „Updates“.
+
+- **Kanal:** *Releases* (Tags `vX.Y.Z`, Standard) oder *main* (jeder erfolgreiche Build von main, Image-Tag
+  `sha-<commit>`).
+- **GitHub-Token:** Solange das Repository privat ist, braucht die Versionsprüfung einen fein granularen Token nur für
+  `chrisbad/nestwerk` mit Lesezugriff auf *Contents* und *Actions*. Er wird verschlüsselt gespeichert.
+- **Sicherheit:** Die App hat keinen Zugriff auf Docker. Sie legt nur einen Auftrag mit der Zielversion ab; der
+  Updater prüft ihn und nimmt alles andere aus seinem eigenen Image.
+
+**Per SSH** (erste Einrichtung des Updaters, oder wenn die App nicht mehr startet):
+
 ```bash
-sudo /opt/nestwerk/update.sh          # neueste Version
-sudo /opt/nestwerk/update.sh 1.4.0    # bestimmte Version
+sudo GITHUB_TOKEN=… /opt/nestwerk/update.sh          # eingestellte Version (Standard: latest)
+sudo GITHUB_TOKEN=… /opt/nestwerk/update.sh 1.4.0    # bestimmte Version
 ```
 
-`update.sh` sichert zuerst mit der laufenden Version (Art „vor einem Update“), lädt dann das neue Image und startet
-neu. Datenbank-Migrationen laufen beim Start automatisch.
+`update.sh` holt die Installationsdateien der Zielversion (bei privatem Repository mit `GITHUB_TOKEN`), ergänzt
+`NESTWERK_DIR` in `.env`, sichert mit der laufenden Version, lädt die neuen Images und startet neu.
+
+**Bestehende Installation auf den Updater umstellen (einmalig):** die neue `update.sh` aus dem Repository nach
+`/opt/nestwerk/` kopieren und wie oben ausführen. Danach läuft der Dienst `updater`, und Updates gehen in Nestwerk.
+Hinter nginx-proxy zusätzlich `proxy/nestwerk-vhost.conf` erneut nach `/opt/proxy/vhost.d/<domain>` kopieren und
+`docker exec nginx-proxy nginx -s reload` ausführen: Dann sehen alle während des Neustarts eine Wartungsseite.
+
+**Regeln für neue Versionen**, damit Updates nie Daten verlieren:
+- Migrationen nur hinzufügend oder mit Datenübernahme; `MigrationUpgradeTest` migriert Bestandsdaten von V18 auf den
+  neuesten Stand und vergleicht die Zeilen. Bei jedem Release einen weiteren Snapshot unter
+  `src/test/resources/db/upgrade/` ergänzen.
+- Neue Variablen in den Compose-Dateien immer mit Standardwert (`${VAR:-…}`): Ein Update ändert `.env` nur bei
+  `NESTWERK_VERSION`.
 
 ### Sicherungen
 

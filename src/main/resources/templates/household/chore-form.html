@@ -96,6 +96,18 @@
                     <input id="dueTime" class="input" type="time" th:field="*{dueTime}">
                 </div>
             </div>
+            <div class="field-row kind-section" data-kind-section="RECURRING INTERVAL DATES">
+                <div class="field">
+                    <label for="windowStart">Frühestens <span class="hint">sonst 07:00</span></label>
+                    <input id="windowStart" class="input" type="time" th:field="*{windowStart}">
+                </div>
+                <div class="field">
+                    <label for="windowEnd">Spätestens <span class="hint">sonst Uhrzeit bzw. 21:00</span></label>
+                    <input id="windowEnd" class="input" type="time" th:field="*{windowEnd}">
+                </div>
+            </div>
+            <p class="hint kind-section" data-kind-section="RECURRING INTERVAL DATES">Nestwerk legt die Aufgabe in die
+                erste freie Lücke der zuständigen Person – außerhalb ihrer Arbeits-, Schlaf- und Ruhezeiten.</p>
 
             <p class="hint kind-section" data-kind-section="DATES">
                 Die Termine trägst du nach dem Speichern auf der Seite der Hausarbeit ein.

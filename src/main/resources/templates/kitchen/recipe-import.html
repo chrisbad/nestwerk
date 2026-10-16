@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Rezept aus Link')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='kitchen')}"></header>
+<main class="event-main kitchen-main">
+    <a class="back-link" th:href="@{/kitchen/recipes}">← Rezepte</a>
+    <h1>Rezept aus Link</h1>
+    <p>Übernimmt ein Rezept von einer Webseite – z. B. Cookidoo, Chefkoch oder ein Blog. Du prüfst es vor dem Speichern.</p>
+    <p class="notice notice-error" role="alert" th:if="${error}" th:text="${error}">Fehler</p>
+    <form class="sheet event-form" method="post" th:action="@{/kitchen/recipes/import}">
+        <div class="field">
+            <label for="url">Adresse der Rezeptseite</label>
+            <input id="url" type="url" name="url" th:value="${url}" required placeholder="https://…" autofocus>
+        </div>
+        <div class="form-actions">
+            <a class="button button-ghost" th:href="@{/kitchen/recipes}">Abbrechen</a>
+            <button type="submit" class="button">Rezept lesen</button>
+        </div>
+    </form>
+</main>
+</body>
+</html>

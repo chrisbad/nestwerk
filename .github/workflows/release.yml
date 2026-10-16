@@ -1,5 +1,5 @@
 # Baut, testet und veröffentlicht das Docker-Image nach ghcr.io/chrisbad/nestwerk.
-#   Push auf main      → Tag „main“ (Vorabversion)
+#   Push auf main      → Tags „main“ und „sha-<sha7>“ (Vorabversion; der feste Tag erlaubt Updates und Rückfall)
 #   Tag v1.2.3         → Tags „1.2.3“, „1.2“ und „latest“ plus GitHub-Release mit Installationspaket
 name: Release
 
@@ -15,6 +15,7 @@ permissions:
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}
+  UPDATER_IMAGE: ghcr.io/${{ github.repository }}-updater
 
 jobs:
   test:
@@ -29,8 +30,15 @@ jobs:
       - name: Tests (Testcontainers nutzt das Docker des Runners)
         run: ./mvnw -B verify
 
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Skripte prüfen (shellcheck ist auf den Runnern installiert)
+        run: shellcheck install.sh update.sh updater/updater.sh
+
   image:
-    needs: test
+    needs: [test, shellcheck]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -61,6 +69,7 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
             type=ref,event=branch
+            type=sha,prefix=sha-,format=short,enable=${{ github.ref == 'refs/heads/main' }}
       - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
@@ -71,6 +80,27 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - id: meta-updater
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+        with:
+          images: ${{ env.UPDATER_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=ref,event=branch
+            type=sha,prefix=sha-,format=short,enable=${{ github.ref == 'refs/heads/main' }}
+      - name: Updater-Image (gleiche Tags wie die App)
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: updater/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta-updater.outputs.tags }}
+          labels: ${{ steps.meta-updater.outputs.labels }}
+          cache-from: type=gha,scope=updater
+          cache-to: type=gha,mode=max,scope=updater
 
   release:
     needs: image

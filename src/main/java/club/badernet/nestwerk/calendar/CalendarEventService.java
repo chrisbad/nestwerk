@@ -1,5 +1,9 @@
 package club.badernet.nestwerk.calendar;
 
+import club.badernet.nestwerk.blocker.BlockerConflicts;
+import club.badernet.nestwerk.blocker.BlockerStrength;
+import club.badernet.nestwerk.blocker.Conflict;
+import club.badernet.nestwerk.blocker.TimeRange;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
 import club.badernet.nestwerk.security.PermissionCatalog;
 import club.badernet.nestwerk.user.User;
@@ -10,8 +14,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -23,6 +30,8 @@ import java.util.UUID;
 public class CalendarEventService {
 
     private static final Duration MAX_WINDOW = Duration.ofDays(400);
+    /** So weit voraus werden Serien gegen Blocker geprüft. */
+    private static final Duration SERIES_CHECK = Duration.ofDays(56);
     public static final int MAX_LOCATION_LENGTH = 255;
     public static final int MAX_DESCRIPTION_LENGTH = 5000;
 
@@ -32,11 +41,14 @@ public class CalendarEventService {
     private final ZoneId zone;
     private final PermissionCatalog permissions;
     private final ApplicationEventPublisher publisher;
+    private final BlockerConflicts blockers;
 
     public CalendarEventService(CalendarEventRepository events, FamilyMemberRepository members,
                                 RecurrenceExpander expander, CalendarSettings settings,
-                                PermissionCatalog permissions, ApplicationEventPublisher publisher) {
+                                PermissionCatalog permissions, ApplicationEventPublisher publisher,
+                                BlockerConflicts blockers) {
         this.publisher = publisher;
+        this.blockers = blockers;
         this.events = events;
         this.members = members;
         this.expander = expander;
@@ -82,6 +94,7 @@ public class CalendarEventService {
         CalendarEvent event = new CalendarEvent(uid, requireTitle(in.title()),
                 times[0], times[1], in.allDay(), zone.getId(), actor.getId());
         applyDetails(event, in);
+        refuseBlocked(conflicts(event, null, actor));
         CalendarEvent saved = events.save(event);
         if (saved.isAbsence()) {
             publisher.publishEvent(new AbsenceChangedEvent(saved.getId()));
@@ -102,6 +115,7 @@ public class CalendarEventService {
         Instant[] times = times(in);
         boolean seriesChanged = !times[0].equals(event.getStartsAt())
                 || !java.util.Objects.equals(normalizeRule(in.rrule()), event.getRrule());
+        refuseBlocked(conflicts(in, id, actor));
         event.setTitle(requireTitle(in.title()));
         event.setTimes(times[0], times[1], in.allDay());
         applyDetails(event, in);
@@ -110,6 +124,36 @@ public class CalendarEventService {
         }
         event.markChanged();
         absenceChanged(event, wasAbsence);
+    }
+
+    /**
+     * Verschiebt einen einzelnen Termin auf einen anderen Tag; Uhrzeiten und Dauer bleiben in Ortszeit erhalten.
+     * Liefert Warnungen von Blockern (Sperren verhindern das Verschieben).
+     */
+    @Transactional
+    public List<Conflict> moveToDate(Long id, LocalDate target, User actor) {
+        CalendarEvent event = get(id, actor);
+        if (!canEdit(event, actor)) {
+            throw new AccessDeniedException("Keine Berechtigung zum Bearbeiten dieses Termins");
+        }
+        if (event.getRrule() != null) {
+            throw new IllegalArgumentException("Wiederkehrende Termine lassen sich nur im Formular verschieben.");
+        }
+        ZonedDateTime start = event.getStartsAt().atZone(zone);
+        long days = ChronoUnit.DAYS.between(start.toLocalDate(), target);
+        if (days == 0) {
+            return List.of();
+        }
+        Instant newStart = start.plusDays(days).toInstant();
+        Instant newEnd = event.getEndsAt().atZone(zone).plusDays(days).toInstant();
+        List<Conflict> found = blockers.check(event.getMemberIds(), List.of(new TimeRange(newStart, newEnd)), actor,
+                event.getId());
+        refuseBlocked(found);
+        boolean wasAbsence = event.isAbsence();
+        event.setTimes(newStart, newEnd, event.isAllDay());
+        event.markChanged();
+        absenceChanged(event, wasAbsence);
+        return found;
     }
 
     @Transactional
@@ -138,6 +182,7 @@ public class CalendarEventService {
         if (!end.isAfter(start)) {
             throw new IllegalArgumentException("Das Ende muss nach dem Beginn liegen.");
         }
+        refuseBlocked(blockers.check(event.getMemberIds(), List.of(new TimeRange(start, end)), actor, event.getId()));
         event.overrideOccurrence(recurrenceId, requireTitle(in.title()), description(in.description()),
                 location(in.location()), start, end);
         event.markChanged();
@@ -214,6 +259,43 @@ public class CalendarEventService {
             throw new IllegalArgumentException("Unbekanntes Familienmitglied ausgewählt.");
         }
         event.setMemberIds(ids);
+    }
+
+    /**
+     * Blocker-Konflikte für einen geplanten oder geänderten Termin; bei Serien die Vorkommen der nächsten acht
+     * Wochen. {@code eventId} ist der Termin selbst (zählt nicht als Belegung).
+     */
+    @Transactional(readOnly = true)
+    public List<Conflict> conflicts(EventInput in, Long eventId, User actor) {
+        Instant[] times = times(in);
+        CalendarEvent draft = new CalendarEvent("pruefung", "Prüfung", times[0], times[1], in.allDay(),
+                zone.getId(), actor.getId());
+        draft.setRrule(normalizeRule(in.rrule()));
+        draft.setMemberIds(in.memberIds() == null ? Set.of() : new HashSet<>(in.memberIds()));
+        return conflicts(draft, eventId, actor);
+    }
+
+    private List<Conflict> conflicts(CalendarEvent draft, Long eventId, User actor) {
+        if (draft.getMemberIds().isEmpty()) {
+            return List.of();
+        }
+        List<TimeRange> ranges = new ArrayList<>();
+        if (draft.getRrule() == null) {
+            ranges.add(new TimeRange(draft.getStartsAt(), draft.getEndsAt()));
+        } else {
+            for (Occurrence o : expander.expand(draft, draft.getStartsAt(), draft.getStartsAt().plus(SERIES_CHECK))) {
+                ranges.add(new TimeRange(o.start().toInstant(), o.end().toInstant()));
+            }
+        }
+        return blockers.check(draft.getMemberIds(), ranges, actor, eventId);
+    }
+
+    private static void refuseBlocked(List<Conflict> found) {
+        List<String> reasons = found.stream().filter(c -> c.strength() == BlockerStrength.BLOCK)
+                .map(Conflict::message).distinct().toList();
+        if (!reasons.isEmpty()) {
+            throw new BlockedException(String.join(" ", reasons) + " Dort kann gerade niemand eingeplant werden.");
+        }
     }
 
     private Instant[] times(EventInput in) {

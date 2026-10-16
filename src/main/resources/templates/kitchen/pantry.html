@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Vorrat')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='kitchen')}"></header>
+<main class="event-main kitchen-main">
+    <nav th:replace="~{kitchen/fragments :: tabs('pantry')}"></nav>
+    <div class="page-head">
+        <div>
+            <h1>Vorrat</h1>
+            <p>Was im Kühlschrank, im Vorrat und im Tiefkühler liegt – nach MHD sortiert.</p>
+        </div>
+        <div class="page-actions" th:if="${canEdit}">
+            <button type="button" class="button button-ghost" data-barcode-scan="/kitchen/pantry/barcode">Barcode</button>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <section class="sheet" th:if="${canEdit}">
+        <h2>Hinzufügen</h2>
+        <form method="post" th:action="@{/kitchen/pantry}" class="pantry-add">
+            <input type="text" name="name" list="pantry-foods" required maxlength="100" placeholder="Lebensmittel"
+                   aria-label="Lebensmittel" th:value="${prefillName}">
+            <input type="text" name="amount" inputmode="decimal" required placeholder="Menge" aria-label="Menge"
+                   th:value="${prefillAmount}">
+            <select name="unit" aria-label="Einheit">
+                <option th:each="u : ${units}" th:value="${u.name()}" th:text="${u.label}"
+                        th:selected="${u.name() == prefillUnit}">g</option>
+            </select>
+            <input type="text" name="location" list="pantry-places" maxlength="50" placeholder="Ort" aria-label="Ort">
+            <input type="date" name="bestBefore" aria-label="Mindestens haltbar bis">
+            <button type="submit" class="button">Hinzufügen</button>
+        </form>
+        <datalist id="pantry-foods"><option th:each="n : ${foodNames}" th:value="${n}"></option></datalist>
+        <datalist id="pantry-places"><option value="Kühlschrank"></option><option value="Vorrat"></option><option value="Tiefkühler"></option></datalist>
+        <p class="hint">Ohne MHD gilt die übliche Haltbarkeit des Lebensmittels, falls bekannt.</p>
+    </section>
+
+    <section class="sheet" th:if="${!#lists.isEmpty(useUp)}">
+        <h2>Zum Verbrauchen</h2>
+        <p class="muted">Rezepte mit Zutaten, die bald ablaufen.</p>
+        <ul class="tags">
+            <li th:each="r : ${useUp}"><a class="tag" th:href="@{/kitchen/recipes/{id}(id=${r.id})}" th:text="${r.title}">Suppe</a></li>
+        </ul>
+    </section>
+
+    <p class="muted" th:if="${#lists.isEmpty(groups)}">Der Vorrat ist leer.</p>
+
+    <section class="sheet pantry-group" th:each="g : ${groups}">
+        <h2 th:text="${g.place}">Kühlschrank</h2>
+        <ul class="pantry-list">
+            <li th:each="i : ${g.rows}" th:class="|pantry-item pantry-${i.state}|">
+                <details>
+                    <summary>
+                        <span class="pantry-name" th:text="${i.name}">Milch</span>
+                        <span class="pantry-amount" th:text="${i.amount}">1 l</span>
+                        <span class="pantry-date muted" th:if="${i.bestBefore}" th:text="|MHD ${i.bestBefore}|">MHD 14.10.2026</span>
+                        <span class="pantry-flag" th:if="${i.hint}" th:text="${i.hint}">läuft morgen ab</span>
+                    </summary>
+                    <div th:if="${canEdit}" class="pantry-edit">
+                        <form method="post" th:action="@{/kitchen/pantry/{id}(id=${i.id})}" class="pantry-add">
+                            <input type="text" name="amount" inputmode="decimal" required aria-label="Menge" th:value="${i.amountPlain}">
+                            <select name="unit" aria-label="Einheit">
+                                <option th:each="u : ${units}" th:value="${u.name()}" th:text="${u.label}"
+                                        th:selected="${u == i.unit}">g</option>
+                            </select>
+                            <input type="text" name="location" list="pantry-places" maxlength="50" aria-label="Ort" th:value="${i.location}">
+                            <input type="date" name="bestBefore" aria-label="MHD" th:value="${i.bestBeforeInput}">
+                            <button type="submit" class="button button-small">Speichern</button>
+                        </form>
+                        <form method="post" th:action="@{/kitchen/pantry/{id}/take(id=${i.id})}" class="pantry-add">
+                            <input type="text" name="amount" inputmode="decimal" required placeholder="Entnehmen" aria-label="Menge entnehmen">
+                            <button type="submit" class="button button-ghost button-small">Entnehmen</button>
+                        </form>
+                        <form method="post" th:action="@{/kitchen/pantry/{id}/delete(id=${i.id})}"
+                              data-confirm="Posten aus dem Vorrat entfernen?">
+                            <button type="submit" class="button button-ghost button-small">Entfernen</button>
+                        </form>
+                    </div>
+                </details>
+            </li>
+        </ul>
+    </section>
+</main>
+</body>
+</html>

@@ -3,19 +3,19 @@
 <head th:replace="~{fragments/layout :: head('Haushaltsplan')}"></head>
 <body>
 <header th:replace="~{fragments/layout :: nav(active='household')}"></header>
-<main class="household-page">
+<main class="household-page" data-swipe-area>
     <div th:replace="~{household/fragments :: head('Haushaltsplan', ${'KW ' + weekNumber + ': ' + weekRange})}"></div>
 
     <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
     <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
 
     <div class="plan-nav">
-        <a class="icon-button" th:href="@{/household(week=${monday.minusWeeks(1)})}" title="Vorige Woche">
+        <a class="icon-button" th:href="@{/household(week=${monday.minusWeeks(1)})}" title="Vorige Woche" data-swipe-prev>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
             <span class="visually-hidden">Vorige Woche</span>
         </a>
         <a class="button button-ghost button-small" th:href="@{/household}" th:unless="${isCurrentWeek}">Diese Woche</a>
-        <a class="icon-button" th:href="@{/household(week=${monday.plusWeeks(1)})}" title="Nächste Woche">
+        <a class="icon-button" th:href="@{/household(week=${monday.plusWeeks(1)})}" title="Nächste Woche" data-swipe-next>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
             <span class="visually-hidden">Nächste Woche</span>
         </a>
@@ -30,19 +30,19 @@
         </ul>
     </section>
 
-    <div class="plan-grid" role="table" aria-label="Wochenplan nach Personen">
+    <div class="plan-grid" role="table" aria-label="Wochenplan nach Personen" data-plan-grid>
         <div class="plan-row plan-row-head" role="row">
             <span class="plan-who" role="columnheader"><span class="visually-hidden">Person</span></span>
             <span class="plan-day" role="columnheader" th:each="d : ${days}" th:classappend="${d.today} ? 'is-today'"
                   th:text="${d.label}">Mo 13.10.</span>
         </div>
-        <div class="plan-row" role="row" th:each="r : ${rows}"
+        <div class="plan-row" role="row" th:each="r : ${rows}" th:attr="data-member-id=${r.memberId} ?: 'open'"
              th:style="${r.color != null} ? |--member-color: ${r.color}|" th:classappend="${r.color == null} ? 'is-open-row'">
             <span class="plan-who" role="rowheader">
                 <strong th:text="${r.label}">Lena</strong>
                 <span class="muted" th:if="${r.minutes > 0}" th:text="${r.minutes} + ' Min'">90 Min</span>
             </span>
-            <ul class="plan-cell chore-list" role="cell" th:each="cell, it : ${r.cells}"
+            <ul class="plan-cell chore-list" role="cell" th:each="cell, it : ${r.cells}" th:attr="data-day=${it.index}"
                 th:classappend="${days[it.index].today} ? 'is-today'">
                 <th:block th:each="c : ${cell}">
                     <li th:replace="~{household/fragments :: chip}"></li>

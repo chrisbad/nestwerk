@@ -28,6 +28,7 @@ import java.util.Optional;
 public class HouseholdViews {
 
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEE d.M.", Locale.GERMAN);
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter LONG_DAY = DateTimeFormatter.ofPattern("EEEE, d. MMMM", Locale.GERMAN);
 
     /**
@@ -37,7 +38,7 @@ public class HouseholdViews {
     public record TaskChip(Long id, String title, String area, String time, int minutes, String effort,
                            String effortLabel, boolean done, boolean overdue, String dayLabel,
                            FamilyMember assignee, boolean canComplete, boolean canUndo, int minutesEasy,
-                           int minutesMedium, int minutesHard) {
+                           int minutesMedium, int minutesHard, boolean noOneFree) {
     }
 
     /** Was der Betrachter darf und wer er ist; einmal je Anfrage ermittelt. */
@@ -92,10 +93,13 @@ public class HouseholdViews {
         boolean canComplete = t.isOpen() && ctx.ownMember() != null && access.can(ctx.viewer(), "COMPLETE", t);
         boolean canUndo = !t.isOpen() && (tasks.bookedTodayBy(t, ctx.viewer()) || ctx.correctAny());
         FamilyMember assignee = t.getAssigneeMemberId() == null ? null : ctx.members().get(t.getAssigneeMemberId());
-        return new TaskChip(t.getId(), c.getTitle(), c.getArea(), t.timeLabel(), minutes(t),
+        String time = t.isOpen() && t.getPlannedAt() != null ? t.getPlannedAt().format(TIME) : t.timeLabel();
+        boolean noOneFree = t.isOpen() && t.getAssigneeMemberId() == null && !t.isAdHoc()
+                && c.getDistribution() != club.badernet.nestwerk.household.Distribution.OPEN;
+        return new TaskChip(t.getId(), c.getTitle(), c.getArea(), time, minutes(t),
                 effortKey(t.getEffort()), t.getEffort() == null ? null : t.getEffort().label(), !t.isOpen(),
                 t.isOverdue(ctx.today()), dayLabel(t.getDueOn(), ctx.today()), assignee, canComplete, canUndo,
-                c.getMinutesEasy(), c.getMinutesMedium(), c.getMinutesHard());
+                c.getMinutesEasy(), c.getMinutesMedium(), c.getMinutesHard(), noOneFree);
     }
 
     /** Planwert bei offenen Aufgaben, gebuchte Dauer (des Erledigers) bei erledigten. */

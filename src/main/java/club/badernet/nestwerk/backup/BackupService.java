@@ -376,6 +376,27 @@ public class BackupService {
         }
     }
 
+    /**
+     * Rückfall nach einem fehlgeschlagenen Update (Befehl {@code --nestwerk.backup.restore-and-exit}): spielt die
+     * Sicherung von vor dem Update in ein leeres Schema ein, ohne Sicherheitskopie des verworfenen Stands.
+     */
+    public void replaceAll(String name) {
+        Path path = existing(name);
+        acquire();
+        Instant started = clock.instant();
+        try (BackupArchive archive = BackupArchive.open(path, json)) {
+            restorer.replaceAll(archive);
+            record(null, started, BackupRun.Status.SUCCESS, name,
+                    "Nach fehlgeschlagenem Update zurückgesetzt auf den Stand vom " + archive.manifest().createdAt());
+        } catch (RuntimeException e) {
+            log.error("Zurücksetzen nach dem Update fehlgeschlagen", e);
+            record(null, started, BackupRun.Status.FAILED, name, describe(e));
+            throw e;
+        } finally {
+            busy.set(false);
+        }
+    }
+
     /** Verlaufseintrag nach dem Wiederherstellen; der Benutzer existiert im neuen Stand evtl. nicht mehr. */
     private void record(User actor, Instant started, BackupRun.Status status, String file, String message) {
         tx.executeWithoutResult(s -> {

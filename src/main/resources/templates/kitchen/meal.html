@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${meal.title})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='kitchen')}"></header>
+<main class="event-main kitchen-main">
+    <a class="back-link" th:href="${back}">← Essensplan</a>
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+    <div class="page-head">
+        <div>
+            <h1 th:text="${meal.title}">Nudeln</h1>
+            <p class="muted">
+                <span th:text="|${dayLabel} · ${meal.slot.name}|">Montag, 12.10. · Abendessen</span>
+                <span th:if="${kcal}" th:text="| · ${kcal} pro Portion|"></span>
+                <span th:if="${meal.cooked}"> · gekocht</span>
+            </p>
+        </div>
+        <div class="page-actions">
+            <a class="button button-ghost" th:if="${meal.recipe != null}"
+               th:href="@{/kitchen/recipes/{id}(id=${meal.recipe.id})}">Rezept</a>
+            <a class="button" th:if="${canPlan and meal.recipe != null and !meal.cooked}"
+               th:href="@{/kitchen/plan/meals/{id}/cook(id=${meal.id})}">Gekocht</a>
+        </div>
+    </div>
+
+    <form class="sheet event-form" method="post" th:if="${canPlan}"
+          th:action="@{/kitchen/plan/meals/{id}(id=${meal.id})}">
+        <h2>Wer isst mit?</h2>
+        <div class="eater-rows">
+            <label class="eater-row" th:each="r : ${rows}" th:style="|--member-color: ${r.member.color}|">
+                <input type="checkbox" name="eater" th:value="${r.member.id}" th:checked="${r.eats}">
+                <span class="eater-name" th:text="${r.member.name}">Lena</span>
+                <input type="text" inputmode="decimal" class="eater-portions" th:name="|portions_${r.member.id}|"
+                       th:value="${r.portions}" aria-label="Portionen">
+                <span class="muted small" th:if="${r.suggested}" th:text="|Vorschlag ${r.suggested}|">Vorschlag 1</span>
+            </label>
+        </div>
+        <div class="form-actions">
+            <a class="button button-ghost" th:href="${back}">Abbrechen</a>
+            <button type="submit" class="button">Speichern</button>
+        </div>
+    </form>
+
+    <form class="danger-zone" th:if="${canPlan}" method="post"
+          th:action="@{/kitchen/plan/meals/{id}/delete(id=${meal.id})}" data-confirm="Aus dem Plan nehmen?">
+        <button type="submit" class="button button-danger">Aus dem Plan nehmen</button>
+    </form>
+</main>
+</body>
+</html>

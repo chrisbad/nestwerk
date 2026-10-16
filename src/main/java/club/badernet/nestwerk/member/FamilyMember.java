@@ -28,6 +28,10 @@ public class FamilyMember {
     @Column(name = "pin_hash", length = 100)
     private String pinHash;
 
+    /** Kalorienziel pro Tag; {@code null} = kein Ziel. */
+    @Column(name = "kcal_goal")
+    private Integer kcalGoal;
+
     protected FamilyMember() {
     }
 
@@ -59,6 +63,14 @@ public class FamilyMember {
 
     public boolean hasPin() {
         return pinHash != null;
+    }
+
+    public Integer getKcalGoal() {
+        return kcalGoal;
+    }
+
+    public void setKcalGoal(Integer kcalGoal) {
+        this.kcalGoal = kcalGoal;
     }
 
     public void setPinHash(String pinHash) {

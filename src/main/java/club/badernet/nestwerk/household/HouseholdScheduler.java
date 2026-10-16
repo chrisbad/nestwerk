@@ -65,6 +65,16 @@ public class HouseholdScheduler {
         }
     }
 
+    /** Nach Änderungen an Blockern: Zuständige und Uhrzeiten künftiger Aufgaben prüfen. */
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void blockersChanged(club.badernet.nestwerk.blocker.BlockersChangedEvent event) {
+        try {
+            separate.executeWithoutResult(status -> planner.reassignAbsent(planner.today()));
+        } catch (RuntimeException e) {
+            log.error("Neuplanung nach geänderten Zeiten fehlgeschlagen", e);
+        }
+    }
+
     /** Nach dem Speichern des Termins in eigener Transaktion; ein Fehler hier darf den Termin nicht verhindern. */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void absenceChanged(AbsenceChangedEvent event) {

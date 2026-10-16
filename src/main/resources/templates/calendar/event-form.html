@@ -146,9 +146,26 @@
             </div>
         </fieldset>
 
+        <div class="blocker-warning" role="alert" th:if="${blockerWarnings != null}" data-blocker-warning>
+            <svg class="blocker-warning-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4M12 17.2v.3"/></svg>
+            <div>
+                <strong>Passt das wirklich?</strong>
+                <ul>
+                    <li th:each="w : ${blockerWarnings}" th:text="${w}">Lena arbeitet da (08:00–16:00).</li>
+                </ul>
+                <div class="blocker-alternatives" th:unless="${#lists.isEmpty(alternatives)}">
+                    <span class="muted">Frei wäre:</span>
+                    <button type="button" class="chip" th:each="a : ${alternatives}" th:text="${a.label}"
+                            th:attr="data-alt-start-date=${a.startDate},data-alt-start-time=${a.startTime},data-alt-end-date=${a.endDate},data-alt-end-time=${a.endTime}">Di, 13.10. 17:00–18:00</button>
+                </div>
+            </div>
+            <input type="hidden" name="confirmBlockers" value="true" data-blocker-confirm>
+        </div>
+
         <div class="form-actions" th:if="${isNew or canEdit}">
             <a class="button button-ghost" th:href="@{/calendar/month(date=${form.startDate})}">Abbrechen</a>
-            <button type="submit" class="button" th:text="${isNew} ? 'Termin anlegen' : (${recurring} ? 'Ganze Serie speichern' : 'Änderungen speichern')">Speichern</button>
+            <button type="submit" class="button" th:if="${blockerWarnings != null}" data-blocker-submit>Trotzdem speichern</button>
+            <button type="submit" class="button" th:unless="${blockerWarnings != null}" th:text="${isNew} ? 'Termin anlegen' : (${recurring} ? 'Ganze Serie speichern' : 'Änderungen speichern')">Speichern</button>
         </div>
     </form>
 

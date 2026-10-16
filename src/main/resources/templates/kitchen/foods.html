@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Lebensmittel')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='kitchen')}"></header>
+<main class="event-main kitchen-main">
+    <nav th:replace="~{kitchen/fragments :: tabs('foods')}"></nav>
+    <div class="page-head">
+        <div>
+            <h1>Lebensmittel</h1>
+            <p>Nährwerte pro 100 g; Stückgewicht und Packungsgröße zum Umrechnen.</p>
+        </div>
+        <div class="page-actions" th:if="${canEdit}">
+            <button type="button" class="button button-ghost" data-barcode-scan="/kitchen/foods/barcode">Barcode</button>
+            <a class="button" th:href="@{/kitchen/foods/new}">Neu</a>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <form class="search-bar" method="get" th:action="@{/kitchen/foods}" role="search">
+        <input type="search" name="q" th:value="${q}" placeholder="Lebensmittel suchen" aria-label="Suche">
+    </form>
+
+    <div class="table-scroll">
+        <table class="food-table">
+            <thead>
+            <tr><th>Name</th><th>kcal</th><th>Eiweiß</th><th>Fett</th><th>KH</th><th>Stück</th><th></th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="f : ${foods}">
+                <td>
+                    <span th:text="${f.name}">Mehl</span>
+                    <span class="muted small" th:text="${f.category.label}">Vorrat</span>
+                </td>
+                <td th:text="${f.kcal == null} ? '–' : ${#numbers.formatDecimal(f.kcal, 1, 0)}">340</td>
+                <td th:text="${f.protein == null} ? '–' : ${#numbers.formatDecimal(f.protein, 1, 'POINT', 1, 'COMMA')}">10</td>
+                <td th:text="${f.fat == null} ? '–' : ${#numbers.formatDecimal(f.fat, 1, 'POINT', 1, 'COMMA')}">1</td>
+                <td th:text="${f.carbs == null} ? '–' : ${#numbers.formatDecimal(f.carbs, 1, 'POINT', 1, 'COMMA')}">71</td>
+                <td th:text="${f.pieceGrams == null} ? '' : |${#numbers.formatDecimal(f.pieceGrams, 1, 0)} g|"></td>
+                <td><a th:if="${canEdit}" class="button button-ghost button-small" th:href="@{/kitchen/foods/{id}(id=${f.id})}">Ändern</a></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+</body>
+</html>

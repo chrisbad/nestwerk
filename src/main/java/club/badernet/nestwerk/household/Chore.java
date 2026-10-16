@@ -65,6 +65,13 @@ public class Chore {
     @Column(name = "due_time")
     private LocalTime dueTime;
 
+    /** Frühestens/spätestens für die vom Planer gewählte Uhrzeit (optional). */
+    @Column(name = "window_start")
+    private LocalTime windowStart;
+
+    @Column(name = "window_end")
+    private LocalTime windowEnd;
+
     @Column(name = "interval_days")
     private Integer intervalDays;
 
@@ -125,6 +132,8 @@ public class Chore {
         this.rrule = in.rrule();
         this.startsOn = in.startsOn();
         this.dueTime = in.dueTime();
+        this.windowStart = in.windowStart();
+        this.windowEnd = in.windowEnd();
         this.intervalDays = in.intervalDays();
         this.distribution = in.distribution();
         this.memberIds.clear();
@@ -157,6 +166,8 @@ public class Chore {
     public String getRrule() { return rrule; }
     public LocalDate getStartsOn() { return startsOn; }
     public LocalTime getDueTime() { return dueTime; }
+    public LocalTime getWindowStart() { return windowStart; }
+    public LocalTime getWindowEnd() { return windowEnd; }
     public Integer getIntervalDays() { return intervalDays; }
     public Distribution getDistribution() { return distribution; }
     public boolean isActive() { return active; }

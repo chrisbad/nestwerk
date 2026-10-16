@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Updates')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='updates')}"></header>
+<main class="event-main">
+    <div class="page-head">
+        <div>
+            <h1>Updates</h1>
+            <p>Neue Versionen von Nestwerk einspielen. Vorher wird automatisch gesichert; kommt die neue Version nicht
+                hoch, läuft danach wieder die alte mit den alten Daten.</p>
+        </div>
+        <form method="post" th:action="@{/admin/updates/check}">
+            <button type="submit" class="button button-ghost" th:disabled="${dev}">Jetzt prüfen</button>
+        </form>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <section class="update-hero sheet">
+        <div class="update-versions">
+            <div>
+                <span class="muted">Läuft</span>
+                <strong class="update-version" th:text="${current}">1.4.0</strong>
+            </div>
+            <svg class="update-arrow" viewBox="0 0 24 24" aria-hidden="true" th:if="${update != null}">
+                <path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            <div th:if="${update != null}">
+                <span class="muted">Verfügbar</span>
+                <strong class="update-version update-version-new" th:text="${update.version}">1.5.0</strong>
+            </div>
+        </div>
+        <p class="muted" th:if="${dev}">Diese Version ist lokal gebaut und wird nicht aktualisiert.</p>
+        <p class="muted" th:if="${!dev and update == null and lastError == null}">
+            Nestwerk ist auf dem neuesten Stand<span th:if="${lastChecked != null}"
+                                                     th:text="| (geprüft am ${lastChecked})|"></span>.</p>
+        <p class="update-error" th:if="${lastError != null}" th:text="${lastError}">GitHub ist nicht erreichbar.</p>
+
+        <div class="update-notes prose" th:if="${update != null and !#strings.isEmpty(notes)}"
+             th:utext="${notes}"></div>
+
+        <div class="update-missing" th:if="${!updaterInstalled}">
+            <strong>Updater nicht eingerichtet.</strong>
+            <span>Einspielen per Klick braucht den Dienst <code>updater</code> aus der aktuellen
+                <code>compose.prod.yaml</code>. Einmalig auf dem Server <code>update.sh</code> ausführen; bis dahin
+                geht ein Update nur dort.</span>
+        </div>
+
+        <form method="post" th:action="@{/admin/updates/start}" th:if="${update != null}"
+              th:attr="data-confirm=|Nestwerk auf ${update.version} aktualisieren? Nestwerk ist dabei etwa eine Minute nicht erreichbar.|">
+            <button type="submit" class="button" th:disabled="${!updaterInstalled or open != null}">
+                Jetzt aktualisieren</button>
+        </form>
+    </section>
+
+    <section class="chore-section" id="update-status" th:fragment="status"
+             th:attr="hx-get=${open != null} ? @{/admin/updates/status} : null"
+             th:attrappend="hx-trigger=${open != null} ? 'every 2s' : null" hx-swap="outerHTML"
+             th:data-update-running="${open != null}">
+        <th:block th:if="${open != null}">
+            <h2>Update auf <span th:text="${open.to}">1.5.0</span> <span class="badge" th:text="${open.status}">läuft</span></h2>
+            <ol class="update-steps">
+                <li th:each="s : ${steps}" th:class="'update-step update-step-' + ${s.state}">
+                    <span class="update-step-dot" aria-hidden="true"></span>
+                    <span th:text="${s.label}">Sicherung</span>
+                </li>
+            </ol>
+            <p class="muted" th:if="${open.message != null}" th:text="${open.message}">Image wird geladen …</p>
+            <p class="muted update-restart" hidden data-update-restart>Nestwerk startet neu – die Seite lädt sich
+                selbst neu, sobald es wieder da ist.</p>
+        </th:block>
+    </section>
+
+    <section class="sheet event-form settings-section">
+        <h2>Einstellungen</h2>
+        <form method="post" th:action="@{/admin/updates/settings}" class="backup-form">
+            <div class="field">
+                <label for="update-channel">Kanal</label>
+                <select id="update-channel" class="input" name="channel">
+                    <option th:each="c : ${channels}" th:value="${c.name()}" th:text="${c.label()}"
+                            th:selected="${c == channel}">Releases</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="update-token">GitHub-Token
+                    <span class="hint" th:if="${hasToken}">gespeichert; leer = unverändert</span></label>
+                <input id="update-token" class="input" type="password" name="token" autocomplete="off"
+                       placeholder="github_pat_…">
+            </div>
+            <p class="muted field-wide">Nötig, solange das Repository privat ist: ein fein granularer Token nur für
+                <code>chrisbad/nestwerk</code> mit Lesezugriff auf <em>Contents</em> und <em>Actions</em>.</p>
+            <div class="field-switch" th:if="${hasToken}">
+                <label class="switch">
+                    <input type="checkbox" name="removeToken" value="true">
+                    <span class="switch-track" aria-hidden="true"></span>
+                    Token entfernen
+                </label>
+            </div>
+            <button type="submit" class="button">Speichern</button>
+        </form>
+    </section>
+
+    <section class="chore-section">
+        <h2>Verlauf</h2>
+        <p class="muted" th:if="${#lists.isEmpty(runs)}">Noch keine Updates über Nestwerk.</p>
+        <ul class="sheet credit-list" th:unless="${#lists.isEmpty(runs)}">
+            <li th:each="r : ${runs}">
+                <div class="credit-main">
+                    <strong th:text="${r.requested}">16.10.2026, 12:00</strong>
+                    <span th:text="|${r.from} → ${r.to}|">1.4.0 → 1.5.0</span>
+                    <span class="badge" th:classappend="'run-' + ${r.statusKey}" th:text="${r.status}">eingespielt</span>
+                </div>
+                <p class="muted run-message" th:if="${r.message != null}" th:text="${r.message}">Version läuft.</p>
+                <details th:if="${r.log != null}" class="update-log">
+                    <summary>Protokoll</summary>
+                    <pre th:text="${r.log}">…</pre>
+                </details>
+            </li>
+        </ul>
+    </section>
+</main>
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

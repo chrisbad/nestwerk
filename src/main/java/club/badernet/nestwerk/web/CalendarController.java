@@ -1,5 +1,9 @@
 package club.badernet.nestwerk.web;
 
+import club.badernet.nestwerk.blocker.BlockerBands;
+import club.badernet.nestwerk.blocker.BlockerConflicts;
+import club.badernet.nestwerk.blocker.Conflict;
+import club.badernet.nestwerk.blocker.TimeRange;
 import club.badernet.nestwerk.calendar.CalendarEvent;
 import club.badernet.nestwerk.calendar.CalendarEventService;
 import club.badernet.nestwerk.calendar.CalendarGrid;
@@ -19,6 +23,9 @@ import club.badernet.nestwerk.todo.TodoQuery;
 import club.badernet.nestwerk.todo.TodoService;
 import club.badernet.nestwerk.user.User;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -28,12 +35,17 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -47,6 +59,9 @@ import java.util.Set;
 public class CalendarController {
 
     private static final int AGENDA_DAYS = 60;
+    private static final DateTimeFormatter ALTERNATIVE = DateTimeFormatter.ofPattern("EE d.M. HH:mm",
+            java.util.Locale.GERMAN);
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
 
     private final CalendarEventService events;
     private final FamilyMemberService members;
@@ -56,10 +71,21 @@ public class CalendarController {
     private final TodoAccess todoAccess;
     private final TodoService todoService;
     private final TodoEventLinks todoLinks;
+    private final BlockerConflicts blockerConflicts;
+    private final BlockerBands blockerBands;
+    private final club.badernet.nestwerk.household.ChoreTaskService choreTasks;
+    private final club.badernet.nestwerk.household.HouseholdAccess householdAccess;
 
     public CalendarController(CalendarEventService events, FamilyMemberService members,
                               CurrentUser currentUser, CalendarSettings settings, TodoQuery todoQuery,
-                              TodoAccess todoAccess, TodoService todoService, TodoEventLinks todoLinks) {
+                              TodoAccess todoAccess, TodoService todoService, TodoEventLinks todoLinks,
+                              BlockerConflicts blockerConflicts, BlockerBands blockerBands,
+                              club.badernet.nestwerk.household.ChoreTaskService choreTasks,
+                              club.badernet.nestwerk.household.HouseholdAccess householdAccess) {
+        this.choreTasks = choreTasks;
+        this.householdAccess = householdAccess;
+        this.blockerConflicts = blockerConflicts;
+        this.blockerBands = blockerBands;
         this.events = events;
         this.members = members;
         this.currentUser = currentUser;
@@ -102,6 +128,8 @@ public class CalendarController {
             weeks.add(week);
         }
         model.addAttribute("weeks", weeks);
+        model.addAttribute("bands", blockerBands.between(days.getFirst(), days.getLast(), currentUser.require()));
+        addChores(model, days.getFirst(), days.getLast());
         addTodos(model, days.getFirst(), days.getLast());
         model.addAttribute("month", month);
         model.addAttribute("prev", month.minusMonths(1).atDay(1));
@@ -119,6 +147,8 @@ public class CalendarController {
 
         List<DayCell> cells = days.stream()
                 .map(d -> new DayCell(d, true, d.equals(today), byDay.get(d))).toList();
+        model.addAttribute("bands", blockerBands.between(days.getFirst(), days.getLast(), currentUser.require()));
+        addChores(model, days.getFirst(), days.getLast());
         model.addAttribute("days", cells);
         addTodos(model, days.getFirst(), days.getLast());
         model.addAttribute("first", days.getFirst());
@@ -175,6 +205,12 @@ public class CalendarController {
         try {
             User actor = currentUser.require();
             Todo fromTodo = form.getTodoId() == null ? null : linkableTodo(form.getTodoId(), actor);
+            if (warnAboutBlockers(form, null, actor, model)) {
+                model.addAttribute("action", "/calendar/events");
+                model.addAttribute("isNew", true);
+                addFormData(model);
+                return "calendar/event-form";
+            }
             CalendarEvent created = events.create(form.toInput(), actor);
             if (fromTodo != null) {
                 todoLinks.link(fromTodo.getId(), created.getId());
@@ -223,12 +259,17 @@ public class CalendarController {
                   Model model, RedirectAttributes redirect) {
         User actor = currentUser.require();
         try {
+            if (warnAboutBlockers(form, id, actor, model)) {
+                throw new BlockerWarning();
+            }
             events.update(id, form.toInput(), actor);
             redirect.addFlashAttribute("success", "Termin wurde gespeichert.");
             return "redirect:/calendar/month?date=" + form.getStartDate();
         } catch (IllegalArgumentException e) {
             CalendarEvent event = events.get(id, actor);
-            model.addAttribute("error", e.getMessage());
+            if (!(e instanceof BlockerWarning)) {
+                model.addAttribute("error", e.getMessage());
+            }
             model.addAttribute("event", event);
             model.addAttribute("action", "/calendar/events/" + id);
             model.addAttribute("isNew", false);
@@ -237,6 +278,24 @@ public class CalendarController {
             model.addAttribute("recurring", event.getRrule() != null);
             addFormData(model);
             return "calendar/event-form";
+        }
+    }
+
+    /** Ziehen im Kalender: einzelnen Termin auf einen anderen Tag legen. Antwortet mit einer kurzen Meldung. */
+    @PostMapping(value = "/events/{id}/move", produces = "text/plain;charset=UTF-8")
+    @ResponseBody
+    ResponseEntity<String> move(@PathVariable Long id,
+                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        try {
+            List<Conflict> warnings = events.moveToDate(id, date, currentUser.require());
+            String notes = warnings.stream().map(Conflict::message).distinct()
+                    .collect(java.util.stream.Collectors.joining(" "));
+            return ResponseEntity.ok(notes.isEmpty() ? "Termin wurde verschoben."
+                    : "Termin wurde verschoben. Achtung: " + notes);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (AccessDeniedException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Diesen Termin darfst du nicht verschieben.");
         }
     }
 
@@ -276,6 +335,72 @@ public class CalendarController {
             redirect.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/calendar/month";
+    }
+
+    /** Eine eingeplante Hausarbeit im Kalender der zuständigen Person. */
+    public record ChoreEntry(Long id, String title, String time, String color) {
+    }
+
+    /** Offene Hausarbeiten mit vom Planer gewählter Uhrzeit, wenn der Betrachter den Haushaltsplan nutzen darf. */
+    private void addChores(Model model, LocalDate from, LocalDate to) {
+        User viewer = currentUser.require();
+        Map<LocalDate, List<ChoreEntry>> byDay = new LinkedHashMap<>();
+        if (householdAccess.mayOpen(viewer.getUsername())) {
+            Map<Long, FamilyMember> people = members.findAll().stream()
+                    .collect(java.util.stream.Collectors.toMap(FamilyMember::getId, m -> m));
+            for (club.badernet.nestwerk.household.ChoreTask t : choreTasks.between(viewer, from, to)) {
+                if (!t.isOpen() || t.getPlannedAt() == null || t.getAssigneeMemberId() == null) {
+                    continue;
+                }
+                FamilyMember who = people.get(t.getAssigneeMemberId());
+                LocalTime end = t.getPlannedAt().plusMinutes(Math.max(5, t.getChore().getMinutesMedium()));
+                byDay.computeIfAbsent(t.getDueOn(), d -> new ArrayList<>()).add(new ChoreEntry(t.getId(),
+                        t.getChore().getTitle() + (who == null ? "" : " · " + who.getName()),
+                        TIME.format(t.getPlannedAt()) + "–" + TIME.format(end), who == null ? null : who.getColor()));
+            }
+        }
+        model.addAttribute("choresByDay", byDay);
+    }
+
+    /** Freie Zeit als Vorschlag im Formular. */
+    public record Alternative(String label, LocalDate startDate, LocalTime startTime, LocalDate endDate,
+                              LocalTime endTime) {
+    }
+
+    /** Signalisiert im Änderungsformular „erst Warnung zeigen“ (kein Fehler). */
+    private static final class BlockerWarning extends IllegalArgumentException {
+    }
+
+    /**
+     * Zeigt Warnungen von Blockern einmal an, mit freien Alternativen; erst mit „Trotzdem speichern“
+     * ({@code confirmBlockers}) wird gespeichert. Sperren meldet der Service beim Speichern selbst.
+     */
+    private boolean warnAboutBlockers(EventForm form, Long eventId, User actor, Model model) {
+        if (form.isConfirmBlockers()) {
+            return false;
+        }
+        List<Conflict> found = events.conflicts(form.toInput(), eventId, actor);
+        if (found.isEmpty() || BlockerConflicts.blocks(found)) {
+            return false;
+        }
+        model.addAttribute("blockerWarnings", found.stream().map(Conflict::message).distinct().toList());
+        ZoneId zone = settings.zone();
+        LocalDate startDate = form.getStartDate();
+        Instant start = form.isAllDay() || form.getStartTime() == null ? startDate.atStartOfDay(zone).toInstant()
+                : startDate.atTime(form.getStartTime()).atZone(zone).toInstant();
+        Instant end = form.isAllDay() || form.getEndTime() == null
+                ? form.getEndDate().plusDays(1).atStartOfDay(zone).toInstant()
+                : form.getEndDate().atTime(form.getEndTime()).atZone(zone).toInstant();
+        List<Alternative> alternatives = form.isAllDay() ? List.of()
+                : blockerConflicts.alternatives(form.getMemberIds(), new TimeRange(start, end), eventId).stream()
+                .map(t -> {
+                    ZonedDateTime from = t.start().atZone(zone);
+                    ZonedDateTime to = t.end().atZone(zone);
+                    return new Alternative(ALTERNATIVE.format(from) + "–" + TIME.format(to), from.toLocalDate(),
+                            from.toLocalTime(), to.toLocalDate(), to.toLocalTime());
+                }).toList();
+        model.addAttribute("alternatives", alternatives);
+        return true;
     }
 
     private Occurrence seriesStart(CalendarEvent event) {

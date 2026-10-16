@@ -1,6 +1,11 @@
 package club.badernet.nestwerk.ai.tools;
 
 import club.badernet.nestwerk.TestcontainersConfiguration;
+import club.badernet.nestwerk.blocker.BlockerInput;
+import club.badernet.nestwerk.blocker.BlockerKind;
+import club.badernet.nestwerk.blocker.BlockerService;
+import club.badernet.nestwerk.blocker.BlockerStrength;
+import club.badernet.nestwerk.blocker.BlockerVisibility;
 import club.badernet.nestwerk.ai.McpCaller;
 import club.badernet.nestwerk.calendar.CalendarEventService;
 import club.badernet.nestwerk.calendar.EventInput;
@@ -66,6 +71,7 @@ class McpToolsTest {
     @Autowired FamilyMemberRepository members;
     @Autowired EntityManager entityManager;
     @Autowired Clock clock;
+    @Autowired BlockerService blockerService;
 
     User admin;
     User mama;
@@ -155,6 +161,28 @@ class McpToolsTest {
                 "12:00", null, null, null, null, null, null, null);
         assertThat(moved.start()).isEqualTo("2030-03-04T11:00:00");
         assertThat(moved.location()).isEqualTo("Praxis");
+    }
+
+    @Test
+    void blockersWarnInTheAnswerAndBlocksAreReadableErrors() {
+        blockerService.create(new BlockerInput("Arbeit", BlockerKind.WORK, LocalTime.of(8, 0), LocalTime.of(16, 0),
+                java.util.EnumSet.of(java.time.DayOfWeek.MONDAY), LocalDate.of(2030, 1, 1), null,
+                BlockerStrength.WARN, BlockerVisibility.TITLE, false, false, Set.of(mamaM.getId()), Set.of(),
+                Set.of()), admin);
+        blockerService.create(new BlockerInput("Schule", BlockerKind.CUSTOM, LocalTime.of(8, 0), LocalTime.of(13, 0),
+                java.util.EnumSet.of(java.time.DayOfWeek.MONDAY), LocalDate.of(2030, 1, 1), null,
+                BlockerStrength.BLOCK, BlockerVisibility.TITLE, false, false, Set.of(kidM.getId()), Set.of(),
+                Set.of()), admin);
+
+        // 4.3.2030 ist ein Montag
+        CalendarTools.Event event = calendarTools.createEvent(as(papa), "Elterngespräch", "2030-03-04", "10:00", null,
+                "11:00", null, null, null, null, null, null, List.of(mamaM.getId()));
+        assertThat(event.eventId()).isNotNull();
+        assertThat(event.warnings()).singleElement().asString().contains("Mama arbeitet da");
+
+        assertThatThrownBy(() -> calendarTools.createEvent(as(papa), "Zahnarzt", "2030-03-04", "10:00", null,
+                "11:00", null, null, null, null, null, null, List.of(kidM.getId())))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Kind ist da nicht verfügbar");
     }
 
     @Test

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Einkauf')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='kitchen')}"></header>
+<main class="event-main kitchen-main">
+    <nav th:replace="~{kitchen/fragments :: tabs('shopping')}"></nav>
+    <div class="page-head">
+        <div>
+            <h1>Einkauf</h1>
+            <p><span th:text="${open}">0</span> offen<span th:if="${bought > 0}" th:text="|, ${bought} gekauft|"></span></p>
+        </div>
+        <div class="page-actions" th:if="${canEdit}">
+            <a class="button button-ghost" th:if="${bought > 0}" th:href="@{/kitchen/shopping/stow}">Einräumen</a>
+            <form method="post" th:action="@{/kitchen/shopping/send}" th:if="${bringReady}">
+                <button type="submit" class="button">An Bring! senden</button>
+            </form>
+            <form method="post" th:action="@{/kitchen/shopping/sync}" th:if="${bringReady}">
+                <button type="submit" class="button button-ghost">Von Bring! abgleichen</button>
+            </form>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <section class="sheet" th:if="${canEdit}">
+        <h2>Liste füllen</h2>
+        <form method="post" th:action="@{/kitchen/shopping/generate}" class="shopping-generate">
+            <label>Von <input type="date" name="from" th:value="${from}"></label>
+            <label>bis <input type="date" name="to" th:value="${to}"></label>
+            <button type="submit" class="button">Aus Plan erzeugen</button>
+        </form>
+        <p class="hint">Bedarf aller noch nicht gekochten Mahlzeiten minus Vorrat. Offene Plan-Artikel werden ersetzt.</p>
+        <form method="post" th:action="@{/kitchen/shopping/items}" class="shopping-add">
+            <input type="text" name="line" required maxlength="150" placeholder="Artikel, z. B. 2 Dosen Tomaten" aria-label="Neuer Artikel">
+            <button type="submit" class="button button-ghost">Hinzufügen</button>
+        </form>
+        <p class="hint" th:unless="${bringReady}">Bring! ist nicht eingerichtet – in den Einstellungen der Küche verbinden.</p>
+    </section>
+
+    <p class="muted" th:if="${#lists.isEmpty(sections)}">Die Liste ist leer.</p>
+
+    <section class="sheet shopping-section" th:each="s : ${sections}">
+        <h2 th:text="${s.category}">Obst &amp; Gemüse</h2>
+        <ul class="shopping-list">
+            <li th:each="i : ${s.items}" th:classappend="${i.done} ? 'shopping-done'">
+                <form method="post" th:action="@{/kitchen/shopping/items/{id}/toggle(id=${i.id})}" th:if="${canEdit}">
+                    <button type="submit" class="shopping-check" th:aria-pressed="${i.done}"
+                            th:aria-label="${i.done} ? |${i.name} wieder offen| : |${i.name} gekauft|"
+                            th:text="${i.done} ? '✓' : ''"></button>
+                </form>
+                <span class="shopping-name" th:text="${i.name}">Mehl</span>
+                <span class="shopping-amount muted" th:text="${i.amount}">500 g</span>
+                <span class="tag" th:if="${i.sent}">bei Bring!</span>
+                <form method="post" th:action="@{/kitchen/shopping/items/{id}/delete(id=${i.id})}" th:if="${canEdit}">
+                    <button type="submit" class="button button-ghost button-small" th:aria-label="|${i.name} entfernen|">✕</button>
+                </form>
+            </li>
+        </ul>
+    </section>
+</main>
+</body>
+</html>

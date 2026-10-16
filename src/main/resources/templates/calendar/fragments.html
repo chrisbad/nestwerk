@@ -8,12 +8,12 @@
     <div class="cal-title">
         <h1 th:text="${title}">Oktober 2026</h1>
         <div class="cal-step" hx-boost="true" hx-target="#calendar" hx-select="#calendar" hx-swap="outerHTML">
-            <a class="icon-button" th:href="${prevUrl}" title="Zurück">
+            <a class="icon-button" th:href="${prevUrl}" title="Zurück" data-swipe-prev>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
                 <span class="visually-hidden">Zurück</span>
             </a>
             <a class="button button-ghost button-small" th:href="${todayUrl}">Heute</a>
-            <a class="icon-button" th:href="${nextUrl}" title="Weiter">
+            <a class="icon-button" th:href="${nextUrl}" title="Weiter" data-swipe-next>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
                 <span class="visually-hidden">Weiter</span>
             </a>
@@ -44,6 +44,15 @@
 </div>
 
 <!-- Legende der Familienmitglieder -->
+<ul th:fragment="bands(list, compact)" class="bands" th:classappend="${compact} ? 'bands-compact'"
+    th:if="${list != null and !list.isEmpty()}">
+    <li th:each="b : ${list}" class="band" th:classappend="'band-' + ${b.kind}"
+        th:style="${b.color != null} ? |--band-color: ${b.color}|" th:attr="title=|${b.label}, ${b.times}|">
+        <span class="band-times" th:text="${b.times}">08:00–16:00</span>
+        <span class="band-label" th:text="${b.label}">Lena · Arbeit</span>
+    </li>
+</ul>
+
 <ul th:fragment="legend" class="cal-legend" th:unless="${#maps.isEmpty(memberById)}">
     <li th:each="entry : ${memberById}">
         <span class="swatch" th:style="|background-color: ${entry.value.color}|"></span>
@@ -62,12 +71,26 @@
     </span>
 </a>
 
+<!-- Eine eingeplante Hausarbeit; Farbe der zuständigen Person -->
+<a th:fragment="chore(c)" class="occ occ-chore" th:href="@{/household/tasks/{id}(id=${c.id})}"
+   th:style="${c.color != null} ? |--occ-color: ${c.color}|">
+    <span class="occ-time" th:text="${c.time}">18:30–18:55</span>
+    <span class="occ-title">
+        <svg class="occ-lock" viewBox="0 0 24 24" role="img" aria-label="Hausarbeit">
+            <path d="M4.5 20V10l7.5-6 7.5 6v10z"/><path d="M9.5 20v-5h5v5"/>
+        </svg>
+        <span th:text="${c.title}">Bad putzen · Lena</span>
+    </span>
+</a>
+
 <!-- Ein Vorkommen als Eintrag; Farbe vom ersten zugewiesenen Mitglied -->
 <a th:fragment="occurrence(o)" class="occ"
    th:classappend="${o.allDay} ? 'occ-allday'"
    th:with="firstMember=${#sets.isEmpty(o.memberIds) ? null : memberById[o.memberIds.iterator().next()]}"
    th:style="${firstMember != null} ? |--occ-color: ${firstMember.color}|"
-   th:href="@{/calendar/events/{id}(id=${o.eventId}, occurrence=${o.recurring} ? ${o.recurrenceId} : null)}">
+   th:href="@{/calendar/events/{id}(id=${o.eventId}, occurrence=${o.recurring} ? ${o.recurrenceId} : null)}"
+   th:attr="data-event-id=${o.eventId}, data-start=${#temporals.format(o.start, 'yyyy-MM-dd')},
+            data-movable=${!o.recurring and #authorization.expression('hasAnyAuthority(''CALENDAR_EVENT_EDIT_OWN'', ''CALENDAR_EVENT_EDIT_ALL'')')} ? 'true' : null">
     <span class="occ-time" th:unless="${o.allDay}" th:text="${#temporals.format(o.start, 'HH:mm')}">10:00</span>
     <span class="occ-title">
         <svg th:if="${o.privateEvent}" class="occ-lock" viewBox="0 0 24 24" aria-label="Privat" role="img">

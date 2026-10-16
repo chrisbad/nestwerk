@@ -283,4 +283,41 @@ class CalendarEventServiceTest {
         assertThatThrownBy(() -> service.findOccurrences(day(10, 1), day(11, 1), nobody))
                 .isInstanceOf(AccessDeniedException.class);
     }
+
+    @Test
+    void moveToDateKeepsLocalTimesAndDuration() {
+        CalendarEvent e = service.create(timed("Arzt", false), owner);
+
+        service.moveToDate(e.getId(), LocalDate.of(2026, 10, 29), owner);
+
+        // über die Zeitumstellung hinweg: 10 Uhr bleibt 10 Uhr Ortszeit
+        assertThat(e.getStartsAt()).isEqualTo(Instant.parse("2026-10-29T09:00:00Z"));
+        assertThat(e.getEndsAt()).isEqualTo(Instant.parse("2026-10-29T10:00:00Z"));
+    }
+
+    @Test
+    void moveToDateShiftsAllDayEventsWithTheirLength() {
+        EventInput in = new EventInput("Urlaub", null, null, LocalDate.of(2026, 10, 12), null,
+                LocalDate.of(2026, 10, 14), null, true, null, false, Set.of());
+        CalendarEvent e = service.create(in, owner);
+
+        service.moveToDate(e.getId(), LocalDate.of(2026, 10, 20), owner);
+
+        assertThat(e.getStartsAt()).isEqualTo(day(10, 20));
+        assertThat(e.getEndsAt()).isEqualTo(day(10, 23));
+        assertThat(e.isAllDay()).isTrue();
+    }
+
+    @Test
+    void moveToDateRejectsSeriesAndForeignEvents() {
+        EventInput series = new EventInput("Training", null, null, LocalDate.of(2026, 10, 12), LocalTime.of(18, 0),
+                LocalDate.of(2026, 10, 12), LocalTime.of(19, 0), false, "FREQ=WEEKLY", false, Set.of());
+        CalendarEvent repeating = service.create(series, owner);
+        CalendarEvent single = service.create(timed("Arzt", false), owner);
+
+        assertThatThrownBy(() -> service.moveToDate(repeating.getId(), LocalDate.of(2026, 10, 13), owner))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.moveToDate(single.getId(), LocalDate.of(2026, 10, 13), other))
+                .isInstanceOf(AccessDeniedException.class);
+    }
 }

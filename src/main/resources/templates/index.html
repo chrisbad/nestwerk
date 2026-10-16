@@ -6,8 +6,21 @@
 <header th:replace="~{fragments/layout :: nav(active='home')}"></header>
 <main>
     <section class="greeting">
-        <time th:datetime="${today}" th:text="${todayLabel}">Datum</time>
-        <h1><span data-greeting>Hallo</span>, <span sec:authentication="name">benutzer</span>.</h1>
+        <div>
+            <time th:datetime="${today}" th:text="${todayLabel}">Datum</time>
+            <h1><span data-greeting>Hallo</span>, <span class="gradient-text" sec:authentication="name">benutzer</span>.</h1>
+        </div>
+        <div class="greeting-actions">
+            <a class="button button-glow" th:href="@{/calendar/events/new}"
+               sec:authorize="hasAuthority('CALENDAR_EVENT_CREATE')">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                Termin
+            </a>
+            <a class="button button-ghost" th:href="@{/todos/new}" th:if="${canCreateTodo}">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                ToDo
+            </a>
+        </div>
     </section>
 
     <p class="notice" role="status" th:if="${backupWarning != null}">
@@ -15,9 +28,23 @@
         <a th:href="@{/admin/backup}">Zu den Sicherungen</a>
     </p>
 
-    <section class="home-todos" th:if="${showTodos}">
+    <ul class="rings" th:unless="${#lists.isEmpty(rings)}" aria-label="Überblick">
+        <li class="ring-card" th:each="r : ${rings}" th:classappend="'tone-' + ${r.tone}">
+            <span class="ring" th:style="|--p: ${r.percent}|" role="img"
+                  th:aria-label="${r.label} + ': ' + ${r.percent} + ' Prozent'">
+                <span class="ring-value"><span data-count-up th:text="${r.percent}">56</span>%</span>
+            </span>
+            <span class="ring-text">
+                <strong th:text="${r.label}">Haushalt heute</strong>
+                <span class="muted" th:text="|${r.done} von ${r.total} · ${r.detail}|">2 von 3 · erledigt</span>
+            </span>
+        </li>
+    </ul>
+
+    <div class="dash" data-dash>
+    <section class="home-todos panel" th:if="${showTodos}" data-panel="todos">
         <div class="home-todos-head">
-            <h2>Meine ToDos</h2>
+            <h2><span class="panel-grip" data-panel-grip title="Ziehen zum Umsortieren" aria-hidden="true"></span>Meine ToDos</h2>
             <a th:href="@{/todos(involvement='MINE')}">Alle meine ToDos</a>
         </div>
         <ul class="todo-list" th:unless="${#lists.isEmpty(myTodos)}">
@@ -28,9 +55,9 @@
         <p class="sheet sheet-empty" th:if="${#lists.isEmpty(myTodos)}">Gerade ist nichts fällig. Schön.</p>
     </section>
 
-    <section class="home-todos" th:if="${showHousehold}">
+    <section class="home-todos panel" th:if="${showHousehold}" data-panel="household">
         <div class="home-todos-head">
-            <h2>Meine Hausarbeiten</h2>
+            <h2><span class="panel-grip" data-panel-grip title="Ziehen zum Umsortieren" aria-hidden="true"></span>Meine Hausarbeiten</h2>
             <a th:href="@{/household/today}">Alle für heute</a>
         </div>
         <ul class="chore-list" th:unless="${#lists.isEmpty(myChores)}">
@@ -40,9 +67,10 @@
         </ul>
         <p class="sheet sheet-empty" th:if="${#lists.isEmpty(myChores)}">Heute ist im Haushalt nichts mehr für dich offen.</p>
     </section>
+    </div>
 
-    <ul class="areas" th:if="${showTodos or showContacts or showHousehold or #authorization.expression('hasAnyAuthority(''CALENDAR_VIEW'', ''USER_MANAGE'', ''ACCESS_ROLE_MANAGE'', ''MEMBER_MANAGE'')')}">
-        <li sec:authorize="hasAuthority('CALENDAR_VIEW')">
+    <ul class="areas" data-sortable-areas th:if="${showTodos or showContacts or showHousehold or #authorization.expression('hasAnyAuthority(''CALENDAR_VIEW'', ''USER_MANAGE'', ''ACCESS_ROLE_MANAGE'', ''MEMBER_MANAGE'')')}">
+        <li data-area="calendar" sec:authorize="hasAuthority('CALENDAR_VIEW')">
             <a class="area area-feature" th:href="@{/calendar}">
                 <span class="area-icon">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -53,7 +81,7 @@
                 <p>Termine der ganzen Familie</p>
             </a>
         </li>
-        <li th:if="${showTodos}">
+        <li data-area="todos" th:if="${showTodos}">
             <a class="area" th:href="@{/todos}">
                 <span class="area-icon">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -64,7 +92,7 @@
                 <p>Was irgendwann erledigt werden muss</p>
             </a>
         </li>
-        <li th:if="${showHousehold}">
+        <li data-area="household" th:if="${showHousehold}">
             <a class="area" th:href="@{/household}">
                 <span class="area-icon">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -75,7 +103,7 @@
                 <p>Haushaltsplan, Zeitkonto und Belohnungen</p>
             </a>
         </li>
-        <li th:if="${showContacts}">
+        <li data-area="contacts" th:if="${showContacts}">
             <a class="area" th:href="@{/contacts}">
                 <span class="area-icon">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -86,7 +114,7 @@
                 <p>Handwerker, Schule und andere</p>
             </a>
         </li>
-        <li sec:authorize="hasAuthority('MEMBER_MANAGE')">
+        <li data-area="members" sec:authorize="hasAuthority('MEMBER_MANAGE')">
             <a class="area" th:href="@{/admin/members}">
                 <span class="area-icon">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -97,7 +125,7 @@
                 <p>Wer zur Familie gehört</p>
             </a>
         </li>
-        <li sec:authorize="hasAuthority('USER_MANAGE')">
+        <li data-area="users" sec:authorize="hasAuthority('USER_MANAGE')">
             <a class="area" th:href="@{/admin/users}">
                 <span class="area-icon">
                     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -109,7 +137,7 @@
                 <p>Konten anlegen und Rollen vergeben</p>
             </a>
         </li>
-        <li sec:authorize="hasAuthority('ACCESS_ROLE_MANAGE')">
+        <li data-area="roles" sec:authorize="hasAuthority('ACCESS_ROLE_MANAGE')">
             <a class="area" th:href="@{/admin/roles}">
                 <span class="area-icon">
                     <svg viewBox="0 0 24 24" aria-hidden="true">

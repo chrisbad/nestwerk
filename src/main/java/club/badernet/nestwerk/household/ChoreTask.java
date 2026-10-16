@@ -49,6 +49,10 @@ public class ChoreTask {
     @Column(name = "assignee_member_id")
     private Long assigneeMemberId;
 
+    /** Vom Planer gewählte Uhrzeit in einer freien Lücke der zuständigen Person (leer = keine gefunden). */
+    @Column(name = "planned_at")
+    private LocalTime plannedAt;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private ChoreTaskStatus status = ChoreTaskStatus.OPEN;
@@ -97,6 +101,11 @@ public class ChoreTask {
 
     void assign(Long memberId) {
         this.assigneeMemberId = memberId;
+    }
+
+    void plan(Long memberId, LocalTime at) {
+        this.assigneeMemberId = memberId;
+        this.plannedAt = at;
     }
 
     /** Bucht die Aufgabe und verschiebt sie auf den Zeitpunkt der Durchführung. */
@@ -151,6 +160,7 @@ public class ChoreTask {
     public LocalDate getDueOn() { return dueOn; }
     public LocalTime getDueTime() { return dueTime; }
     public Long getAssigneeMemberId() { return assigneeMemberId; }
+    public LocalTime getPlannedAt() { return plannedAt; }
     public ChoreTaskStatus getStatus() { return status; }
     public Instant getCompletedAt() { return completedAt; }
     public Long getCompletedByUser() { return completedByUser; }
