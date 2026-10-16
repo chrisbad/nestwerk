@@ -102,6 +102,11 @@ public class BlockerService {
                 || ownMember(actor).map(m -> blocker.getMemberIds().contains(m)).orElse(false);
     }
 
+    /** Bundesland und Einstellungen für alle: wer alle Termine bearbeiten darf. */
+    public boolean canManageSettings(User actor) {
+        return has(actor, CalendarPermission.CALENDAR_EVENT_EDIT_ALL);
+    }
+
     /** Ob der Nutzer Ruhe-Ziele dieser Person pflegen darf: die eigene Person oder mit {@code _EDIT_ALL}. */
     public boolean canEditGoals(Long memberId, User actor) {
         return has(actor, CalendarPermission.CALENDAR_EVENT_EDIT_ALL)

@@ -59,7 +59,7 @@ import java.util.Set;
 public class CalendarController {
 
     private static final int AGENDA_DAYS = 60;
-    private static final DateTimeFormatter ALTERNATIVE = DateTimeFormatter.ofPattern("EE, d.M. HH:mm",
+    private static final DateTimeFormatter ALTERNATIVE = DateTimeFormatter.ofPattern("EE d.M. HH:mm",
             java.util.Locale.GERMAN);
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
 

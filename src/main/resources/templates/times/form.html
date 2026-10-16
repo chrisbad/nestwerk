@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${blockerId == null} ? 'Neue Zeit' : 'Zeit ändern')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='times')}"></header>
+<main class="event-main">
+    <a class="back-link" th:href="@{/times}">← Zeiten</a>
+    <h1 th:text="${blockerId == null} ? 'Neue Zeit' : 'Zeit ändern'">Neue Zeit</h1>
+    <p class="notice notice-error" role="alert" th:if="${error}" th:text="${error}">Fehler</p>
+
+    <form class="sheet event-form blocker-form" method="post" th:object="${form}"
+          th:attr="data-blocker-new=${blockerId == null}"
+          th:action="${blockerId == null} ? @{/times} : @{/times/{id}(id=${blockerId})}">
+        <fieldset class="field segmented" role="radiogroup">
+            <legend>Art</legend>
+            <label th:each="k : ${kinds}" class="segment" th:classappend="'kind-' + ${#strings.toLowerCase(k.name())}">
+                <input type="radio" name="kind" th:value="${k.name()}" th:checked="${form.kind == k}">
+                <span th:text="${k.label()}">Arbeit</span>
+            </label>
+        </fieldset>
+
+        <div class="field">
+            <label for="title">Titel <span class="hint">leer = Art</span></label>
+            <input id="title" type="text" th:field="*{title}" maxlength="100" placeholder="z. B. Büro, Spätschicht">
+        </div>
+
+        <div class="field-grid">
+            <div class="field">
+                <label for="startTime">Von</label>
+                <input id="startTime" type="time" name="startTime" th:value="${form.startTime == null} ? '' : ${#temporals.format(form.startTime, 'HH:mm')}" required>
+            </div>
+            <div class="field">
+                <label for="endTime">Bis <span class="hint">früher als „von“ = über Nacht</span></label>
+                <input id="endTime" type="time" name="endTime" th:value="${form.endTime == null} ? '' : ${#temporals.format(form.endTime, 'HH:mm')}" required>
+            </div>
+        </div>
+
+        <fieldset class="field day-chips">
+            <legend>Wochentage</legend>
+            <label th:each="d : ${weekdays}" class="day-chip">
+                <input type="checkbox" name="weekdays" th:value="${d.day.name()}" th:checked="${form.weekdays.contains(d.day)}">
+                <span th:text="${d.label}">Mo</span>
+            </label>
+        </fieldset>
+
+        <fieldset class="field choices" th:unless="${#lists.isEmpty(allMembers)}">
+            <legend>Für</legend>
+            <label class="choice choice-member" th:each="m : ${allMembers}" th:style="|--member-color: ${m.color}|">
+                <input type="checkbox" name="memberIds" th:value="${m.id}" th:checked="${form.memberIds.contains(m.id)}">
+                <span th:text="${m.name}">Name</span>
+            </label>
+        </fieldset>
+
+        <fieldset class="field segmented" role="radiogroup">
+            <legend>Beim Einplanen</legend>
+            <label th:each="s : ${strengths}" class="segment">
+                <input type="radio" name="strength" th:value="${s.name()}" th:checked="${form.strength == s}">
+                <span th:text="${s.label()}">Warnen</span>
+            </label>
+        </fieldset>
+        <p class="hint">Sperren gilt nur für andere – du selbst bekommst höchstens eine Warnung.</p>
+
+        <fieldset class="field choices" th:unless="${#lists.isEmpty(allMembers)}">
+            <legend>Dürfen trotzdem einplanen</legend>
+            <label class="choice choice-member" th:each="m : ${allMembers}" th:style="|--member-color: ${m.color}|">
+                <input type="checkbox" name="plannerIds" th:value="${m.id}" th:checked="${form.plannerIds.contains(m.id)}">
+                <span th:text="${m.name}">Name</span>
+            </label>
+        </fieldset>
+
+        <fieldset class="field segmented" role="radiogroup">
+            <legend>Andere sehen</legend>
+            <label th:each="v : ${visibilities}" class="segment">
+                <input type="radio" name="visibility" th:value="${v.name()}" th:checked="${form.visibility == v}">
+                <span th:text="${v.label()}">Mit Titel</span>
+            </label>
+        </fieldset>
+
+        <div class="field-switch">
+            <label class="switch">
+                <input type="checkbox" name="quiet" value="true" th:checked="${form.quiet}">
+                <span class="switch-track" aria-hidden="true"></span>
+                Ruhe-Modus
+            </label>
+            <p class="hint">Keine Push-Nachrichten und Mails in dieser Zeit; sie kommen danach gesammelt.</p>
+        </div>
+        <div class="field-switch">
+            <label class="switch">
+                <input type="checkbox" name="holidaysOff" value="true" th:checked="${form.holidaysOff}">
+                <span class="switch-track" aria-hidden="true"></span>
+                An Feiertagen frei
+            </label>
+        </div>
+
+        <div class="field-grid">
+            <div class="field">
+                <label for="validFrom">Gilt ab</label>
+                <input id="validFrom" type="date" th:field="*{validFrom}" required>
+            </div>
+            <div class="field">
+                <label for="validUntil">Gilt bis <span class="hint">optional</span></label>
+                <input id="validUntil" type="date" th:field="*{validUntil}">
+            </div>
+        </div>
+        <div class="field">
+            <label for="skips">Ausnahmen <span class="hint">z. B. Urlaub: 23.10.2026, 30.10.2026</span></label>
+            <input id="skips" type="text" th:field="*{skips}" placeholder="TT.MM.JJJJ, …">
+        </div>
+
+        <div class="form-actions">
+            <a class="button button-ghost" th:href="@{/times}">Abbrechen</a>
+            <button type="submit" class="button">Speichern</button>
+        </div>
+    </form>
+
+    <form class="danger-zone" th:if="${blockerId != null}" method="post"
+          th:action="@{/times/{id}/delete(id=${blockerId})}" data-confirm="Diese Zeit löschen?">
+        <button type="submit" class="button button-danger">Löschen</button>
+    </form>
+</main>
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

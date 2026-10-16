@@ -819,6 +819,36 @@
             .forEach(field => field.addEventListener("input", () => unconfirm("Speichern")));
     }
 
+    /* --- Ruhe-Ziel: Fenster nur bei „freie Zeitfenster“ ---------------------- */
+    // Neue Zeit: Wechsel der Art lädt die passenden Vorgaben (Uhrzeiten, Tage, Regeln)
+    function initBlockerKindDefaults() {
+        const form = document.querySelector('[data-blocker-new="true"]');
+        if (!form) return;
+        form.addEventListener("change", event => {
+            if (event.target.name !== "kind") return;
+            const url = new URL(location.href);
+            url.searchParams.set("kind", event.target.value);
+            location.replace(url);
+        });
+    }
+
+    function initGoalForms() {
+        document.querySelectorAll("[data-goal-form]").forEach(form => {
+            const kind = form.querySelector("[data-goal-kind]");
+            const sync = () => {
+                const windows = kind.value === "WINDOWS";
+                form.querySelector("[data-goal-window]").hidden = !windows;
+                form.querySelector("[data-goal-unit]").textContent = windows ? "Anzahl" : "Stunden";
+                const label = form.querySelector('[name="label"]');
+                if (label && (label.value === "Freie Abende" || label.value === "Ruhezeit")) {
+                    label.value = windows ? "Freie Abende" : "Ruhezeit";
+                }
+            };
+            kind.addEventListener("change", sync);
+            sync();
+        });
+    }
+
     function initDragClickGuard() {
         document.addEventListener("click", event => {
             if (Date.now() - draggedAt < 350) {
@@ -1271,6 +1301,8 @@
         initDragClickGuard();
         initUpdateRestart();
         initBlockerWarning();
+        initGoalForms();
+        initBlockerKindDefaults();
         consumeToasts(document);
     });
 })();
