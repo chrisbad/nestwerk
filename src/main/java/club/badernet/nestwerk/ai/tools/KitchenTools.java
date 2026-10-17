@@ -1,5 +1,7 @@
 package club.badernet.nestwerk.ai.tools;
 
+import club.badernet.nestwerk.kitchen.Amounts;
+import club.badernet.nestwerk.kitchen.BringSync;
 import club.badernet.nestwerk.kitchen.Food;
 import club.badernet.nestwerk.kitchen.FoodCategory;
 import club.badernet.nestwerk.kitchen.FoodInput;
@@ -22,6 +24,7 @@ import club.badernet.nestwerk.kitchen.RecipeNutrition;
 import club.badernet.nestwerk.kitchen.RecipeService;
 import club.badernet.nestwerk.kitchen.ShoppingItem;
 import club.badernet.nestwerk.kitchen.ShoppingListService;
+import club.badernet.nestwerk.kitchen.Unit;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
 import io.modelcontextprotocol.common.McpTransportContext;
@@ -64,6 +67,15 @@ public class KitchenTools {
     public record ShoppingEntry(Long id, String name, String amount, String status, String origin) {
     }
 
+    public record EaterInput(Long memberId, Double portions) {
+    }
+
+    public record AmountOverride(Long ingredientId, Double amount) {
+    }
+
+    public record CookResult(Long mealId, boolean booked, List<String> deductions) {
+    }
+
     public record PantryEntry(Long id, String name, String amount, String location, LocalDate bestBefore) {
     }
 
@@ -78,10 +90,11 @@ public class KitchenTools {
     private final ShoppingListService shopping;
     private final PantryService pantry;
     private final FamilyMemberRepository members;
+    private final BringSync bring;
 
     public KitchenTools(Tools tools, FoodService foods, RecipeService recipes, MealPlanService plan,
                         MealSlotRepository slots, ShoppingListService shopping, PantryService pantry,
-                        FamilyMemberRepository members) {
+                        FamilyMemberRepository members, BringSync bring) {
         this.tools = tools;
         this.foods = foods;
         this.recipes = recipes;
@@ -90,6 +103,7 @@ public class KitchenTools {
         this.shopping = shopping;
         this.pantry = pantry;
         this.members = members;
+        this.bring = bring;
     }
 
     @McpTool(name = "search_foods", description = "Sucht Lebensmittel mit Nährwerten pro 100 g (Name enthält den "
@@ -185,11 +199,7 @@ public class KitchenTools {
                              String title) {
         return tools.write(context, user -> {
             LocalDate date = Tools.required(Tools.date(day, "day"), "day");
-            MealSlot s = slots.findAllByOrderBySortOrderAsc().stream()
-                    .filter(x -> x.getName().equalsIgnoreCase(Tools.required(slot, "slot").strip())).findFirst()
-                    .orElseThrow(() -> new Tools.ToolException("Mahlzeit unbekannt. Möglich: " + slots
-                            .findAllByOrderBySortOrderAsc().stream().map(MealSlot::getName)
-                            .collect(Collectors.joining(", "))));
+            MealSlot s = slot(Tools.required(slot, "slot"));
             Meal meal = plan.add(date, s.getId(), recipeId, title, user);
             return meal(meal, names());
         });
@@ -248,6 +258,314 @@ public class KitchenTools {
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
     public List<PantryEntry> listPantry(McpTransportContext context) {
         return tools.read(context, user -> pantry.list(user).stream().map(KitchenTools::pantryEntry).toList());
+    }
+
+    @McpTool(name = "update_recipe", description = "Ändert ein Rezept. Nur angegebene Felder werden geändert; "
+            + "ingredients ersetzt die ganze Zutatenliste (Textzeilen wie bei create_recipe).",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public RecipeDetail updateRecipe(McpTransportContext context,
+                                     @McpToolParam(description = "ID des Rezepts") Long recipeId,
+                                     @McpToolParam(description = "Titel", required = false) String title,
+                                     @McpToolParam(description = "Zutaten, eine Zeile je Zutat", required = false)
+                                     List<String> ingredients,
+                                     @McpToolParam(description = "Portionen", required = false) Integer servings,
+                                     @McpToolParam(description = "Dauer in Minuten", required = false) Integer minutes,
+                                     @McpToolParam(description = "Kurzbeschreibung", required = false)
+                                     String description,
+                                     @McpToolParam(description = "Schlagworte, kommagetrennt", required = false)
+                                     String tags,
+                                     @McpToolParam(description = "Zubereitung (Markdown)", required = false)
+                                     String steps,
+                                     @McpToolParam(description = "Quelle als Link", required = false)
+                                     String sourceUrl) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(recipeId, "recipeId");
+            Recipe r = recipes.get(id, user);
+            List<IngredientInput> lines;
+            if (ingredients == null) {
+                lines = r.getIngredients().stream().map(i -> new IngredientInput(i.getAmount(), i.getUnit(),
+                        i.getText(), i.getNote(), i.getFood() == null ? null : i.getFood().getId())).toList();
+            } else {
+                lines = RecipeService.parseLines(String.join("\n", ingredients));
+                if (lines.isEmpty()) {
+                    throw new Tools.ToolException("Keine Zutaten erkannt.");
+                }
+            }
+            recipes.update(id, new RecipeInput(title == null ? r.getTitle() : title,
+                    description == null ? r.getDescription() : description,
+                    servings == null ? r.getServings() : servings, minutes == null ? r.getMinutes() : minutes,
+                    tags == null ? r.getTags() : tags, sourceUrl == null ? r.getSourceUrl() : sourceUrl,
+                    steps == null ? r.getSteps() : steps, lines), user);
+            return detail(recipes.get(id, user), null);
+        });
+    }
+
+    @McpTool(name = "update_food", description = "Ändert ein Lebensmittel. Nur angegebene Felder werden geändert; "
+            + "Nährwerte pro 100 g. Kategorie: PRODUCE, BAKERY, CHILLED, MEAT_FISH, PANTRY, FROZEN, DRINKS, SPICES, "
+            + "OTHER.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public FoodItem updateFood(McpTransportContext context,
+                               @McpToolParam(description = "ID des Lebensmittels") Long foodId,
+                               @McpToolParam(description = "Name", required = false) String name,
+                               @McpToolParam(description = "Kategorie", required = false) String category,
+                               @McpToolParam(description = "kcal pro 100 g", required = false) Double kcal,
+                               @McpToolParam(description = "Eiweiß g pro 100 g", required = false) Double protein,
+                               @McpToolParam(description = "Fett g pro 100 g", required = false) Double fat,
+                               @McpToolParam(description = "Kohlenhydrate g pro 100 g", required = false) Double carbs,
+                               @McpToolParam(description = "Gewicht pro Stück in g", required = false)
+                               Double pieceGrams,
+                               @McpToolParam(description = "Packungsgröße in g", required = false)
+                               Double packageGrams,
+                               @McpToolParam(description = "Haltbarkeit in Tagen", required = false)
+                               Integer shelfDays) {
+        return tools.write(context, user -> {
+            Food f = foods.get(Tools.required(foodId, "foodId"));
+            FoodCategory cat = Tools.enumValue(FoodCategory.class, category, "category");
+            return food(foods.update(f.getId(), new FoodInput(name == null ? f.getName() : name,
+                    cat == null ? f.getCategory() : cat, kcal == null ? f.getKcal() : kcal,
+                    protein == null ? f.getProtein() : protein, fat == null ? f.getFat() : fat,
+                    carbs == null ? f.getCarbs() : carbs, pieceGrams == null ? f.getPieceGrams() : pieceGrams,
+                    packageGrams == null ? f.getPackageGrams() : packageGrams,
+                    shelfDays == null ? f.getShelfDays() : shelfDays, f.getBarcode()), user));
+        });
+    }
+
+    @McpTool(name = "move_meal", description = "Verschiebt eine geplante Mahlzeit auf einen anderen Tag und/oder "
+            + "eine andere Mahlzeit (slot, z. B. Mittagessen).",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public MealItem moveMeal(McpTransportContext context,
+                             @McpToolParam(description = "ID der Mahlzeit (mealId)") Long mealId,
+                             @McpToolParam(description = "Neuer Tag, JJJJ-MM-TT") String day,
+                             @McpToolParam(description = "Neue Mahlzeit, z. B. Abendessen; ohne Angabe bleibt sie",
+                                     required = false) String slot) {
+        return tools.write(context, user -> {
+            Meal meal = plan.get(Tools.required(mealId, "mealId"), user);
+            MealSlot s = slot == null || slot.isBlank() ? meal.getSlot() : slot(slot);
+            return meal(plan.move(meal.getId(), Tools.required(Tools.date(day, "day"), "day"), s.getId(), user),
+                    names());
+        });
+    }
+
+    @McpTool(name = "set_meal_eaters", description = "Legt fest, wer bei einer Mahlzeit mitisst und mit wie vielen "
+            + "Portionen. Ersetzt die bisherigen Mitesser; eine leere Liste bedeutet: niemand. Mitglieds-IDs aus "
+            + "list_members.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public MealItem setMealEaters(McpTransportContext context,
+                                  @McpToolParam(description = "ID der Mahlzeit (mealId)") Long mealId,
+                                  @McpToolParam(description = "Mitesser: Mitglieds-ID und Portionen (Standard 1)")
+                                  List<EaterInput> eaters) {
+        return tools.write(context, user -> {
+            Map<Long, Double> portions = new java.util.LinkedHashMap<>();
+            for (EaterInput e : Tools.required(eaters, "eaters")) {
+                portions.put(Tools.required(e.memberId(), "memberId"), e.portions() == null ? 1.0 : e.portions());
+            }
+            return meal(plan.updateEaters(Tools.required(mealId, "mealId"), portions, user), names());
+        });
+    }
+
+    @McpTool(name = "fill_meal_plan", description = "Füllt die leeren, zum Auffüllen markierten Mahlzeiten der Woche "
+            + "(ab heute) mit passenden Rezepten; bald ablaufender Vorrat und Abwechslung zählen. Liefert die Anzahl.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public String fillMealPlan(McpTransportContext context,
+                               @McpToolParam(description = "Ein Tag der Woche, JJJJ-MM-TT; ohne Angabe diese Woche",
+                                       required = false) String week) {
+        return tools.write(context, user -> {
+            LocalDate day = Tools.date(week, "week");
+            int filled = plan.autoFill(day == null ? plan.today() : day, user);
+            return filled == 0 ? "Nichts aufgefüllt – alles belegt oder keine passenden Rezepte."
+                    : filled + (filled == 1 ? " Mahlzeit" : " Mahlzeiten") + " eingeplant.";
+        });
+    }
+
+    @McpTool(name = "cook_meal", description = "Trägt eine Mahlzeit als gekocht ein und bucht die Zutaten vom Vorrat "
+            + "ab (ältestes MHD zuerst). Mit dryRun=true wird nur gezeigt, was abgebucht würde. Mit amountOverrides "
+            + "lässt sich die Menge einzelner Zutaten korrigieren (0 = nichts abbuchen).",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public CookResult cookMeal(McpTransportContext context,
+                               @McpToolParam(description = "ID der Mahlzeit (mealId)") Long mealId,
+                               @McpToolParam(description = "Nur anzeigen, nichts ändern", required = false)
+                               Boolean dryRun,
+                               @McpToolParam(description = "Korrigierte Mengen je Zutat", required = false)
+                               List<AmountOverride> amountOverrides) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(mealId, "mealId");
+            Map<Long, Double> overrides = new java.util.LinkedHashMap<>();
+            for (AmountOverride o : amountOverrides == null ? List.<AmountOverride>of() : amountOverrides) {
+                overrides.put(Tools.required(o.ingredientId(), "ingredientId"), Tools.required(o.amount(), "amount"));
+            }
+            boolean preview = Boolean.TRUE.equals(dryRun);
+            PantryService.CookPreview result = preview ? pantry.preview(id, overrides, user)
+                    : pantry.cook(id, overrides, user);
+            List<String> lines = result.deductions().stream().map(d -> d.ingredient().getText() + ": "
+                    + (d.takes().isEmpty() ? "nichts abgebucht" : d.takes().stream().map(t ->
+                    Amounts.format(t.amount(), t.item().getUnit()) + " aus " + t.item().getName())
+                    .collect(Collectors.joining(" + ")))
+                    + (d.note() == null ? "" : " (" + d.note() + ")")).toList();
+            return new CookResult(id, !preview, lines);
+        });
+    }
+
+    @McpTool(name = "generate_shopping_list", description = "Setzt fehlende Zutaten der geplanten Mahlzeiten im "
+            + "Zeitraum auf die Einkaufsliste (abzüglich Vorrat und bereits Gelistetem). Ohne Angabe diese Woche. "
+            + "Liefert die Anzahl neuer Artikel.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public String generateShoppingList(McpTransportContext context,
+                                       @McpToolParam(description = "Erster Tag, JJJJ-MM-TT", required = false)
+                                       String from,
+                                       @McpToolParam(description = "Letzter Tag, JJJJ-MM-TT", required = false)
+                                       String to) {
+        return tools.write(context, user -> {
+            int created = shopping.generate(Tools.date(from, "from"), Tools.date(to, "to"), user);
+            return created == 0 ? "Der Plan braucht nichts Neues – Vorrat und Liste decken alles ab."
+                    : created + " Artikel aus dem Plan auf die Liste gesetzt.";
+        });
+    }
+
+    @McpTool(name = "toggle_shopping_item", description = "Hakt einen Artikel der Einkaufsliste als gekauft ab bzw. "
+            + "nimmt das zurück.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public ShoppingEntry toggleShoppingItem(McpTransportContext context,
+                                            @McpToolParam(description = "ID des Artikels (itemId)") Long itemId) {
+        return tools.write(context, user -> entry(shopping.toggle(Tools.required(itemId, "itemId"), user)));
+    }
+
+    @McpTool(name = "stow_shopping_item", description = "Räumt einen gekauften Artikel in den Vorrat ein. Menge, "
+            + "Einheit, Ort und MHD sind optional (Standard: Menge des Artikels, vorgeschlagenes MHD).",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public PantryEntry stowShoppingItem(McpTransportContext context,
+                                        @McpToolParam(description = "ID des Artikels (itemId)") Long itemId,
+                                        @McpToolParam(description = "Menge", required = false) Double amount,
+                                        @McpToolParam(description = "Einheit, z. B. g, ml, Stück", required = false)
+                                        String unit,
+                                        @McpToolParam(description = "Ort, z. B. Kühlschrank", required = false)
+                                        String location,
+                                        @McpToolParam(description = "Mindestens haltbar bis, JJJJ-MM-TT",
+                                                required = false) String bestBefore) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(itemId, "itemId");
+            ShoppingItem item = shopping.list(user).stream().filter(i -> i.getId().equals(id)).findFirst()
+                    .orElseThrow(() -> new Tools.ToolException("Artikel nicht gefunden."));
+            LocalDate until = Tools.date(bestBefore, "bestBefore");
+            if (until == null) {
+                until = shopping.suggestedBestBefore(item);
+            }
+            return pantryEntry(shopping.stow(id, amount != null ? amount
+                    : item.getAmount() == null ? 1.0 : item.getAmount(), unit(unit, item.getUnit()), location, until,
+                    user));
+        });
+    }
+
+    @McpTool(name = "send_shopping_to_bring", description = "Sendet die offenen Artikel der Einkaufsliste an Bring!.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = true))
+    public String sendShoppingToBring(McpTransportContext context) {
+        return tools.write(context, user -> {
+            BringSync.Result result = bring.send(user);
+            if (result.failed()) {
+                throw new Tools.ToolException(result.error());
+            }
+            return result.count() == 0 ? "Es gab nichts zu senden." : result.count() + " Artikel an Bring! gesendet.";
+        });
+    }
+
+    @McpTool(name = "sync_shopping_from_bring", description = "Gleicht die Einkaufsliste mit Bring! ab: dort "
+            + "abgehakte Artikel gelten als gekauft.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = true))
+    public String syncShoppingFromBring(McpTransportContext context) {
+        return tools.write(context, user -> {
+            BringSync.Result result = bring.sync(user);
+            if (result.failed()) {
+                throw new Tools.ToolException(result.error());
+            }
+            return result.count() == 0 ? "Bring! meldet nichts Neues."
+                    : result.count() + " Artikel bei Bring! als gekauft erkannt.";
+        });
+    }
+
+    @McpTool(name = "add_pantry_item", description = "Legt einen Posten in den Vorrat. Ohne bestBefore gilt die "
+            + "übliche Haltbarkeit des Lebensmittels, falls bekannt. Einheiten: g, kg, ml, l, Stück, EL, TL, Prise, "
+            + "Packung, Bund, Dose, Scheibe.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public PantryEntry addPantryItem(McpTransportContext context,
+                                     @McpToolParam(description = "Lebensmittel, z. B. Milch") String name,
+                                     @McpToolParam(description = "Menge") Double amount,
+                                     @McpToolParam(description = "Einheit (Standard Stück)", required = false)
+                                     String unit,
+                                     @McpToolParam(description = "Ort, z. B. Kühlschrank", required = false)
+                                     String location,
+                                     @McpToolParam(description = "Mindestens haltbar bis, JJJJ-MM-TT",
+                                             required = false) String bestBefore) {
+        return tools.write(context, user -> pantryEntry(pantry.add(Tools.required(name, "name"),
+                Tools.required(amount, "amount"), unit(unit, null), location, Tools.date(bestBefore, "bestBefore"),
+                user)));
+    }
+
+    @McpTool(name = "update_pantry_item", description = "Ändert einen Vorratsposten (Menge, Einheit, Ort, MHD). Nicht "
+            + "angegebene Felder bleiben; ein leerer Ort entfernt den Ort.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public PantryEntry updatePantryItem(McpTransportContext context,
+                                        @McpToolParam(description = "ID des Postens (itemId)") Long itemId,
+                                        @McpToolParam(description = "Neue Menge", required = false) Double amount,
+                                        @McpToolParam(description = "Einheit", required = false) String unit,
+                                        @McpToolParam(description = "Ort", required = false) String location,
+                                        @McpToolParam(description = "Mindestens haltbar bis, JJJJ-MM-TT",
+                                                required = false) String bestBefore) {
+        return tools.write(context, user -> {
+            PantryItem i = pantry.get(Tools.required(itemId, "itemId"), user);
+            pantry.change(i.getId(), amount == null ? i.getAmount() : amount, unit(unit, i.getUnit()),
+                    location == null ? i.getLocation() : location,
+                    bestBefore == null ? i.getBestBefore() : Tools.date(bestBefore, "bestBefore"), user);
+            return pantryEntry(pantry.get(i.getId(), user));
+        });
+    }
+
+    @McpTool(name = "take_from_pantry", description = "Entnimmt eine Menge aus einem Vorratsposten (in dessen "
+            + "Einheit); ist nichts mehr da, verschwindet der Posten.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public String takeFromPantry(McpTransportContext context,
+                                 @McpToolParam(description = "ID des Postens (itemId)") Long itemId,
+                                 @McpToolParam(description = "Zu entnehmende Menge") Double amount) {
+        return tools.write(context, user -> {
+            pantry.take(Tools.required(itemId, "itemId"), Tools.required(amount, "amount"), user);
+            return "Entnommen.";
+        });
+    }
+
+    @McpTool(name = "recipes_to_use_up", description = "Rezepte mit Zutaten, die im Vorrat bald ablaufen – die mit "
+            + "den meisten Treffern zuerst.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public List<RecipeItem> recipesToUseUp(McpTransportContext context) {
+        return tools.read(context, user -> pantry.useUp(user).stream().limit(MAX_RESULTS)
+                .map(KitchenTools::recipe).toList());
+    }
+
+    @McpTool(name = "list_meal_slots", description = "Listet die Mahlzeiten des Essensplans (z. B. Frühstück, "
+            + "Mittagessen, Abendessen) – ihre Namen gelten für plan_meal und move_meal.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public List<String> listMealSlots(McpTransportContext context) {
+        return tools.read(context, user -> slots.findAllByOrderBySortOrderAsc().stream().map(MealSlot::getName)
+                .toList());
+    }
+
+    // --- Hilfen ------------------------------------------------------------------------
+
+    private MealSlot slot(String name) {
+        return slots.findAllByOrderBySortOrderAsc().stream()
+                .filter(x -> x.getName().equalsIgnoreCase(name.strip())).findFirst()
+                .orElseThrow(() -> new Tools.ToolException("Mahlzeit unbekannt. Möglich: " + slots
+                        .findAllByOrderBySortOrderAsc().stream().map(MealSlot::getName)
+                        .collect(Collectors.joining(", "))));
+    }
+
+    private static Unit unit(String raw, Unit fallback) {
+        if (raw == null || raw.isBlank()) {
+            return fallback == null ? Unit.PIECE : fallback;
+        }
+        return Unit.parse(raw).orElseThrow(() -> new Tools.ToolException("unit: unbekannte Einheit „" + raw + "“."));
     }
 
     // --- Umwandlung --------------------------------------------------------------------

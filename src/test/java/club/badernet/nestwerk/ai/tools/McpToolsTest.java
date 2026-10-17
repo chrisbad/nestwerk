@@ -234,6 +234,46 @@ class McpToolsTest {
     }
 
     @Test
+    void fillingTheHouseholdPlanViaTools() {
+        LocalDate today = LocalDate.now(clock);
+        HouseholdTools.ChoreItem created = householdTools.createChore(as(admin), "Bad putzen", "Bad", null, null,
+                "FREQ=DAILY;COUNT=3", today.toString(), null, null, "FIXED", List.of(kidM.getId()), null, null, null,
+                null, null);
+        entityManager.flush();
+
+        assertThat(created.kind()).isEqualTo("RECURRING");
+        assertThat(created.members()).hasSize(1);
+        assertThat(householdTools.listChores(as(admin))).extracting(HouseholdTools.ChoreItem::title)
+                .contains("Bad putzen");
+        List<HouseholdTools.ChoreTaskItem> planned = householdTools.listChoreTasks(as(admin), today.toString(),
+                today.plusDays(2).toString());
+        assertThat(planned).hasSize(3);
+
+        assertThat(householdTools.updateChore(as(admin), created.choreId(), null, null, null, null, null, null, null,
+                null, null, null, 5, 8, 12, null, null).minutesMedium()).isEqualTo(8);
+        // Ändern plant die offenen Aufgaben neu, die IDs sind danach andere
+        Long taskId = householdTools.listChoreTasks(as(admin), today.toString(), today.plusDays(2).toString())
+                .getFirst().taskId();
+        assertThat(householdTools.assignChoreTask(as(admin), taskId, mamaM.getId()).assignee())
+                .isEqualTo("Mama");
+
+        HouseholdTools.ChoreItem dated = householdTools.createChore(as(admin), "Sperrmüll", null, null, "DATES", null,
+                null, null, null, "OPEN", null, null, null, null, null, null);
+        assertThat(householdTools.addChoreDate(as(admin), dated.choreId(), today.plusDays(5).toString(), "10:00")
+                .dates()).containsExactly(today.plusDays(5) + " 10:00");
+
+        HouseholdTools.ChoreItem onDemand = householdTools.createChore(as(admin), "Staubsaugen", null, null,
+                "ON_DEMAND", null, null, null, null, "OPEN", null, null, null, null, null, null);
+        assertThat(householdTools.bookChore(as(admin), onDemand.choreId(), kidM.getId(), null, "EASY", null).status())
+                .isNotEqualTo("OPEN");
+
+        assertThat(householdTools.setChoreActive(as(admin), created.choreId(), false).active()).isFalse();
+        assertThat(householdTools.setChoreActive(as(admin), created.choreId(), true).active()).isTrue();
+        assertThatThrownBy(() -> householdTools.createChore(as(kid), "Verboten", null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null)).isInstanceOf(Tools.ToolException.class);
+    }
+
+    @Test
     void overviewSkipsSectionsWithoutRights() {
         todoTools.createTodo(as(mama), "Heute erledigen", null, null, LocalDate.now(clock).toString(), null, null,
                 null, null, List.of("member:" + kidM.getId()), null, null, null, null);

@@ -135,6 +135,73 @@ class KitchenToolsTest {
     }
 
     @Test
+    void editsRecipesFoodsAndMeals() {
+        Long id = pancakes().recipe().id();
+
+        KitchenTools.RecipeDetail changed = kitchen.updateRecipe(as(chef), id, "Dicke Pfannkuchen", null, null, 25,
+                null, null, null, null);
+        assertThat(changed.recipe().title()).isEqualTo("Dicke Pfannkuchen");
+        assertThat(changed.recipe().minutes()).isEqualTo(25);
+        assertThat(changed.ingredients()).hasSize(5);
+        assertThat(kitchen.updateRecipe(as(chef), id, null, List.of("100 g Mehl"), 1, null, null, null, null, null)
+                .ingredients()).hasSize(1);
+        assertThatThrownBy(() -> kitchen.updateRecipe(as(guest), id, "Nein", null, null, null, null, null, null, null))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Keine Berechtigung");
+
+        KitchenTools.FoodItem food = kitchen.createFood(as(chef), "Testmehl", null, 300.0, null, null, null, null, null,
+                null);
+        KitchenTools.FoodItem updated = kitchen.updateFood(as(chef), food.id(), null, "pantry", 350.0, null, null, null,
+                null, null, null);
+        assertThat(updated.kcalPer100g()).isEqualTo(350.0);
+        assertThat(updated.category()).isEqualTo("PANTRY");
+        assertThat(updated.name()).isEqualTo("Testmehl");
+
+        KitchenTools.MealItem meal = kitchen.planMeal(as(chef), MONDAY.toString(), "Abendessen", id, null);
+        KitchenTools.MealItem moved = kitchen.moveMeal(as(chef), meal.id(), MONDAY.plusDays(2).toString(),
+                "Mittagessen");
+        assertThat(moved.day()).isEqualTo(MONDAY.plusDays(2));
+        assertThat(moved.slot()).isEqualTo("Mittagessen");
+        Long lena = members.findAll().getFirst().getId();
+        assertThat(kitchen.setMealEaters(as(chef), meal.id(), List.of(new KitchenTools.EaterInput(lena, 1.5)))
+                .eaters()).containsExactly("Lena ×1.5");
+        assertThat(kitchen.setMealEaters(as(chef), meal.id(), List.of()).eaters()).isEmpty();
+        assertThat(kitchen.listMealSlots(as(guest))).contains("Abendessen", "Mittagessen");
+    }
+
+    @Test
+    void shoppingPantryAndCooking() {
+        Long id = pancakes().recipe().id();
+        KitchenTools.MealItem meal = kitchen.planMeal(as(chef), MONDAY.plusDays(1).toString(), "Abendessen", id, null);
+
+        assertThat(kitchen.generateShoppingList(as(chef), MONDAY.toString(), MONDAY.plusDays(6).toString()))
+                .contains("Artikel");
+        List<KitchenTools.ShoppingEntry> list = kitchen.shoppingList(as(chef));
+        assertThat(list).isNotEmpty();
+        Long itemId = list.getFirst().id();
+        assertThat(kitchen.toggleShoppingItem(as(chef), itemId).status()).isEqualTo("BOUGHT");
+        KitchenTools.PantryEntry stowed = kitchen.stowShoppingItem(as(chef), itemId, 500.0, "g", "Vorrat", null);
+        assertThat(stowed.location()).isEqualTo("Vorrat");
+
+        KitchenTools.PantryEntry milk = kitchen.addPantryItem(as(chef), "Milch", 1.0, "l", "Kühlschrank",
+                MONDAY.plusDays(3).toString());
+        assertThat(kitchen.updatePantryItem(as(chef), milk.id(), 2.0, null, null, null).amount()).startsWith("2");
+        assertThat(kitchen.takeFromPantry(as(chef), milk.id(), 0.5)).isEqualTo("Entnommen.");
+        assertThatThrownBy(() -> kitchen.addPantryItem(as(chef), "Käse", 1.0, "Eimerweise", null, null))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Einheit");
+        assertThat(kitchen.recipesToUseUp(as(guest))).isNotNull();
+
+        KitchenTools.CookResult preview = kitchen.cookMeal(as(chef), meal.id(), true, null);
+        assertThat(preview.booked()).isFalse();
+        assertThat(kitchen.getMealPlan(as(chef), MONDAY.toString(), null)).noneMatch(KitchenTools.MealItem::cooked);
+        KitchenTools.CookResult cooked = kitchen.cookMeal(as(chef), meal.id(), null, null);
+        assertThat(cooked.booked()).isTrue();
+        assertThat(kitchen.getMealPlan(as(chef), MONDAY.toString(), null)).anyMatch(KitchenTools.MealItem::cooked);
+        assertThatThrownBy(() -> kitchen.cookMeal(as(chef), meal.id(), null, null))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("schon");
+        assertThat(kitchen.fillMealPlan(as(chef), MONDAY.toString())).isNotBlank();
+    }
+
+    @Test
     void usersWithoutKitchenRightsSeeNothing() {
         assertThatThrownBy(() -> kitchen.searchRecipes(as(outsider), null)).isInstanceOf(Tools.ToolException.class)
                 .hasMessageContaining("Keine Berechtigung");

@@ -138,7 +138,7 @@ Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich:
 - **Rechte:** `KITCHEN_VIEW`, `KITCHEN_RECIPES_EDIT`, `KITCHEN_PLAN`, `KITCHEN_SHOPPING`, `KITCHEN_SETTINGS`; die Rolle
   „Benutzer“ bekommt alle außer den Einstellungen.
 - **KI:** Über MCP legt ein Assistent Rezepte aus Foto oder Text an (`create_recipe` mit Zutaten als Textzeilen), plant
-  Mahlzeiten und liest Einkaufsliste und Vorrat (`search_foods`, `plan_meal`, `shopping_list`, `list_pantry` u. a.).
+  Mahlzeiten und liest Einkaufsliste und Vorrat (`search_foods`, `plan_meal`, `shopping_list`, `list_pantry` u. a.). Auch Ändern ist möglich (`update_recipe`, `move_meal`, `set_meal_eaters`), ebenso Auffüllen und Kochen (`fill_meal_plan`, `cook_meal`), Einkauf (`generate_shopping_list`, `toggle_shopping_item`, `stow_shopping_item`, Bring!) und Vorrat (`add_pantry_item`, `update_pantry_item`, `take_from_pantry`). Den Haushaltsplan befüllt er mit `create_chore`, `update_chore`, `add_chore_date`, `assign_chore_task` und `book_chore`.
 
 ### KI-Anbindung (MCP)
 

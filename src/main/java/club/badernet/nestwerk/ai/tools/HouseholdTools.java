@@ -1,8 +1,13 @@
 package club.badernet.nestwerk.ai.tools;
 
+import club.badernet.nestwerk.household.Chore;
 import club.badernet.nestwerk.household.ChoreEffort;
+import club.badernet.nestwerk.household.ChoreInput;
+import club.badernet.nestwerk.household.ChoreKind;
+import club.badernet.nestwerk.household.ChoreService;
 import club.badernet.nestwerk.household.ChoreTask;
 import club.badernet.nestwerk.household.ChoreTaskService;
+import club.badernet.nestwerk.household.Distribution;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
 import io.modelcontextprotocol.common.McpTransportContext;
@@ -17,7 +22,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/** Aufgaben aus dem Haushaltsplan ansehen und abhaken. */
+/** Haushaltsplan: Hausarbeiten anlegen und ändern, Aufgaben ansehen, zuweisen und abhaken. */
 @Component
 public class HouseholdTools {
 
@@ -25,14 +30,22 @@ public class HouseholdTools {
                                 String assignee, String status, int plannedMinutes) {
     }
 
+    public record ChoreItem(Long choreId, String title, String area, String description, String kind, String rrule,
+                            LocalDate startsOn, String dueTime, Integer intervalDays, String distribution,
+                            List<String> members, int minutesEasy, int minutesMedium, int minutesHard,
+                            boolean active, List<String> dates) {
+    }
+
     private static final int MAX_DAYS = 31;
 
     private final Tools tools;
+    private final ChoreService chores;
     private final ChoreTaskService tasks;
     private final FamilyMemberRepository members;
 
-    public HouseholdTools(Tools tools, ChoreTaskService tasks, FamilyMemberRepository members) {
+    public HouseholdTools(Tools tools, ChoreService chores, ChoreTaskService tasks, FamilyMemberRepository members) {
         this.tools = tools;
+        this.chores = chores;
         this.tasks = tasks;
         this.members = members;
     }
@@ -102,6 +115,196 @@ public class HouseholdTools {
             tasks.undo(id, user);
             return item(tasks.get(id, user), names());
         });
+    }
+
+    @McpTool(name = "list_chores", description = "Listet die Hausarbeiten des Haushaltsplans (Vorlagen mit Rhythmus, "
+            + "Zuständigen und Zeitaufwand), bei festen Terminen auch deren Daten. Nicht zu verwechseln mit "
+            + "list_chore_tasks (die einzelnen fälligen Aufgaben).",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public List<ChoreItem> listChores(McpTransportContext context) {
+        return tools.read(context, user -> {
+            Map<Long, String> names = names();
+            return chores.visible(user).stream().map(c -> chore(c, names)).toList();
+        });
+    }
+
+    @McpTool(name = "create_chore", description = "Legt eine Hausarbeit im Haushaltsplan an; der Plan erzeugt die "
+            + "Aufgaben automatisch. kind: RECURRING (Regelmäßig, mit rrule), DATES (feste Termine, danach "
+            + "add_chore_date), INTERVAL (alle intervalDays Tage nach Erledigung) oder ON_DEMAND (bei Bedarf). "
+            + "rrule z. B. FREQ=WEEKLY;BYDAY=MO,TH oder FREQ=DAILY. distribution: FIXED (feste Person), ROTATION "
+            + "(reihum), BALANCED (ausgleichend), OPEN (offen zum Nehmen); memberIds sind die Kandidaten in "
+            + "Reihenfolge (IDs aus list_members). Zeitaufwand in Minuten für leicht/mittel/schwer.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public ChoreItem createChore(McpTransportContext context,
+                                 @McpToolParam(description = "Titel, z. B. Bad putzen") String title,
+                                 @McpToolParam(description = "Bereich, z. B. Bad", required = false) String area,
+                                 @McpToolParam(description = "Beschreibung", required = false) String description,
+                                 @McpToolParam(description = "RECURRING, DATES, INTERVAL oder ON_DEMAND (Standard "
+                                         + "RECURRING)", required = false) String kind,
+                                 @McpToolParam(description = "Wiederholung als RRULE (Standard FREQ=WEEKLY)",
+                                         required = false) String rrule,
+                                 @McpToolParam(description = "Erster Tag, JJJJ-MM-TT", required = false)
+                                 String startsOn,
+                                 @McpToolParam(description = "Fällig um HH:MM", required = false) String dueTime,
+                                 @McpToolParam(description = "Abstand in Tagen bei INTERVAL (Standard 7)",
+                                         required = false) Integer intervalDays,
+                                 @McpToolParam(description = "FIXED, ROTATION, BALANCED oder OPEN (Standard ROTATION)",
+                                         required = false) String distribution,
+                                 @McpToolParam(description = "IDs der zuständigen Mitglieder", required = false)
+                                 List<Long> memberIds,
+                                 @McpToolParam(description = "Minuten bei leichtem Aufwand (Standard 10)",
+                                         required = false) Integer minutesEasy,
+                                 @McpToolParam(description = "Minuten bei mittlerem Aufwand (Standard 15)",
+                                         required = false) Integer minutesMedium,
+                                 @McpToolParam(description = "Minuten bei schwerem Aufwand (Standard 30)",
+                                         required = false) Integer minutesHard,
+                                 @McpToolParam(description = "Frühester Beginn HH:MM", required = false)
+                                 String windowStart,
+                                 @McpToolParam(description = "Spätestes Ende HH:MM", required = false)
+                                 String windowEnd) {
+        return tools.write(context, user -> {
+            ChoreKind k = Tools.enumValue(ChoreKind.class, kind, "kind");
+            Distribution d = Tools.enumValue(Distribution.class, distribution, "distribution");
+            Chore created = chores.create(new ChoreInput(Tools.required(title, "title"), area, description,
+                    minutesEasy == null ? 10 : minutesEasy, minutesMedium == null ? 15 : minutesMedium,
+                    minutesHard == null ? 30 : minutesHard, k == null ? ChoreKind.RECURRING : k,
+                    rrule == null || rrule.isBlank() ? "FREQ=WEEKLY" : rrule, Tools.date(startsOn, "startsOn"),
+                    Tools.time(dueTime, "dueTime"), intervalDays == null ? 7 : intervalDays,
+                    d == null ? Distribution.ROTATION : d, memberIds == null ? List.of() : memberIds,
+                    Tools.time(windowStart, "windowStart"), Tools.time(windowEnd, "windowEnd")), user);
+            return chore(chores.get(created.getId(), user), names());
+        });
+    }
+
+    @McpTool(name = "update_chore", description = "Ändert eine Hausarbeit. Nur angegebene Felder werden geändert "
+            + "(Werte wie bei create_chore); die offenen künftigen Aufgaben werden neu geplant. memberIds ersetzt die "
+            + "Kandidatenliste.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public ChoreItem updateChore(McpTransportContext context,
+                                 @McpToolParam(description = "ID der Hausarbeit (choreId)") Long choreId,
+                                 @McpToolParam(description = "Titel", required = false) String title,
+                                 @McpToolParam(description = "Bereich", required = false) String area,
+                                 @McpToolParam(description = "Beschreibung", required = false) String description,
+                                 @McpToolParam(description = "RECURRING, DATES, INTERVAL oder ON_DEMAND",
+                                         required = false) String kind,
+                                 @McpToolParam(description = "Wiederholung als RRULE", required = false) String rrule,
+                                 @McpToolParam(description = "Erster Tag, JJJJ-MM-TT", required = false)
+                                 String startsOn,
+                                 @McpToolParam(description = "Fällig um HH:MM", required = false) String dueTime,
+                                 @McpToolParam(description = "Abstand in Tagen bei INTERVAL", required = false)
+                                 Integer intervalDays,
+                                 @McpToolParam(description = "FIXED, ROTATION, BALANCED oder OPEN", required = false)
+                                 String distribution,
+                                 @McpToolParam(description = "IDs der zuständigen Mitglieder (ersetzt die Liste)",
+                                         required = false) List<Long> memberIds,
+                                 @McpToolParam(description = "Minuten bei leichtem Aufwand", required = false)
+                                 Integer minutesEasy,
+                                 @McpToolParam(description = "Minuten bei mittlerem Aufwand", required = false)
+                                 Integer minutesMedium,
+                                 @McpToolParam(description = "Minuten bei schwerem Aufwand", required = false)
+                                 Integer minutesHard,
+                                 @McpToolParam(description = "Frühester Beginn HH:MM", required = false)
+                                 String windowStart,
+                                 @McpToolParam(description = "Spätestes Ende HH:MM", required = false)
+                                 String windowEnd) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(choreId, "choreId");
+            Chore c = chores.get(id, user);
+            ChoreKind k = Tools.enumValue(ChoreKind.class, kind, "kind");
+            Distribution d = Tools.enumValue(Distribution.class, distribution, "distribution");
+            chores.update(id, new ChoreInput(title == null ? c.getTitle() : title, area == null ? c.getArea() : area,
+                    description == null ? c.getDescription() : description,
+                    minutesEasy == null ? c.getMinutesEasy() : minutesEasy,
+                    minutesMedium == null ? c.getMinutesMedium() : minutesMedium,
+                    minutesHard == null ? c.getMinutesHard() : minutesHard, k == null ? c.getKind() : k,
+                    rrule == null ? c.getRrule() : rrule,
+                    startsOn == null ? c.getStartsOn() : Tools.date(startsOn, "startsOn"),
+                    dueTime == null ? c.getDueTime() : Tools.time(dueTime, "dueTime"),
+                    intervalDays == null ? c.getIntervalDays() : intervalDays,
+                    d == null ? c.getDistribution() : d, memberIds == null ? c.getMemberIds() : memberIds,
+                    windowStart == null ? c.getWindowStart() : Tools.time(windowStart, "windowStart"),
+                    windowEnd == null ? c.getWindowEnd() : Tools.time(windowEnd, "windowEnd")), user);
+            return chore(chores.get(id, user), names());
+        });
+    }
+
+    @McpTool(name = "set_chore_active", description = "Schaltet eine Hausarbeit aus (active=false: künftige offene "
+            + "Aufgaben verschwinden, erledigte bleiben) oder wieder ein (active=true: der Plan erzeugt Aufgaben).",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public ChoreItem setChoreActive(McpTransportContext context,
+                                    @McpToolParam(description = "ID der Hausarbeit (choreId)") Long choreId,
+                                    @McpToolParam(description = "true = aktiv, false = ausgeschaltet") Boolean active) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(choreId, "choreId");
+            if (Tools.required(active, "active")) {
+                chores.activate(id, user);
+            } else {
+                chores.deactivate(id, user);
+            }
+            return chore(chores.get(id, user), names());
+        });
+    }
+
+    @McpTool(name = "add_chore_date", description = "Fügt einer Hausarbeit mit festen Terminen (kind DATES) einen "
+            + "Termin hinzu; der Plan erzeugt die Aufgabe.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public ChoreItem addChoreDate(McpTransportContext context,
+                                  @McpToolParam(description = "ID der Hausarbeit (choreId)") Long choreId,
+                                  @McpToolParam(description = "Tag, JJJJ-MM-TT") String day,
+                                  @McpToolParam(description = "Uhrzeit HH:MM", required = false) String time) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(choreId, "choreId");
+            chores.addDate(id, Tools.required(Tools.date(day, "day"), "day"), Tools.time(time, "time"), user);
+            return chore(chores.get(id, user), names());
+        });
+    }
+
+    @McpTool(name = "assign_chore_task", description = "Weist eine offene Aufgabe einem Mitglied zu bzw. gibt sie "
+            + "ab (memberId weglassen = niemand, offen zum Nehmen).",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public ChoreTaskItem assignChoreTask(McpTransportContext context,
+                                         @McpToolParam(description = "ID der Aufgabe (taskId)") Long taskId,
+                                         @McpToolParam(description = "Mitglieds-ID aus list_members", required = false)
+                                         Long memberId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(taskId, "taskId");
+            tasks.assign(id, memberId, user);
+            return item(tasks.get(id, user), names());
+        });
+    }
+
+    @McpTool(name = "book_chore", description = "Bucht eine Hausarbeit ohne geplante Aufgabe, z. B. „bei Bedarf“ "
+            + "(Staubsaugen, das gerade erledigt wurde). Ohne doerMemberId hat der Benutzer sie selbst erledigt.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public ChoreTaskItem bookChore(McpTransportContext context,
+                                   @McpToolParam(description = "ID der Hausarbeit (choreId)") Long choreId,
+                                   @McpToolParam(description = "Wer es erledigt hat (Mitglieds-ID)", required = false)
+                                   Long doerMemberId,
+                                   @McpToolParam(description = "IDs der Mithelfer", required = false)
+                                   List<Long> helperMemberIds,
+                                   @McpToolParam(description = "Aufwand: EASY, MEDIUM, HARD", required = false)
+                                   String effort,
+                                   @McpToolParam(description = "Tatsächliche Minuten", required = false)
+                                   Integer minutes) {
+        return tools.write(context, user -> {
+            Set<Long> helpers = helperMemberIds == null ? Set.of() : new HashSet<>(helperMemberIds);
+            ChoreTask task = tasks.bookAdHoc(Tools.required(choreId, "choreId"), user, doerMemberId, helpers,
+                    new ChoreTaskService.Booking(Tools.enumValue(ChoreEffort.class, effort, "effort"), minutes, null));
+            return item(tasks.get(task.getId(), user), names());
+        });
+    }
+
+    private ChoreItem chore(Chore c, Map<Long, String> names) {
+        List<String> dates = c.getKind() != ChoreKind.DATES ? List.of() : chores.dates(c.getId()).stream()
+                .map(d -> d.getDueOn() + (d.getDueTime() == null ? "" : " " + d.getDueTime())).toList();
+        return new ChoreItem(c.getId(), c.getTitle(), c.getArea(), c.getDescription(), c.getKind().name(),
+                c.getRrule(), c.getStartsOn(), c.getDueTime() == null ? null : c.getDueTime().toString(),
+                c.getIntervalDays(), c.getDistribution().name(),
+                c.getMemberIds().stream().map(m -> names.getOrDefault(m, "?") + " (" + m + ")").toList(),
+                c.getMinutesEasy(), c.getMinutesMedium(), c.getMinutesHard(), c.isActive(), dates);
     }
 
     private Map<Long, String> names() {
