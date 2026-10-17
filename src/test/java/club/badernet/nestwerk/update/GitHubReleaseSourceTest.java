@@ -60,6 +60,7 @@ class GitHubReleaseSourceTest {
     @Test
     void noReleaseYetIsNoUpdate() {
         server.expect(requestTo(API + "/releases/latest")).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        server.expect(requestTo(API + "/contents")).andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
 
         assertThat(source.latest(Channel.RELEASES, AppVersion.of("1.4.2"))).isEmpty();
     }
@@ -122,5 +123,23 @@ class GitHubReleaseSourceTest {
 
         assertThatThrownBy(() -> source.latest(Channel.MAIN, AppVersion.of("0.0.0-abc1234")))
                 .isInstanceOf(UpdateSourceException.class).hasMessageContaining("GitHub-Token hinterlegen");
+    }
+
+    @Test
+    void tokenWithoutContentsRightIsReportedInsteadOfNoUpdate() {
+        server.expect(requestTo(API + "/releases/latest")).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        server.expect(requestTo(API + "/contents")).andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        assertThatThrownBy(() -> source.latest(Channel.RELEASES, AppVersion.of("1.0.0")))
+                .isInstanceOf(UpdateSourceException.class).hasMessageContaining("„Contents“");
+    }
+
+    @Test
+    void tokenWithoutActionsRightIsReported() {
+        server.expect(requestTo(API + "/actions/workflows/release.yml/runs?branch=main&status=success&per_page=1"))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        assertThatThrownBy(() -> source.latest(Channel.MAIN, AppVersion.of("0.0.0-abc1234")))
+                .isInstanceOf(UpdateSourceException.class).hasMessageContaining("„Actions“");
     }
 }

@@ -63,6 +63,9 @@ public class GitHubReleaseSource implements ReleaseSource {
             if (token.get().isEmpty()) {
                 throw new UpdateSourceException(privateRepoMessage(), e);
             }
+            if (!canReadContents()) {
+                throw new UpdateSourceException(tokenRightsMessage("Contents"), e);
+            }
             return Optional.empty();
         }
         String tag = text(release, "tag_name");
@@ -80,7 +83,7 @@ public class GitHubReleaseSource implements ReleaseSource {
             runs = getJson("/actions/workflows/release.yml/runs?branch=main&status=success&per_page=1");
         } catch (HttpClientErrorException.NotFound e) {
             throw new UpdateSourceException(token.get().isEmpty() ? privateRepoMessage()
-                    : "Der Workflow release.yml wurde nicht gefunden.", e);
+                    : tokenRightsMessage("Actions"), e);
         }
         JsonNode run = runs.path("workflow_runs").path(0);
         String sha = text(run, "head_sha");
@@ -109,6 +112,16 @@ public class GitHubReleaseSource implements ReleaseSource {
         String shortSha = sha.substring(0, 7);
         return Optional.of(new AvailableUpdate("0.0.0-" + shortSha, "sha-" + shortSha, sha, notes,
                 instant(run, "updated_at")));
+    }
+
+    /** GitHub meldet fehlende Rechte an privaten Repositories als 404; Contents lesen zeigt, ob der Token sie hat. */
+    private boolean canReadContents() {
+        try {
+            getJson("/contents");
+            return true;
+        } catch (HttpClientErrorException.NotFound e) {
+            return false;
+        }
     }
 
     private JsonNode getJson(String path) {
@@ -141,6 +154,11 @@ public class GitHubReleaseSource implements ReleaseSource {
 
     private static String privateRepoMessage() {
         return "Das Repository wurde nicht gefunden. Ist es privat, bitte einen GitHub-Token hinterlegen.";
+    }
+
+    private static String tokenRightsMessage(String right) {
+        return "Nicht gefunden – dem GitHub-Token fehlt vermutlich der Lesezugriff auf „" + right
+                + "“ für chrisbad/nestwerk.";
     }
 
     private static String text(JsonNode node, String field) {
