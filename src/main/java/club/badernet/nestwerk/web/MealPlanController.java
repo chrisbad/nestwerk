@@ -1,5 +1,7 @@
 package club.badernet.nestwerk.web;
 
+import club.badernet.nestwerk.attachment.Attachment;
+import club.badernet.nestwerk.attachment.AttachmentService;
 import club.badernet.nestwerk.kitchen.Amounts;
 import club.badernet.nestwerk.kitchen.KitchenAccess;
 import club.badernet.nestwerk.kitchen.KitchenPermission;
@@ -42,7 +44,8 @@ public class MealPlanController {
     record Eater(String name, String initial, String color, String portions) {
     }
 
-    record MealChip(Long id, String title, Long recipeId, String kcal, List<Eater> eaters, boolean cooked) {
+    record MealChip(Long id, String title, Long recipeId, String kcal, Long photoId,
+                    List<Eater> eaters, boolean cooked) {
     }
 
     record SlotCell(MealSlot slot, List<MealChip> meals) {
@@ -59,13 +62,15 @@ public class MealPlanController {
 
     private final MealPlanService plan;
     private final RecipeService recipes;
+    private final AttachmentService attachments;
     private final KitchenAccess access;
     private final CurrentUser currentUser;
 
-    public MealPlanController(MealPlanService plan, RecipeService recipes, KitchenAccess access,
-                              CurrentUser currentUser) {
+    public MealPlanController(MealPlanService plan, RecipeService recipes, AttachmentService attachments,
+                              KitchenAccess access, CurrentUser currentUser) {
         this.plan = plan;
         this.recipes = recipes;
+        this.attachments = attachments;
         this.access = access;
         this.currentUser = currentUser;
     }
@@ -107,7 +112,8 @@ public class MealPlanController {
                         }
                     }
                     chips.add(new MealChip(m.getId(), m.getTitle(), m.getRecipe() == null ? null : m.getRecipe().getId(),
-                            perServing == null ? null : KitchenViews.kcal(perServing), eaters, m.isCooked()));
+                            perServing == null ? null : KitchenViews.kcal(perServing),
+                            m.getRecipe() == null ? null : photoId(m.getRecipe().getId()), eaters, m.isCooked()));
                 }
                 cells.add(new SlotCell(slot, chips));
             }
@@ -235,6 +241,11 @@ public class MealPlanController {
                 ? filled + (filled == 1 ? " Mahlzeit" : " Mahlzeiten") + " eingeplant."
                 : "Nichts aufgefüllt – alles belegt oder keine passenden Rezepte.");
         return "redirect:" + weekUrl(week);
+    }
+
+    private Long photoId(Long recipeId) {
+        return attachments.forRecipe(recipeId).stream().filter(Attachment::isImage).map(Attachment::getId)
+                .findFirst().orElse(null);
     }
 
     static String weekUrl(LocalDate day) {

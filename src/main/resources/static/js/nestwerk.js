@@ -1139,31 +1139,60 @@
 
     /* --- Essensplan: Rezepte in Mahlzeiten ziehen, Einträge verschieben ------ */
 
+    /* Rezeptsuche im Essensplan: erst beim Anklicken eines Planungsfelds */
+    function initPlanPicker() {
+        const dialog = document.getElementById("plan-pick");
+        if (!dialog) return;
+        const form = dialog.querySelector("form");
+        const input = dialog.querySelector("[data-plan-filter]");
+        const list = dialog.querySelector(".plan-suggestions");
+        const items = [...list.children];
+        const empty = dialog.querySelector("[data-plan-empty]");
+        const filter = () => {
+            const q = input.value.trim().toLowerCase();
+            const rank = li => {
+                const t = li.dataset.title;
+                if (q === "" || t.startsWith(q)) return 0;
+                if (t.split(/[\s,;()-]+/).some(w => w.startsWith(q))) return 1;
+                return t.includes(q) ? 2 : -1;
+            };
+            const ranked = items.map(li => [li, rank(li)]);
+            ranked.filter(([, r]) => r >= 0).sort((a, b) => a[1] - b[1]).forEach(([li]) => list.append(li));
+            ranked.forEach(([li, r]) => { li.hidden = r < 0; });
+            empty.hidden = q === "" || ranked.some(([, r]) => r >= 0);
+        };
+        input.addEventListener("input", filter);
+        input.addEventListener("keydown", event => {
+            if (event.key !== "Enter" || input.value.trim() === "") return;
+            const first = items.find(li => !li.hidden);
+            if (first) {
+                event.preventDefault();
+                first.querySelector("button").click();
+            }
+        });
+        document.addEventListener("click", event => {
+            const opener = event.target.closest("[data-plan-pick]");
+            if (!opener) return;
+            form.elements.day.value = opener.dataset.day;
+            form.elements.slotId.value = opener.dataset.slot;
+            dialog.querySelector("[data-plan-pick-title]").textContent = opener.dataset.label;
+            input.value = "";
+            filter();
+            dialog.showModal();
+            input.focus();
+        });
+    }
+
     function initMealPlanDrag() {
+        initPlanPicker();
         const board = document.querySelector('[data-plan-board="true"]');
         if (!board) return;
-        const filter = board.querySelector("[data-plan-filter]");
-        filter?.addEventListener("input", () => {
-            const q = filter.value.trim().toLowerCase();
-            board.querySelectorAll(".plan-recipes li").forEach(li => {
-                li.hidden = q !== "" && !li.textContent.toLowerCase().includes(q);
-            });
-        });
-        const list = board.querySelector(".plan-recipes ul");
-        if (list) {
-            sortable(list, {
-                group: { name: "meals", pull: "clone", put: false },
-                sort: false,
-                forceFallback: true,
-                fallbackOnBody: true
-            });
-        }
         board.querySelectorAll(".plan-slot[data-slot]").forEach(slot => {
             sortable(slot, {
                 group: { name: "meals", pull: true, put: true },
                 sort: false,
-                draggable: ".meal-chip, li",
-                filter: "h3, details",
+                draggable: ".meal-chip",
+                filter: "h3, button",
                 preventOnFilter: false,
                 forceFallback: true,
                 fallbackOnBody: true,
@@ -1174,17 +1203,10 @@
                     const target = { day: slot.dataset.day, slotId: slot.dataset.slot };
                     haptic(12);
                     try {
-                        const recipe = item.querySelector("[data-recipe-id]") || (item.dataset.recipeId ? item : null);
-                        if (recipe) {
-                            item.remove();
-                            await postForm("/kitchen/plan/meals", { ...target, recipeId: recipe.dataset.recipeId });
-                        } else {
-                            await postForm(`/kitchen/plan/meals/${item.dataset.mealId}/move`, target);
-                        }
+                        await postForm(`/kitchen/plan/meals/${item.dataset.mealId}/move`, target);
                         location.reload();
                     } catch (error) {
-                        if (!item.dataset.mealId) item.remove();
-                        else evt.from.append(item);
+                        evt.from.append(item);
                         showToast(error.message, "error");
                     }
                 }

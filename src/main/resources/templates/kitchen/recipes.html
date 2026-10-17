@@ -29,7 +29,6 @@
             <a class="recipe-card" th:href="@{/kitchen/recipes/{id}(id=${r.id})}" draggable="true"
                th:attr="data-recipe-id=${r.id},data-recipe-title=${r.title}">
                 <img th:if="${r.photoId != null}" th:src="@{/attachments/{id}(id=${r.photoId})}" alt="" loading="lazy">
-                <span class="recipe-card-placeholder" th:unless="${r.photoId != null}" aria-hidden="true"></span>
                 <span class="recipe-card-body">
                     <strong th:text="${r.title}">Pfannkuchen</strong>
                     <span class="muted">
