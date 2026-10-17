@@ -26,5 +26,11 @@ class RecipeListOutsideSessionTest {
         List<Recipe> found = recipes.search("vegan");
         assertThat(found).isNotEmpty();
         found.forEach(r -> assertThat(NutritionCalculator.forRecipe(r).missing()).isEmpty());
+
+        List<Long> foodIds = all.stream().flatMap(r -> r.getIngredients().stream()).map(RecipeIngredient::getFood)
+                .filter(java.util.Objects::nonNull).map(Food::getId).distinct().limit(5).toList();
+        List<Recipe> using = recipes.usingFoods(foodIds);
+        assertThat(using).isNotEmpty().doesNotHaveDuplicates();
+        using.forEach(r -> assertThat(NutritionCalculator.forRecipe(r).perServing().kcal()).isPositive());
     }
 }
