@@ -1,6 +1,7 @@
 package club.badernet.nestwerk.ai.tools;
 
 import club.badernet.nestwerk.contact.Contact;
+import club.badernet.nestwerk.contact.ContactInput;
 import club.badernet.nestwerk.contact.ContactService;
 import io.modelcontextprotocol.common.McpTransportContext;
 import org.springframework.ai.mcp.annotation.McpTool;
@@ -12,7 +13,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-/** Kontakte nachschlagen. */
+/** Kontakte nachschlagen, anlegen und ändern. */
 @Component
 public class ContactTools {
 
@@ -49,6 +50,55 @@ public class ContactTools {
     public ContactItem getContact(McpTransportContext context,
                                   @McpToolParam(description = "ID des Kontakts") Long contactId) {
         return tools.read(context, user -> item(contacts.get(Tools.required(contactId, "contactId"), user)));
+    }
+
+    @McpTool(name = "create_contact", description = "Legt einen Kontakt an (Arzt, Handwerker, Schule …).",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public ContactItem createContact(McpTransportContext context,
+                                     @McpToolParam(description = "Name") String name,
+                                     @McpToolParam(description = "Kategorie, z. B. Arzt", required = false)
+                                     String category,
+                                     @McpToolParam(description = "Firma", required = false) String company,
+                                     @McpToolParam(description = "Telefon", required = false) String phone,
+                                     @McpToolParam(description = "E-Mail", required = false) String email,
+                                     @McpToolParam(description = "Straße und Hausnummer", required = false)
+                                     String street,
+                                     @McpToolParam(description = "Postleitzahl", required = false) String postalCode,
+                                     @McpToolParam(description = "Ort", required = false) String city,
+                                     @McpToolParam(description = "Webseite", required = false) String url,
+                                     @McpToolParam(description = "Notiz", required = false) String note) {
+        return tools.write(context, user -> item(contacts.create(new ContactInput(Tools.required(name, "name"),
+                category, company, phone, email, street, postalCode, city, url, note), user)));
+    }
+
+    @McpTool(name = "update_contact", description = "Ändert einen Kontakt. Nur angegebene Felder werden geändert; "
+            + "ein leerer Text löscht das Feld.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public ContactItem updateContact(McpTransportContext context,
+                                     @McpToolParam(description = "ID des Kontakts") Long contactId,
+                                     @McpToolParam(description = "Name", required = false) String name,
+                                     @McpToolParam(description = "Kategorie", required = false) String category,
+                                     @McpToolParam(description = "Firma", required = false) String company,
+                                     @McpToolParam(description = "Telefon", required = false) String phone,
+                                     @McpToolParam(description = "E-Mail", required = false) String email,
+                                     @McpToolParam(description = "Straße und Hausnummer", required = false)
+                                     String street,
+                                     @McpToolParam(description = "Postleitzahl", required = false) String postalCode,
+                                     @McpToolParam(description = "Ort", required = false) String city,
+                                     @McpToolParam(description = "Webseite", required = false) String url,
+                                     @McpToolParam(description = "Notiz", required = false) String note) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(contactId, "contactId");
+            Contact c = contacts.get(id, user);
+            contacts.update(id, new ContactInput(name != null ? name : c.getName(),
+                    category != null ? category : c.getCategory(), company != null ? company : c.getCompany(),
+                    phone != null ? phone : c.getPhone(), email != null ? email : c.getEmail(),
+                    street != null ? street : c.getStreet(), postalCode != null ? postalCode : c.getPostalCode(),
+                    city != null ? city : c.getCity(), url != null ? url : c.getUrl(),
+                    note != null ? note : c.getNote()), user);
+            return item(contacts.get(id, user));
+        });
     }
 
     private static ContactItem item(Contact c) {

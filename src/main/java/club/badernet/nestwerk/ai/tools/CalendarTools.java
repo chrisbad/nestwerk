@@ -6,6 +6,7 @@ import club.badernet.nestwerk.calendar.CalendarEvent;
 import club.badernet.nestwerk.calendar.CalendarEventService;
 import club.badernet.nestwerk.calendar.CalendarSettings;
 import club.badernet.nestwerk.calendar.Occurrence;
+import club.badernet.nestwerk.calendar.OccurrenceInput;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
 import club.badernet.nestwerk.web.EventForm;
@@ -14,11 +15,14 @@ import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -31,12 +35,12 @@ public class CalendarTools {
 
     public record Event(Long eventId, String title, String start, String end, boolean allDay, String location,
                         String description, boolean recurring, String rrule, boolean privateEvent, boolean absence,
-                        List<String> participants, List<String> warnings) {
+                        List<String> participants, List<String> warnings, String recurrenceId) {
 
         /** Hinweise von Blockern der Teilnehmer (der Termin ist trotzdem gespeichert). */
         Event withWarnings(List<String> found) {
             return new Event(eventId, title, start, end, allDay, location, description, recurring, rrule,
-                    privateEvent, absence, participants, found);
+                    privateEvent, absence, participants, found, recurrenceId);
         }
     }
 
@@ -167,6 +171,81 @@ public class CalendarTools {
         });
     }
 
+    @McpTool(name = "move_event", description = "Verschiebt einen einzelnen (nicht wiederkehrenden) Termin auf einen "
+            + "anderen Tag; Uhrzeit und Dauer bleiben. Hinweise von Blockern stehen in warnings.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public Event moveEvent(McpTransportContext context,
+                           @McpToolParam(description = "ID des Termins") Long eventId,
+                           @McpToolParam(description = "Neuer Tag, JJJJ-MM-TT") String date) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(eventId, "eventId");
+            List<String> warnings = events.moveToDate(id, Tools.required(Tools.date(date, "date"), "date"), user)
+                    .stream().map(Conflict::message).distinct().toList();
+            return view(events.get(id, user), names()).withWarnings(warnings);
+        });
+    }
+
+    @McpTool(name = "cancel_event_occurrence", description = "Sagt ein einzelnes Vorkommen einer Terminserie ab; die "
+            + "Serie bleibt. recurrenceId steht bei den Vorkommen in list_events.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = true))
+    public String cancelEventOccurrence(McpTransportContext context,
+                                        @McpToolParam(description = "ID der Serie") Long eventId,
+                                        @McpToolParam(description = "recurrenceId aus list_events") String recurrenceId) {
+        return tools.write(context, user -> {
+            events.cancelOccurrence(Tools.required(eventId, "eventId"), instant(recurrenceId), user);
+            return "Vorkommen abgesagt.";
+        });
+    }
+
+    @McpTool(name = "change_event_occurrence", description = "Ändert ein einzelnes Vorkommen einer Terminserie "
+            + "(Titel, Ort, Beschreibung, Beginn, Ende als JJJJ-MM-TTTHH:MM). Nicht angegebene Felder bleiben wie im "
+            + "Vorkommen. recurrenceId steht bei den Vorkommen in list_events.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public String changeEventOccurrence(McpTransportContext context,
+                                       @McpToolParam(description = "ID der Serie") Long eventId,
+                                       @McpToolParam(description = "recurrenceId aus list_events") String recurrenceId,
+                                       @McpToolParam(description = "Titel", required = false) String title,
+                                       @McpToolParam(description = "Ort", required = false) String location,
+                                       @McpToolParam(description = "Beschreibung", required = false) String description,
+                                       @McpToolParam(description = "Beginn, JJJJ-MM-TTTHH:MM", required = false)
+                                       String start,
+                                       @McpToolParam(description = "Ende, JJJJ-MM-TTTHH:MM", required = false)
+                                       String end) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(eventId, "eventId");
+            Instant at = instant(recurrenceId);
+            Occurrence current = events.findOccurrences(at.minusSeconds(1), at.plusSeconds(1), user).stream()
+                    .filter(o -> o.eventId().equals(id) && at.equals(o.recurrenceId())).findFirst()
+                    .orElseThrow(() -> new Tools.ToolException("Dieses Vorkommen gibt es nicht."));
+            events.overrideOccurrence(id, at, new OccurrenceInput(
+                    title != null ? title : current.title(),
+                    description != null ? description : current.description(),
+                    location != null ? location : current.location(),
+                    start != null ? dateTime(start, "start") : current.start().withZoneSameInstant(zone).toLocalDateTime(),
+                    end != null ? dateTime(end, "end") : current.end().withZoneSameInstant(zone).toLocalDateTime()),
+                    user);
+            return "Vorkommen geändert.";
+        });
+    }
+
+    private static Instant instant(String value) {
+        try {
+            return Instant.parse(Tools.required(value, "recurrenceId").trim());
+        } catch (DateTimeParseException e) {
+            throw new Tools.ToolException("recurrenceId: Wert aus list_events erwartet, nicht „" + value + "“.");
+        }
+    }
+
+    private static LocalDateTime dateTime(String value, String name) {
+        try {
+            return LocalDateTime.parse(value.trim());
+        } catch (DateTimeParseException e) {
+            throw new Tools.ToolException(name + ": Format JJJJ-MM-TTTHH:MM erwartet, nicht „" + value + "“.");
+        }
+    }
+
     private static void apply(EventForm form, String startDate, String startTime, String endDate, String endTime,
                               Boolean allDay, String location, String description, String rrule,
                               Boolean privateEvent, Boolean absence, Collection<Long> participantIds) {
@@ -231,7 +310,8 @@ public class CalendarTools {
         return new Event(o.eventId(), o.title(), format(o.start(), o.allDay()),
                 format(o.allDay() ? o.end().minusDays(1) : o.end(), o.allDay()),
                 o.allDay(), o.location(), o.description(), o.recurring(), null, o.privateEvent(), false,
-                participants(o.memberIds(), names), List.of());
+                participants(o.memberIds(), names), List.of(),
+                o.recurring() ? String.valueOf(o.recurrenceId()) : null);
     }
 
     private Event view(CalendarEvent e, Map<Long, String> names) {
@@ -241,7 +321,7 @@ public class CalendarTools {
         return new Event(e.getId(), e.getTitle(), format(start, e.isAllDay()),
                 format(e.isAllDay() ? end.minusDays(1) : end, e.isAllDay()), e.isAllDay(), e.getLocation(),
                 e.getDescription(), e.getRrule() != null, e.getRrule(), e.isPrivateEvent(), e.isAbsence(),
-                participants(e.getMemberIds(), names), List.of());
+                participants(e.getMemberIds(), names), List.of(), null);
     }
 
     private String format(ZonedDateTime value, boolean allDay) {

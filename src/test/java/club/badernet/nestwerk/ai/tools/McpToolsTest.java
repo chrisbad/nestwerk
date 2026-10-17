@@ -135,6 +135,43 @@ class McpToolsTest {
     }
 
     @Test
+    void managesSingleOccurrencesAndMovesEvents() {
+        CalendarTools.Event series = calendarTools.createEvent(as(mama), "Chor", "2030-03-04", "18:00", null,
+                "19:00", null, null, null, "FREQ=WEEKLY", null, null, null);
+        List<CalendarTools.Event> listed = calendarTools.listEvents(as(mama), "2030-03-04", "2030-03-18");
+        assertThat(listed).hasSize(3).allMatch(e -> e.recurrenceId() != null);
+
+        calendarTools.cancelEventOccurrence(as(mama), series.eventId(), listed.get(1).recurrenceId());
+        calendarTools.changeEventOccurrence(as(mama), series.eventId(), listed.get(2).recurrenceId(), "Chor extra",
+                null, null, "2030-03-18T17:00", "2030-03-18T18:30");
+        assertThat(calendarTools.listEvents(as(mama), "2030-03-04", "2030-03-18"))
+                .extracting(CalendarTools.Event::title, CalendarTools.Event::start)
+                .containsExactly(org.assertj.core.api.Assertions.tuple("Chor", "2030-03-04T18:00:00"),
+                        org.assertj.core.api.Assertions.tuple("Chor extra", "2030-03-18T17:00:00"));
+
+        CalendarTools.Event single = calendarTools.createEvent(as(mama), "Arzt", "2030-04-01", "09:00", null,
+                "10:00", null, null, null, null, null, null, null);
+        assertThat(calendarTools.moveEvent(as(mama), single.eventId(), "2030-04-03").start())
+                .isEqualTo("2030-04-03T09:00:00");
+        assertThatThrownBy(() -> calendarTools.moveEvent(as(mama), series.eventId(), "2030-04-03"))
+                .isInstanceOf(Tools.ToolException.class);
+    }
+
+    @Test
+    void createsAndUpdatesContacts() {
+        ContactTools.ContactItem created = contactTools.createContact(as(mama), "Dr. Weber", "Arzt", null,
+                "0711 123", null, null, null, "Stuttgart", null, null);
+        ContactTools.ContactItem updated = contactTools.updateContact(as(mama), created.id(), null, null, "Praxis Weber",
+                "", null, null, null, null, null, "Mo geschlossen");
+
+        assertThat(updated.name()).isEqualTo("Dr. Weber");
+        assertThat(updated.company()).isEqualTo("Praxis Weber");
+        assertThat(updated.phone()).isNull();
+        assertThat(updated.city()).isEqualTo("Stuttgart");
+        assertThat(contactTools.searchContacts(as(mama), "weber")).hasSize(1);
+    }
+
+    @Test
     void staleVersionIsReportedAsToolError() {
         TodoTools.TodoDetail created = todoTools.createTodo(as(mama), "Fenster putzen", null, null, null, null,
                 null, null, null, null, null, null, null, null);
