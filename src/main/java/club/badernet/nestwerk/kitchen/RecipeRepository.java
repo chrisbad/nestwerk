@@ -8,9 +8,12 @@ import java.util.List;
 
 public interface RecipeRepository extends JpaRepository<Recipe, Long> {
 
+    /** Mit Zutaten und Lebensmitteln, damit Listen ohne offene Sitzung die Nährwerte berechnen können. */
+    @Query("SELECT DISTINCT r FROM Recipe r LEFT JOIN FETCH r.ingredients i LEFT JOIN FETCH i.food ORDER BY r.title")
     List<Recipe> findAllByOrderByTitleAsc();
 
-    @Query("SELECT r FROM Recipe r WHERE lower(r.title) LIKE lower(concat('%', :q, '%')) "
+    @Query("SELECT DISTINCT r FROM Recipe r LEFT JOIN FETCH r.ingredients i LEFT JOIN FETCH i.food "
+            + "WHERE lower(r.title) LIKE lower(concat('%', :q, '%')) "
             + "OR lower(coalesce(r.tags, '')) LIKE lower(concat('%', :q, '%')) ORDER BY r.title")
     List<Recipe> search(String q);
 
