@@ -574,6 +574,10 @@ public class KitchenTools {
         return members.findAll().stream().collect(Collectors.toMap(FamilyMember::getId, FamilyMember::getName));
     }
 
+    static FoodItem foodItem(Food f) {
+        return food(f);
+    }
+
     private static FoodItem food(Food f) {
         return new FoodItem(f.getId(), f.getName(), f.getCategory().name(), f.getKcal(), f.getProtein(), f.getFat(),
                 f.getCarbs(), f.getPieceGrams(), f.getPackageGrams(), f.getBarcode());

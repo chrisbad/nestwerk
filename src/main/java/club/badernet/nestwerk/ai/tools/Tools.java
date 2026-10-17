@@ -5,6 +5,7 @@ import club.badernet.nestwerk.calendar.EventNotFoundException;
 import club.badernet.nestwerk.contact.ContactNotFoundException;
 import club.badernet.nestwerk.household.ChoreConflictException;
 import club.badernet.nestwerk.household.ChoreNotFoundException;
+import club.badernet.nestwerk.kitchen.integration.ExternalServiceException;
 import club.badernet.nestwerk.notification.NotificationNotFoundException;
 import club.badernet.nestwerk.todo.TodoConflictException;
 import club.badernet.nestwerk.todo.TodoNotFoundException;
@@ -75,7 +76,7 @@ public class Tools {
             throw new ToolException("Der Eintrag wurde inzwischen geändert. Bitte neu laden und erneut versuchen.");
         } catch (TodoNotFoundException | EventNotFoundException | ChoreNotFoundException | ContactNotFoundException
                  | NotificationNotFoundException | TodoConflictException | ChoreConflictException
-                 | NoSuchElementException e) {
+                 | NoSuchElementException | ExternalServiceException e) {
             throw new ToolException(e.getMessage());
         } catch (RuntimeException e) {
             log.warn("MCP-Tool fehlgeschlagen", e);
