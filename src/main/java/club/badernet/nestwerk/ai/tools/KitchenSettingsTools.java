@@ -3,6 +3,8 @@ package club.badernet.nestwerk.ai.tools;
 import club.badernet.nestwerk.kitchen.BringSync;
 import club.badernet.nestwerk.kitchen.FoodService;
 import club.badernet.nestwerk.kitchen.IngredientInput;
+import club.badernet.nestwerk.kitchen.KitchenAccess;
+import club.badernet.nestwerk.kitchen.KitchenPermission;
 import club.badernet.nestwerk.kitchen.KitchenSettings;
 import club.badernet.nestwerk.kitchen.KitchenSettingsService;
 import club.badernet.nestwerk.kitchen.MealSlot;
@@ -59,10 +61,12 @@ public class KitchenSettingsTools {
     private final RecipeImporter importer;
     private final RecipeService recipes;
     private final FoodService foods;
+    private final KitchenAccess access;
 
     public KitchenSettingsTools(Tools tools, KitchenSettingsService settingsService, KitchenSettings kitchenSettings,
                                 MealSlotRepository slots, FamilyMemberRepository members, BringSync bring,
-                                RecipeImporter importer, RecipeService recipes, FoodService foods) {
+                                RecipeImporter importer, RecipeService recipes, FoodService foods,
+                                KitchenAccess access) {
         this.tools = tools;
         this.settingsService = settingsService;
         this.kitchenSettings = kitchenSettings;
@@ -72,6 +76,7 @@ public class KitchenSettingsTools {
         this.importer = importer;
         this.recipes = recipes;
         this.foods = foods;
+        this.access = access;
     }
 
     @McpTool(name = "kitchen_settings", description = "Zeigt die Küchen-Einstellungen: Mahlzeiten mit ID, Kalorien-"
@@ -162,6 +167,7 @@ public class KitchenSettingsTools {
                                              @McpToolParam(description = "true = Rezept direkt anlegen",
                                                      required = false) Boolean save) {
         return tools.write(context, user -> {
+            access.require(user, KitchenPermission.KITCHEN_RECIPES_EDIT);
             ImportedRecipe r = importer.importFrom(Tools.required(url, "url"));
             Long savedId = null;
             if (Boolean.TRUE.equals(save)) {

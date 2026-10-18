@@ -76,6 +76,12 @@ class KitchenSettingsToolsTest {
     }
 
     @Test
+    void recipeImportNeedsEditRightBeforeAnyFetch() {
+        assertThatThrownBy(() -> settingsTools.importRecipeFromUrl(as(guest), "https://example.org/rezept", false))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Berechtigung");
+    }
+
+    @Test
     void findsKnownFoodByBarcode() {
         foods.create(new FoodInput("Testflocken Spezial", FoodCategory.PANTRY, 370.0, 13.0, 7.0, 59.0, null, 500.0, null,
                 "4001234567890"), FoodSource.MANUAL, chef);
