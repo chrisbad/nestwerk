@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Noten')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='school')}"></header>
+<main class="event-main school-main">
+    <p><a th:href="@{/school}">← Schule</a></p>
+    <h1 th:text="|Noten ${member.name}|">Noten Lena</h1>
+    <p class="muted" th:text="|${year.school}, Klasse ${year.className}, Schuljahr ${year.label}|">Grundschule, Klasse 3a</p>
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <nav class="week-nav" aria-label="Halbjahr">
+        <a class="button button-small" th:classappend="${term == 1} ? '' : 'button-ghost'"
+           th:href="@{/school/years/{id}/grades(id=${year.id},term=1)}">1. Halbjahr</a>
+        <a class="button button-small" th:classappend="${term == 2} ? '' : 'button-ghost'"
+           th:href="@{/school/years/{id}/grades(id=${year.id},term=2)}">2. Halbjahr</a>
+        <strong th:if="${overview.overallAverage != null}" th:text="|Gesamtschnitt ${overview.overallLabel()}|">Gesamtschnitt 2,10</strong>
+    </nav>
+
+    <section class="sheet settings-block" th:each="row : ${overview.subjects}">
+        <h2 th:style="|border-left: 4px solid ${row.subject.color}; padding-left: .6rem|" th:text="${row.subject.name}">Mathe</h2>
+        <p class="muted" th:if="${#lists.isEmpty(row.grades)}">Noch keine Noten.</p>
+        <p th:if="${row.average != null}">
+            <strong th:text="|Ø ${row.averageLabel()}|">Ø 2,33</strong>
+            <span class="badge" th:if="${row.report != null}" th:text="|Zeugnis ${row.report.label}|">Zeugnis 2</span>
+            <svg th:if="${spark[row.subject.id] != ''}" viewBox="0 0 100 24" width="120" height="28" role="img"
+                 aria-label="Verlauf des Durchschnitts" class="sparkline">
+                <polyline fill="none" stroke="currentColor" stroke-width="1.5" th:attr="points=${spark[row.subject.id]}"></polyline>
+            </svg>
+        </p>
+        <ul class="plain-list">
+            <li th:each="g : ${row.grades}">
+                <strong class="grade" th:text="${g.label}">2+</strong>
+                <span th:text="${g.kind.label()}">Schriftlich</span>
+                <span class="muted" th:text="${#temporals.format(g.day, 'dd.MM.yyyy')}">10.09.2026</span>
+                <span class="badge" th:if="${g.weight != 100}" th:text="|${g.weight / 100.0}x|">2x</span>
+                <span class="muted" th:if="${g.note != null}" th:text="${g.note}"></span>
+                <form method="post" th:action="@{/school/grades/{id}/delete(id=${g.id})}" th:if="${canEdit}"
+                      data-confirm="Note löschen?" class="inline-form">
+                    <input type="hidden" name="yearId" th:value="${year.id}">
+                    <input type="hidden" name="term" th:value="${term}">
+                    <button type="submit" class="button button-ghost button-small">Löschen</button>
+                </form>
+            </li>
+        </ul>
+        <form method="post" th:action="@{/school/years/{id}/report-grades(id=${year.id})}" th:if="${canEdit}" class="slot-row">
+            <input type="hidden" name="subjectId" th:value="${row.subject.id}">
+            <input type="hidden" name="term" th:value="${term}">
+            <input type="text" name="grade" maxlength="4" size="4" placeholder="Zeugnis" aria-label="Zeugnisnote"
+                   th:value="${row.report != null} ? ${row.report.label}">
+            <button type="submit" class="button button-ghost button-small">Zeugnisnote speichern</button>
+        </form>
+    </section>
+
+    <section class="sheet settings-block" th:if="${canEdit and !#lists.isEmpty(overview.subjects)}">
+        <h2>Neue Note</h2>
+        <form method="post" th:action="@{/school/years/{id}/grades(id=${year.id})}" class="slot-row">
+            <input type="hidden" name="term" th:value="${term}">
+            <select name="subjectId" required aria-label="Fach">
+                <option th:each="r : ${overview.subjects}" th:value="${r.subject.id}" th:text="${r.subject.name}">Mathe</option>
+            </select>
+            <input type="text" name="grade" required maxlength="4" size="4" placeholder="z. B. 2+" aria-label="Note">
+            <select name="kind" aria-label="Art">
+                <option th:each="k : ${kinds}" th:value="${k.name()}" th:text="${k.label()}">Schriftlich</option>
+            </select>
+            <select name="weight" aria-label="Gewicht">
+                <option th:each="w : ${weights}" th:value="${w.key}" th:text="${w.value}">einfach</option>
+            </select>
+            <input type="date" name="day" required th:value="${today}" aria-label="Datum">
+            <input type="text" name="note" maxlength="200" placeholder="Notiz" aria-label="Notiz">
+            <button type="submit" class="button button-small">Speichern</button>
+        </form>
+        <p class="muted">Tendenzen: 2+ ist 1,7 und 2- ist 2,3. Der Durchschnitt zählt doppelte Noten zweimal.</p>
+    </section>
+</main>
+</body>
+</html>

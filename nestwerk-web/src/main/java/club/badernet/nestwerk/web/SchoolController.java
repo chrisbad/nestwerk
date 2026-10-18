@@ -3,6 +3,7 @@ package club.badernet.nestwerk.web;
 import club.badernet.nestwerk.blocker.GermanHolidays;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberService;
+import club.badernet.nestwerk.school.GradeService;
 import club.badernet.nestwerk.school.SchoolAccess;
 import club.badernet.nestwerk.school.SchoolPermission;
 import club.badernet.nestwerk.school.SchoolProfile;
@@ -39,9 +40,11 @@ public class SchoolController {
     private final FamilyMemberService members;
     private final CurrentUser currentUser;
     private final CalendarSettings calendarSettings;
+    private final GradeService grades;
 
     public SchoolController(SchoolService school, SchoolAccess access, FamilyMemberService members,
-                            CurrentUser currentUser, CalendarSettings calendarSettings) {
+                            CurrentUser currentUser, CalendarSettings calendarSettings, GradeService grades) {
+        this.grades = grades;
         this.school = school;
         this.access = access;
         this.members = members;
@@ -69,6 +72,8 @@ public class SchoolController {
                 .toList();
         var withProfile = rows.stream().map(r -> r.member().getId()).collect(Collectors.toSet());
         model.addAttribute("rows", rows);
+        model.addAttribute("gradeYears", rows.stream().map(ProfileRow::active).filter(java.util.Objects::nonNull)
+                .map(SchoolYear::getId).filter(id -> grades.mayView(id, user)).collect(Collectors.toSet()));
         model.addAttribute("freeMembers", members.findAll().stream()
                 .filter(m -> !withProfile.contains(m.getId())).toList());
         model.addAttribute("states", new TreeMap<>(GermanHolidays.STATES));

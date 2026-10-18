@@ -35,6 +35,8 @@
             <a class="button button-small" th:href="@{/school/years/{id}/timetable(id=${row.active.id})}">Stundenplan</a>
             <a class="button button-small" th:href="@{/school/years/{id}/homework(id=${row.active.id})}">Hausaufgaben</a>
             <a class="button button-small" th:href="@{/school/years/{id}/exams(id=${row.active.id})}">Klassenarbeiten</a>
+            <a class="button button-small" th:if="${gradeYears.contains(row.active.id)}"
+               th:href="@{/school/years/{id}/grades(id=${row.active.id})}">Noten</a>
         </p>
 
         <h3>Schuljahre</h3>
