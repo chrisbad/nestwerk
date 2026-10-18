@@ -7,17 +7,41 @@ Spring-Boot-Webanwendung (Java 25, Maven, Thymeleaf, PostgreSQL, Flyway) für de
 Voraussetzungen: JDK 25, Docker.
 
 ```bash
-./mvnw spring-boot:run
+./mvnw -pl nestwerk-app -am compile spring-boot:run
 ```
 
 `spring-boot-docker-compose` startet die Datenbank aus `compose.yaml` automatisch.
 Beim ersten Start muss ein Admin-Passwort gesetzt sein:
 
 ```bash
-NESTWERK_ADMIN_PASSWORD=changeme ./mvnw spring-boot:run
+NESTWERK_ADMIN_PASSWORD=changeme ./mvnw -pl nestwerk-app -am compile spring-boot:run
 ```
 
 Tests (benötigen laufendes Docker für Testcontainers): `./mvnw verify`
+
+## Modulstruktur
+
+Der Build ist ein Maven-Multi-Module-Projekt. Die Abhängigkeiten laufen nur in eine Richtung (kein Zyklus):
+
+| Modul | Inhalt | hängt ab von |
+|---|---|---|
+| `nestwerk-core` | Benutzer, Rollen, Rechte/ACL, Familienmitglieder, App-Einstellungen | – |
+| `nestwerk-calendar` | Kalender, Termine, Blocker (Abwesenheiten, Ruhezeiten) | core |
+| `nestwerk-notification` | Benachrichtigungen, Mail und Web-Push | core, calendar |
+| `nestwerk-contact` | Kontakte | core |
+| `nestwerk-todo` | ToDos | core, notification, contact |
+| `nestwerk-household` | Haushaltsplan, Belohnungen, Tablet-Geräte | core, calendar, notification |
+| `nestwerk-kitchen` | Rezepte, Vorrat, Essensplan, Einkaufsliste | core, calendar, notification |
+| `nestwerk-attachment` | Dateianhänge | core, contact, todo, kitchen |
+| `nestwerk-transfer` | Import/Export (iCalendar, vCard, CSV) | core, calendar, contact, todo |
+| `nestwerk-maintenance` | Datensicherung und Updates | core, notification, attachment |
+| `nestwerk-web` | Controller, Formulare, Templates, statische Dateien | alle Fachmodule |
+| `nestwerk-ai` | MCP-Server, OAuth 2.1, API-Tokens | web und alle Fachmodule |
+| `nestwerk-app` | Startklasse, Konfiguration, Flyway-Migrationen, `application.yaml`, alle Tests | ai |
+
+Rechte melden Module über `PermissionSource` an den Katalog in `core`; so braucht `core` die Rechte-Enums der anderen
+Module nicht zu kennen. Die Tests liegen gebündelt in `nestwerk-app`, weil sie die vollständige Anwendung samt
+Datenbankmigrationen benötigen. Das ausführbare JAR entsteht unter `nestwerk-app/target/`.
 
 ## Auf dem Linuxserver installieren
 
@@ -223,7 +247,7 @@ Hinter nginx-proxy zusätzlich `proxy/nestwerk-vhost.conf` erneut nach `/opt/pro
 **Regeln für neue Versionen**, damit Updates nie Daten verlieren:
 - Migrationen nur hinzufügend oder mit Datenübernahme; `MigrationUpgradeTest` migriert Bestandsdaten von V18 auf den
   neuesten Stand und vergleicht die Zeilen. Bei jedem Release einen weiteren Snapshot unter
-  `src/test/resources/db/upgrade/` ergänzen.
+  `nestwerk-app/src/test/resources/db/upgrade/` ergänzen.
 - Neue Variablen in den Compose-Dateien immer mit Standardwert (`${VAR:-…}`): Ein Update ändert `.env` nur bei
   `NESTWERK_VERSION`.
 

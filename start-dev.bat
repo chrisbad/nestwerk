@@ -33,4 +33,4 @@ exit /b 1
 :docker_ready
 
 echo Starte Nestwerk auf http://localhost:%SERVER_PORT% (Login: %NESTWERK_ADMIN_USERNAME% / %NESTWERK_ADMIN_PASSWORD%)
-call "%~dp0mvnw.cmd" spring-boot:run
+call "%~dp0mvnw.cmd" -pl nestwerk-app -am compile spring-boot:run
