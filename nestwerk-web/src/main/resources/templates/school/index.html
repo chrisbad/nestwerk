@@ -33,6 +33,7 @@
 
         <p th:if="${row.active != null}">
             <a class="button button-small" th:href="@{/school/years/{id}/timetable(id=${row.active.id})}">Stundenplan</a>
+            <a class="button button-small" th:href="@{/school/years/{id}/homework(id=${row.active.id})}">Hausaufgaben</a>
         </p>
 
         <h3>Schuljahre</h3>
