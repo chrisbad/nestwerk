@@ -18,7 +18,7 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/login", "/error", "/actuator/health/**",
-                                "/css/**", "/js/**", "/fonts/**", "/favicon.svg", "/icons/**",
+                                "/css/**", "/js/**", "/fonts/**", "/favicon.ico", "/icons/**",
                                 "/sw.js", "/manifest.webmanifest").permitAll()
                         // OAuth-Metadaten des MCP-Servers, damit KI-Assistenten den Login finden (OAuthConfig)
                         .requestMatchers("/.well-known/oauth-protected-resource",
