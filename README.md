@@ -143,7 +143,20 @@ Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich:
 ### KI-Anbindung (MCP)
 
 Nestwerk enthält einen MCP-Server unter `https://<nestwerk>/mcp`. Darüber kann ein KI-Assistent wie Claude
-Termine, ToDos, den Haushaltsplan, die Küche, Kontakte und Benachrichtigungen lesen und bearbeiten. Löschen kann er nichts.
+Termine, ToDos, den Haushaltsplan, die Küche, Kontakte, Zeiten und Benachrichtigungen lesen und bearbeiten. Löschen
+kann er nichts; nur Verknüpfungen lösen, einzelne Terminvorkommen absagen und feste Haushalts-Termine entfernen geht.
+
+- **Umfang:** ToDos mit Unterstruktur, Verknüpfungen, Beobachtern, Wiedervorlage und Verlauf; Termine samt
+  einzelner Serienvorkommen; Kontakte; Haushaltsplan mit Auswertung, Gutschrift-Korrekturen, Belohnungen und
+  iCal-Abos; Küche inklusive Einstellungen, Rezept-Import per Adresse und Barcode-Suche; Zeiten (Blocker) und
+  Ruhe-Ziele; Benachrichtigungs-Einstellungen; Anhänge (Text lesen, kleine Dateien hinzufügen); Export und Import
+  als Text mit Vorschau.
+- **Verwaltung:** Mit den passenden Verwaltungsrechten auch Benutzerrollen, Familienmitglieder, Rollen und
+  Zugriffsregeln, Sicherungsplan, Updates und globale Benachrichtigungs-Einstellungen. Es gelten dieselben Regeln
+  gegen Rechteausweitung wie in der Weboberfläche.
+- **Bewusst nur in der Weboberfläche:** Passwörter und Benutzer anlegen, KI-Token, Bring!-Anmeldung, Zugangsdaten
+  für Sicherungsziele, Verschlüsselungs-Passphrase, Wiederherstellen und Löschen von Sicherungen, PINs und
+  Tablet-Kopplung, Push-Geräte einrichten.
 
 - Der Assistent handelt immer als ein Benutzer und hat genau dessen Rechte. Ein Administrator gibt einer Rolle das
   Recht „KI-Zugang nutzen“. Danach legt jeder Benutzer unter „KI-Zugänge“ (Benutzermenü) ein eigenes Token an.
