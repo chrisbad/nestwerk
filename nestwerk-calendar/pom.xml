@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>club.badernet</groupId>
+        <artifactId>nestwerk-parent</artifactId>
+        <version>${revision}</version>
+    </parent>
+    <artifactId>nestwerk-calendar</artifactId>
+    <name>nestwerk-calendar</name>
+    <description>Kalender, Termine und Blocker (Abwesenheiten, Ruhezeiten)</description>
+    <dependencies>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mnode.ical4j</groupId>
+            <artifactId>ical4j</artifactId>
+        </dependency>
+    </dependencies>
+</project>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>club.badernet</groupId>
+        <artifactId>nestwerk-parent</artifactId>
+        <version>${revision}</version>
+    </parent>
+    <artifactId>nestwerk-attachment</artifactId>
+    <name>nestwerk-attachment</name>
+    <description>Dateianhänge für ToDos, Kontakte und Rezepte</description>
+    <dependencies>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-contact</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-todo</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-kitchen</artifactId>
+        </dependency>
+    </dependencies>
+</project>

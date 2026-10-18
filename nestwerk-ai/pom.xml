@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>club.badernet</groupId>
+        <artifactId>nestwerk-parent</artifactId>
+        <version>${revision}</version>
+    </parent>
+    <artifactId>nestwerk-ai</artifactId>
+    <name>nestwerk-ai</name>
+    <description>KI-Zugang über MCP mit OAuth 2.1 und API-Tokens</description>
+    <dependencies>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-calendar</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-notification</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-contact</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-todo</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-household</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-kitchen</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-attachment</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-transfer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-maintenance</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-authorization-server</artifactId>
+        </dependency>
+    </dependencies>
+</project>
