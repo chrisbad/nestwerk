@@ -72,6 +72,8 @@ class AttachmentToolsTest {
                 .isInstanceOf(Tools.ToolException.class);
         assertThatThrownBy(() -> attachmentTools.addAttachment(as(admin), "TODO", todo, "a.txt", null, "###"))
                 .isInstanceOf(Tools.ToolException.class).hasMessageContaining("base64");
+        assertThatThrownBy(() -> attachmentTools.addAttachment(as(outsider), "TODO", todo, "a.txt", "x", null))
+                .isInstanceOf(Tools.ToolException.class);
         assertThatThrownBy(() -> attachmentTools.listAttachments(as(outsider), "TODO", todo))
                 .isInstanceOf(Tools.ToolException.class);
         assertThatThrownBy(() -> attachmentTools.listAttachments(as(admin), "EVENT", todo))

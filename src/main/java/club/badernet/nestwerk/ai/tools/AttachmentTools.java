@@ -116,6 +116,7 @@ public class AttachmentTools {
                                         String base64) {
         return tools.write(context, user -> {
             AttachmentOwner owner = owner(ownerType, ownerId);
+            requireVisible(owner, user);
             byte[] data;
             if (base64 != null && !base64.isBlank()) {
                 try {
