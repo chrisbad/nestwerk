@@ -39,6 +39,10 @@ public class SchoolYear {
     @Column(nullable = false)
     private boolean active;
 
+    /** Montag einer A-Woche; leer = der Stundenplan kennt keine A/B-Wochen. */
+    @Column(name = "week_a_start")
+    private LocalDate weekAStart;
+
     protected SchoolYear() {
     }
 
@@ -54,6 +58,10 @@ public class SchoolYear {
         this.className = className;
         this.startsOn = startsOn;
         this.endsOn = endsOn;
+    }
+
+    public void changeWeekAStart(LocalDate weekAStart) {
+        this.weekAStart = weekAStart;
     }
 
     public void setActive(boolean active) {
@@ -86,6 +94,10 @@ public class SchoolYear {
 
     public LocalDate getEndsOn() {
         return endsOn;
+    }
+
+    public LocalDate getWeekAStart() {
+        return weekAStart;
     }
 
     public boolean isActive() {

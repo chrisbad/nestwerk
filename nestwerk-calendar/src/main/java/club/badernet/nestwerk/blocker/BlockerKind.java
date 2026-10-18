@@ -6,6 +6,7 @@ public enum BlockerKind {
     SLEEP("Schlaf", "schläft da"),
     REST("Ruhe / Pause", "hat da Ruhezeit"),
     LEISURE("Freizeit", "hat da Freizeit"),
+    SCHOOL("Schule", "ist in der Schule"),
     CUSTOM("Eigene", "ist da nicht verfügbar");
 
     private final String label;

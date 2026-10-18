@@ -152,6 +152,6 @@ class BlockerControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("value=\"22:00\"")))
                 .andExpect(content().string(containsString("value=\"06:30\"")));
-        assertThat(BlockerKind.values()).hasSize(5);
+        assertThat(BlockerKind.values()).hasSize(6);
     }
 }

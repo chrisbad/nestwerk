@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Stundenplan')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='school')}"></header>
+<main class="event-main school-main">
+    <p><a th:href="@{/school}">← Schule</a></p>
+    <h1 th:text="|Stundenplan ${member.name}|">Stundenplan Lena</h1>
+    <p class="muted" th:text="|${year.school}, Klasse ${year.className}, Schuljahr ${year.label}|">Grundschule, Klasse 3a</p>
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <nav class="week-nav" aria-label="Woche wählen">
+        <a class="button button-ghost button-small"
+           th:href="@{/school/years/{id}/timetable(id=${year.id},week=${previousWeek})}">← Vorherige</a>
+        <strong th:text="|Woche ab ${#temporals.format(monday, 'dd.MM.yyyy')}|">Woche ab 03.08.2026</strong>
+        <span class="badge" th:if="${weekKind != null}" th:text="${weekKind.label()}">A-Woche</span>
+        <a class="button button-ghost button-small"
+           th:href="@{/school/years/{id}/timetable(id=${year.id},week=${nextWeek})}">Nächste →</a>
+    </nav>
+
+    <section class="sheet settings-block" th:each="d : ${days}">
+        <h2 th:text="|${d.name}, ${#temporals.format(d.date, 'dd.MM.')}|"
+            th:classappend="${d.date == today} ? 'today'">Montag, 03.08.</h2>
+        <p class="muted" th:if="${#lists.isEmpty(d.entries)}">Keine Stunden.</p>
+        <ul class="plain-list">
+            <li th:each="e : ${d.entries}" th:style="|border-left: 4px solid ${e.subject.color}; padding-left: .6rem|">
+                <span th:classappend="${e.cancelled()} ? 'struck'">
+                    <strong th:text="${e.subject.name}">Mathe</strong>
+                    <span th:text="|${#temporals.format(e.lesson.startsAt, 'HH:mm')}–${#temporals.format(e.lesson.endsAt, 'HH:mm')}|">08:00–08:45</span>
+                    <span class="muted" th:if="${e.lesson.room != null}" th:text="|Raum ${e.lesson.room}|"></span>
+                    <span class="muted" th:if="${e.subject.teacher != null}" th:text="${e.subject.teacher}"></span>
+                </span>
+                <span class="badge badge-warn" th:if="${e.change != null}"
+                      th:text="${e.change.kind.label()} + (${e.change.note != null} ? ': ' + ${e.change.note} : '')">Entfällt</span>
+                <form method="post" th:action="@{/school/changes/{id}/delete(id=${e.change.id})}"
+                      th:if="${canEdit and e.change != null}" class="inline-form">
+                    <input type="hidden" name="yearId" th:value="${year.id}">
+                    <input type="hidden" name="week" th:value="${monday}">
+                    <button type="submit" class="button button-ghost button-small">Wieder normal</button>
+                </form>
+                <details th:if="${canEdit and e.change == null}">
+                    <summary>Ausfall / Vertretung</summary>
+                    <form method="post" th:action="@{/school/lessons/{id}/changes(id=${e.lesson.id})}" class="slot-row">
+                        <input type="hidden" name="yearId" th:value="${year.id}">
+                        <input type="hidden" name="week" th:value="${monday}">
+                        <input type="hidden" name="day" th:value="${d.date}">
+                        <select name="kind" aria-label="Art">
+                            <option th:each="k : ${changeKinds}" th:value="${k.name()}" th:text="${k.label()}">Entfällt</option>
+                        </select>
+                        <input type="text" name="note" maxlength="200" placeholder="Hinweis" aria-label="Hinweis">
+                        <button type="submit" class="button button-small">Speichern</button>
+                    </form>
+                </details>
+            </li>
+        </ul>
+    </section>
+
+    <section class="sheet settings-block" th:if="${canEdit}">
+        <h2>Fächer</h2>
+        <ul class="plain-list">
+            <li th:each="s : ${subjects}">
+                <form method="post" th:action="@{/school/subjects/{id}(id=${s.id})}" class="slot-row">
+                    <input type="hidden" name="yearId" th:value="${year.id}">
+                    <input type="hidden" name="week" th:value="${monday}">
+                    <input type="color" name="color" th:value="${s.color}" aria-label="Farbe">
+                    <input type="text" name="name" th:value="${s.name}" maxlength="60" required aria-label="Name">
+                    <input type="text" name="teacher" th:value="${s.teacher}" maxlength="100" placeholder="Lehrkraft"
+                           aria-label="Lehrkraft">
+                    <button type="submit" class="button button-ghost button-small">Speichern</button>
+                </form>
+                <form method="post" th:action="@{/school/subjects/{id}/delete(id=${s.id})}"
+                      data-confirm="Fach mit allen Stunden löschen?" class="inline-form">
+                    <input type="hidden" name="yearId" th:value="${year.id}">
+                    <input type="hidden" name="week" th:value="${monday}">
+                    <button type="submit" class="button button-ghost button-small">Löschen</button>
+                </form>
+            </li>
+        </ul>
+        <form method="post" th:action="@{/school/years/{id}/subjects(id=${year.id})}" class="slot-row">
+            <input type="hidden" name="week" th:value="${monday}">
+            <input type="text" name="name" maxlength="60" required placeholder="Neues Fach" aria-label="Neues Fach">
+            <input type="text" name="teacher" maxlength="100" placeholder="Lehrkraft" aria-label="Lehrkraft">
+            <button type="submit" class="button button-small">Anlegen</button>
+        </form>
+    </section>
+
+    <section class="sheet settings-block" th:if="${canEdit}">
+        <h2>A/B-Wochen</h2>
+        <p class="muted">Wenn der Stundenplan alle zwei Wochen wechselt: eine beliebige Woche angeben, die eine A-Woche ist.</p>
+        <form method="post" th:action="@{/school/years/{id}/week-plan(id=${year.id})}" class="slot-row">
+            <input type="hidden" name="week" th:value="${monday}">
+            <input type="date" name="weekAStart" th:value="${year.weekAStart}" aria-label="Datum einer A-Woche">
+            <button type="submit" class="button button-small">Speichern</button>
+        </form>
+        <p class="muted">Feld leeren und speichern schaltet A/B-Wochen ab.</p>
+    </section>
+
+    <section class="sheet settings-block" th:if="${canEdit and !#lists.isEmpty(subjects)}">
+        <h2>Stunden</h2>
+        <ul class="plain-list">
+            <li th:each="l : ${lessons}">
+                <span th:text="${l.weekday.getDisplayName(T(java.time.format.TextStyle).SHORT, T(java.util.Locale).GERMAN)}">Mo</span>
+                <span th:text="|${#temporals.format(l.startsAt, 'HH:mm')}–${#temporals.format(l.endsAt, 'HH:mm')}|">08:00–08:45</span>
+                <span th:each="s : ${subjects}" th:if="${s.id == l.subjectId}" th:text="${s.name}">Mathe</span>
+                <span class="muted" th:if="${l.room != null}" th:text="${l.room}"></span>
+                <span class="badge" th:if="${l.weekKind.name() != 'EVERY'}" th:text="${l.weekKind.label()}">A-Woche</span>
+                <form method="post" th:action="@{/school/lessons/{id}/delete(id=${l.id})}" class="inline-form">
+                    <input type="hidden" name="yearId" th:value="${year.id}">
+                    <input type="hidden" name="week" th:value="${monday}">
+                    <button type="submit" class="button button-ghost button-small">Löschen</button>
+                </form>
+            </li>
+        </ul>
+        <form method="post" th:action="@{/school/years/{id}/lessons(id=${year.id})}" class="slot-row">
+            <input type="hidden" name="week" th:value="${monday}">
+            <select name="subjectId" required aria-label="Fach">
+                <option th:each="s : ${subjects}" th:value="${s.id}" th:text="${s.name}">Mathe</option>
+            </select>
+            <select name="weekday" required aria-label="Wochentag">
+                <option th:each="w : ${weekdays}" th:value="${w.name()}"
+                        th:text="${w.getDisplayName(T(java.time.format.TextStyle).FULL, T(java.util.Locale).GERMAN)}">Montag</option>
+            </select>
+            <input type="time" name="startsAt" required aria-label="Beginn">
+            <input type="time" name="endsAt" required aria-label="Ende">
+            <input type="text" name="room" maxlength="30" placeholder="Raum" aria-label="Raum">
+            <select name="weekKind" aria-label="Wochen">
+                <option th:each="k : ${weekKinds}" th:value="${k.name()}" th:text="${k.label()}">Jede Woche</option>
+            </select>
+            <button type="submit" class="button button-small">Anlegen</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>

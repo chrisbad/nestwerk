@@ -31,6 +31,10 @@
         <p class="muted" th:if="${!canSettings and row.profile.state != null}"
            th:text="|Bundesland: ${states[row.profile.state]}|"></p>
 
+        <p th:if="${row.active != null}">
+            <a class="button button-small" th:href="@{/school/years/{id}/timetable(id=${row.active.id})}">Stundenplan</a>
+        </p>
+
         <h3>Schuljahre</h3>
         <ul class="plain-list">
             <li th:each="y : ${row.years}">

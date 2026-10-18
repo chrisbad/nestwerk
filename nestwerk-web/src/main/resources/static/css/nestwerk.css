@@ -2821,6 +2821,7 @@ a { color: var(--moss); }
 .band-sleep { --band-color: #4d74ff; }
 .band-rest { --band-color: var(--ok); }
 .band-leisure { --band-color: var(--honey); }
+.band-school { --band-color: #b0702a; }
 /* Monat: nur schmale Leisten, Text im Tooltip */
 .bands-compact { display: flex; gap: 2px; margin: 0.15rem 0 0.25rem; }
 .bands-compact .band { flex: 1 1 0; height: 4px; padding: 0; border: 0; border-radius: 2px;
@@ -2859,6 +2860,7 @@ a { color: var(--moss); }
 
 .kind-work { --kind: var(--moss); }
 .kind-sleep { --kind: #4d74ff; }
+.kind-school { --kind: #b0702a; }
 .kind-rest { --kind: var(--ok); }
 .kind-leisure { --kind: var(--honey); }
 .kind-custom { --kind: var(--pink); }
@@ -3234,3 +3236,12 @@ a { color: var(--moss); }
 .manual-faq dd { margin: 0.2rem 0 0; }
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+/* Schule */
+.school-main .plain-list { list-style: none; margin: 0.25rem 0 0.75rem; padding: 0; display: grid; gap: 0.5rem; }
+.school-main .plain-list li { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.school-main .week-nav { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin: 0.5rem 0 1rem; }
+.school-main .struck { text-decoration: line-through; opacity: 0.6; }
+.school-main .badge-warn { background: var(--honey-soft); }
+.school-main h2.today::after { content: " · heute"; color: var(--moss); font-weight: 500; font-size: 0.85em; }
+.school-main details > summary { cursor: pointer; color: var(--muted, inherit); }

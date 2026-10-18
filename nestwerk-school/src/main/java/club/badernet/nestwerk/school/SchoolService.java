@@ -16,12 +16,14 @@ public class SchoolService {
     private final SchoolProfileRepository profiles;
     private final SchoolYearRepository years;
     private final FamilyMemberRepository members;
+    private final SchoolBlockerSync sync;
 
     public SchoolService(SchoolProfileRepository profiles, SchoolYearRepository years,
-                         FamilyMemberRepository members) {
+                         FamilyMemberRepository members, SchoolBlockerSync sync) {
         this.profiles = profiles;
         this.years = years;
         this.members = members;
+        this.sync = sync;
     }
 
     @Transactional(readOnly = true)
@@ -78,9 +80,14 @@ public class SchoolService {
         SchoolYear year = new SchoolYear(profileId, requireText(label, "Bezeichnung", 30),
                 requireText(school, "Schule", 150), requireText(className, "Klasse", 30), requireDate(startsOn),
                 requireEnd(startsOn, endsOn));
-        deactivateCurrent(profileId);
+        Long previous = deactivateCurrent(profileId);
         year.setActive(true);
-        return years.save(year);
+        SchoolYear saved = years.save(year);
+        if (previous != null) {
+            sync.sync(previous);
+        }
+        sync.sync(saved.getId());
+        return saved;
     }
 
     @Transactional
@@ -88,21 +95,30 @@ public class SchoolService {
                            LocalDate endsOn) {
         requireYear(yearId).change(requireText(label, "Bezeichnung", 30), requireText(school, "Schule", 150),
                 requireText(className, "Klasse", 30), requireDate(startsOn), requireEnd(startsOn, endsOn));
+        years.flush();
+        sync.sync(yearId);
     }
 
     /** Macht ein früheres Schuljahr wieder zum aktiven. */
     @Transactional
     public void activate(Long yearId) {
         SchoolYear year = requireYear(yearId);
-        deactivateCurrent(year.getProfileId());
+        Long previous = deactivateCurrent(year.getProfileId());
         year.setActive(true);
+        years.flush();
+        if (previous != null) {
+            sync.sync(previous);
+        }
+        sync.sync(yearId);
     }
 
-    private void deactivateCurrent(Long profileId) {
-        years.findByProfileIdAndActiveTrue(profileId).ifPresent(old -> {
+    /** Macht das aktive Jahr inaktiv und gibt dessen ID zurück ({@code null}, wenn keines aktiv war). */
+    private Long deactivateCurrent(Long profileId) {
+        return years.findByProfileIdAndActiveTrue(profileId).map(old -> {
             old.setActive(false);
             years.flush();
-        });
+            return old.getId();
+        }).orElse(null);
     }
 
     private SchoolProfile requireProfile(Long id) {
