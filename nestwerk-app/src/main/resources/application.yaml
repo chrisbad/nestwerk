@@ -1,0 +1,73 @@
+spring:
+  application:
+    name: nestwerk
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/mydatabase}
+    username: ${DB_USER:myuser}
+    password: ${DB_PASSWORD:secret}
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USER:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${MAIL_AUTH:true}
+      mail.smtp.starttls.enable: ${MAIL_STARTTLS:true}
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 15000
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 100MB
+  ai:
+    mcp:
+      server:
+        name: nestwerk
+        version: 1.0.0
+        type: sync
+        protocol: stateless
+        streamable-http:
+          mcp-endpoint: /mcp
+        capabilities:
+          prompt: false
+          resource: false
+          completion: false
+        instructions: >-
+          Nestwerk ist die Familien-App mit Kalender, ToDos, Haushaltsplan, Kontakten und Benachrichtigungen.
+          Alle Tools handeln im Namen des angemeldeten Benutzers und haben genau seine Rechte.
+          Beginne mit today_overview oder whoami. IDs von Familienmitgliedern liefert list_members.
+          Datumsangaben im Format JJJJ-MM-TT, Uhrzeiten als HH:MM in der Zeitzone der App.
+          Löschen ist über diese Schnittstelle nicht möglich.
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
+server:
+  forward-headers-strategy: framework
+
+management:
+  health:
+    mail:
+      enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+nestwerk:
+  admin:
+    username: ${NESTWERK_ADMIN_USERNAME:admin}
+    password: ${NESTWERK_ADMIN_PASSWORD:}
+  timezone: ${NESTWERK_TIMEZONE:Europe/Berlin}
+  attachments:
+    dir: ${NESTWERK_ATTACHMENT_DIR:./data/attachments}
+  backup:
+    dir: ${NESTWERK_BACKUP_DIR:./data/backups}
+    external-dir: ${NESTWERK_EXTERNAL_BACKUP_DIR:./data/external}
+  secret-key: ${NESTWERK_SECRET_KEY:}
+  base-url: ${NESTWERK_BASE_URL:http://localhost:8080}
+  kitchen:
+    seed-recipes: ${NESTWERK_SEED_RECIPES:true}
+  mail:
+    from: ${MAIL_FROM:}

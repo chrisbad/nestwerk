@@ -1,0 +1,38 @@
+package club.badernet.nestwerk.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+@EnableMethodSecurity
+public class SecurityConfig {
+
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/login", "/error", "/actuator/health/**",
+                                "/css/**", "/js/**", "/fonts/**", "/favicon.ico", "/icons/**",
+                                "/sw.js", "/manifest.webmanifest").permitAll()
+                        // OAuth-Metadaten des MCP-Servers, damit KI-Assistenten den Login finden (OAuthConfig)
+                        .requestMatchers("/.well-known/oauth-protected-resource",
+                                "/.well-known/oauth-protected-resource/**").permitAll()
+                        // Wand-Tablet: eigene Prüfung über das Geräte-Cookie im TabletController
+                        .requestMatchers("/tablet", "/tablet/**").permitAll()
+                        .anyRequest().authenticated())
+                .formLogin(form -> form.loginPage("/login").permitAll())
+                .logout(Customizer.withDefaults());
+        return http.build();
+    }
+
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}

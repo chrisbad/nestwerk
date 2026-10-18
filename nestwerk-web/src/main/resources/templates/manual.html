@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Handbuch')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='manual')}"></header>
+<main class="event-main manual-main">
+    <div class="page-head">
+        <div>
+            <h1>Handbuch</h1>
+            <p>So benutzt du Nestwerk – Schritt für Schritt und ohne Vorkenntnisse.</p>
+        </div>
+    </div>
+
+    <div class="manual-layout">
+        <nav class="manual-toc" aria-label="Inhalt">
+            <p class="manual-toc-title">Inhalt</p>
+            <ol>
+                <li><a href="#start">Erste Schritte</a></li>
+                <li><a href="#startseite">Startseite</a></li>
+                <li><a href="#kalender">Kalender</a></li>
+                <li><a href="#zeiten">Zeiten</a></li>
+                <li><a href="#todos">ToDos</a></li>
+                <li><a href="#haushalt">Haushalt</a></li>
+                <li><a href="#tablet">Wand-Tablet</a></li>
+                <li><a href="#kueche">Küche</a></li>
+                <li><a href="#kontakte">Kontakte</a></li>
+                <li><a href="#benachrichtigungen">Benachrichtigungen</a></li>
+                <li><a href="#ki">KI-Assistent</a></li>
+                <li><a href="#verwaltung"
+                       sec:authorize="hasAnyAuthority('USER_MANAGE', 'ACCESS_ROLE_MANAGE', 'MEMBER_MANAGE', 'NOTIFICATION_SETTINGS_MANAGE', 'HOUSEHOLD_DEVICE_MANAGE', 'BACKUP_MANAGE', 'UPDATE_MANAGE')">Verwaltung</a></li>
+                <li><a href="#hilfe">Tipps und Hilfe</a></li>
+            </ol>
+        </nav>
+
+        <div class="manual-body">
+
+            <section id="start" class="sheet manual-section">
+                <h2>Erste Schritte</h2>
+                <p>Nestwerk ist die gemeinsame Familien-App: Termine, ToDos, Hausarbeiten, Essensplan, Einkauf und
+                    Kontakte an einem Ort. Alle in der Familie sehen dieselben Daten – jede und jeder aber nur das,
+                    was die eigene Rolle erlaubt.</p>
+
+                <h3>Anmelden</h3>
+                <ol>
+                    <li>Öffne die Adresse von Nestwerk im Browser (zum Beispiel auf dem Handy oder Laptop).</li>
+                    <li>Gib Benutzername und Passwort ein, die dir ein Administrator gegeben hat.</li>
+                    <li>Mit <strong>Abmelden</strong> im Benutzermenü (Kreis mit deinem Anfangsbuchstaben oben rechts)
+                        meldest du dich wieder ab.</li>
+                </ol>
+
+                <h3>Die Oberfläche</h3>
+                <ul>
+                    <li><strong>Hauptmenü:</strong> Am Computer steht es oben, am Handy als Leiste am unteren Rand.
+                        Dort wählst du den Bereich, zum Beispiel Kalender oder Küche. Alle weiteren Bereiche findest
+                        du am Handy unter <strong>Mehr</strong> (drei Punkte). Du siehst nur die Bereiche, für die du
+                        Rechte hast.</li>
+                    <li><strong>Glocke:</strong> zeigt neue Benachrichtigungen. Die Zahl nennt, wie viele du noch
+                        nicht gelesen hast.</li>
+                    <li><strong>Sonne/Mond-Symbol:</strong> wechselt das Farbschema zwischen Dunkel, Hell und
+                        „wie das Gerät“.</li>
+                    <li><strong>Benutzermenü:</strong> Benachrichtigungen, deine Benachrichtigungswege, die PIN fürs
+                        Tablet, KI-Zugänge und Abmelden. Administratoren finden hier zusätzlich Einstellungen.</li>
+                </ul>
+
+                <h3>Als App aufs Handy</h3>
+                <p>Nestwerk lässt sich wie eine App installieren: Im Browser-Menü <em>„Zum Startbildschirm
+                    hinzufügen“</em> bzw. beim iPhone <em>„Teilen → Zum Home-Bildschirm“</em> wählen. Dann startet es
+                    ohne Adressleiste und kann (wenn du es einschaltest) Push-Nachrichten schicken.</p>
+
+                <h3>Wischen und Ziehen</h3>
+                <p>Am Handy lassen sich Zeilen in ToDo- und Haushaltslisten oft nach rechts wischen, um sie
+                    abzuhaken, und nach links, um sie zu öffnen. Einträge, die man verschieben kann (etwa Mahlzeiten im
+                    Essensplan oder Hausarbeiten in der Wochenübersicht), ziehst du mit gedrücktem Finger oder der
+                    Maus an die neue Stelle.</p>
+            </section>
+
+            <section id="startseite" class="sheet manual-section">
+                <h2>Startseite</h2>
+                <p>Die Startseite zeigt, was heute wichtig ist: Termine von heute, deine ToDos, offene
+                    Hausarbeiten und – soweit du die Rechte hast – Hinweise zu Kontakten oder Sicherungen (sofern du die Rechte dafür hast). Die Ringe zeigen auf
+                    einen Blick, wie viel schon erledigt ist. Mit den Verweisen wie <em>Alle für heute</em> oder
+                    <em>Alle meine ToDos</em> springst du in die jeweilige Liste.</p>
+            </section>
+
+            <section id="kalender" class="sheet manual-section">
+                <h2>Kalender</h2>
+                <p>Der Familienkalender sammelt alle Termine. Oben schaltest du zwischen <strong>Monat</strong>,
+                    <strong>Woche</strong> und <strong>Agenda</strong> (Liste der kommenden Termine) um. Mit
+                    <strong>Heute</strong> springst du zum aktuellen Tag; die Pfeile blättern vor und zurück.</p>
+
+                <h3>Termin anlegen</h3>
+                <ol>
+                    <li>Tippe oben auf <strong>Neuer Termin</strong>.</li>
+                    <li>Gib einen <strong>Titel</strong> ein („Was steht an?“) sowie <strong>Beginn</strong> und
+                        <strong>Ende</strong>. Für Geburtstage und Ähnliches schaltest du <strong>Ganztägig</strong> ein.</li>
+                    <li>Optional: <strong>Ort</strong> und <strong>Notizen</strong>.</li>
+                    <li>Unter <strong>Wiederholung</strong> kannst du einen Termin täglich, wöchentlich, alle
+                        2 Wochen, monatlich oder jährlich wiederholen lassen. Für Sonderfälle gibt es
+                        <em>Benutzerdefiniert …</em> mit einer Regel wie <code>FREQ=MONTHLY;BYDAY=-1FR</code>
+                        (jeden letzten Freitag im Monat).</li>
+                    <li>Unter <strong>Betrifft</strong> wählst du, wen der Termin angeht. Schaltest du
+                        <strong>Abwesend</strong> ein, überspringt der Haushaltsplan diese Personen in dieser Zeit.</li>
+                    <li>Mit <strong>Privat</strong> (nur mit dem entsprechenden Recht) ist der Termin nur für dich und Administratoren sichtbar.</li>
+                    <li>Tippe auf <strong>Speichern</strong>.</li>
+                </ol>
+                <p class="hint">Überschneidet sich der Termin mit eingetragenen Zeiten (zum Beispiel Arbeit oder
+                    Schlaf) oder einem anderen Termin, warnt dich Nestwerk. Mit <strong>Trotzdem speichern</strong>
+                    übernimmst du ihn trotzdem.</p>
+
+                <h3>Termin ändern oder absagen</h3>
+                <ul>
+                    <li>Tippe den Termin an und wähle <strong>Bearbeiten</strong>.</li>
+                    <li>Bei Serien fragt Nestwerk: <strong>Ganze Serie</strong> oder <strong>Nur dieses
+                        Vorkommen</strong> ändern? So kannst du einen einzelnen Termin verschieben, ohne die Serie
+                        anzufassen.</li>
+                    <li><strong>Dieses Vorkommen absagen</strong> streicht nur einen Tag der Serie.</li>
+                    <li><strong>Termin löschen</strong> entfernt den Termin (bei Serien die ganze Serie).</li>
+                </ul>
+
+                <h3>Import und Export</h3>
+                <p>Über <strong>Import</strong> (nur mit Recht zum Anlegen von Terminen) liest du Termine aus einer
+                    Kalenderdatei (iCal, <code>.ics</code>) ein, über <strong>Export</strong> lädst du alle für dich
+                    sichtbaren Termine als Datei herunter, etwa für andere Kalender-Apps. Beim Import zeigt dir
+                    Nestwerk zuerst eine Vorschau; erst nach deiner Bestätigung wird übernommen. Mit dem Schalter
+                    <strong>ToDos</strong> blendest du fällige ToDos im Kalender ein oder aus.</p>
+            </section>
+
+            <section id="zeiten" class="sheet manual-section">
+                <h2>Zeiten</h2>
+                <p>Unter <strong>Zeiten</strong> trägst du ein, wann jemand sonst gebunden ist – zum Beispiel
+                    Arbeit, Schule oder Schlaf. Nestwerk nutzt das, um Hausarbeiten nur dann einzuplanen, wenn die
+                    Person Zeit hat, und um Terminüberschneidungen zu erkennen.</p>
+                <h3>Neue Zeit eintragen</h3>
+                <ol>
+                    <li>Wähle <strong>Neue Zeit</strong>.</li>
+                    <li>Lege fest, <strong>Für</strong> wen sie gilt, und gib einen <strong>Titel</strong> ein
+                        (z. B. „Büro, Spätschicht“).</li>
+                    <li>Wähle die <strong>Art</strong>: Arbeit, Schlaf, Ruhe / Pause, Freizeit oder Eigene.</li>
+                    <li>Gib <strong>Von</strong> und <strong>Bis</strong> (Uhrzeit) und die <strong>Wochentage</strong>
+                        an. <strong>Gilt ab</strong> und <strong>Gilt bis</strong> begrenzen den Zeitraum.</li>
+                    <li>Bei <strong>Ausnahmen</strong> trägst du einzelne freie Tage ein (Format TT.MM.JJJJ).</li>
+                    <li><strong>Andere sehen</strong> bestimmt, ob andere nur „nicht verfügbar“ oder mehr Details
+                        sehen. Unter <strong>Beim Einplanen</strong> legst du fest, ob Hausarbeiten die Zeit
+                        respektieren oder trotzdem einplanen dürfen.</li>
+                </ol>
+                <h3>Feiertage und Ruhe</h3>
+                <p>Wähle dein <strong>Bundesland</strong>, damit gesetzliche Feiertage berücksichtigt werden. Die
+                    Übersicht <em>Freie Zeitfenster pro Woche</em> zeigt, wann noch Luft ist. Mit einem
+                    <strong>Ruhe-Ziel</strong> legst du fest, wie viele Stunden Ruhe pro Woche mindestens frei
+                    bleiben sollen.</p>
+            </section>
+
+            <section id="todos" class="sheet manual-section">
+                <h2>ToDos</h2>
+                <p>ToDos sind Aufgaben ohne feste Uhrzeit: „Reifen wechseln“, „Zahnarzt anrufen“. Sie lassen sich
+                    in drei Ansichten betrachten: <strong>Liste</strong>, <strong>Board</strong> (Spalten nach
+                    Status, zum Verschieben per Ziehen) und <strong>Baum</strong> (ToDos mit Unteraufgaben).</p>
+
+                <h3>Neues ToDo</h3>
+                <ol>
+                    <li>Tippe auf <strong>Neues ToDo</strong> und gib den <strong>Titel</strong> ein.</li>
+                    <li>Optional: <strong>Beschreibung</strong>, <strong>Priorität</strong> (Niedrig, Normal, Hoch,
+                        Dringend) und <strong>Schlagworte</strong> (z. B. „haus, auto“).</li>
+                    <li><strong>Frühestens ab</strong> und <strong>Spätestens bis</strong> setzen den Zeitrahmen.
+                        Mit <em>Erinnern, Tage vor „bis“</em> bekommst du rechtzeitig Bescheid.</li>
+                    <li>Unter <strong>Zuständig</strong> wählst du Mitglieder, Rollen oder Kontakte;
+                        <strong>Verantwortlich</strong> nennt, wer den Hut aufhat.</li>
+                    <li>Mit <strong>Wiederholung</strong> kehrt ein ToDo regelmäßig wieder (z. B. jährlich zur
+                        Inspektion). Eine <strong>Wiedervorlage</strong> legt es später erneut vor.</li>
+                </ol>
+
+                <h3>Arbeiten mit ToDos</h3>
+                <ul>
+                    <li><strong>Abhaken:</strong> das Kästchen links antippen. Der Status wechselt auf
+                        „Erledigt“. Weitere Status: Offen, In Arbeit, Verworfen.</li>
+                    <li><strong>Ich kümmere mich:</strong> macht dich zur zuständigen Person.</li>
+                    <li><strong>Suchen und Filtern:</strong> oben nach Text suchen oder nach Status,
+                        Zuständigen, Priorität, Zeitlage und Schlagworten filtern.</li>
+                    <li><strong>Details:</strong> Im ToDo findest du Kommentare, Anhänge (Fotos, Dokumente),
+                        Beobachter und den Verlauf aller Änderungen.</li>
+                    <li><strong>Beobachten:</strong> Wer ein ToDo beobachtet, wird über Änderungen informiert –
+                        wahlweise bei allem oder nur bei Kommentaren. Für ein einzelnes ToDo kannst du die
+                        Benachrichtigungswege abweichend einstellen.</li>
+                    <li><strong>Verknüpfen:</strong> ToDos lassen sich miteinander verbinden („blockiert“,
+                        „verwandt mit“, „ist Duplikat von“) und mit Terminen oder Kontakten verknüpfen.</li>
+                    <li><strong>Unter-ToDos:</strong> In der Baumansicht ordnest du ToDos einem übergeordneten ToDo
+                        zu. Über <em>Aus übergeordnetem ToDo lösen</em> machst du es wieder eigenständig.</li>
+                </ul>
+            </section>
+
+            <section id="haushalt" class="sheet manual-section">
+                <h2>Haushalt</h2>
+                <p>Der Haushaltsplan verteilt wiederkehrende Hausarbeiten fair auf die Familie. Nestwerk plant
+                    drei Wochen im Voraus und berücksichtigt dabei Zeiten und Abwesenheiten. Der Bereich hat fünf
+                    Reiter:</p>
+                <ul>
+                    <li><strong>Wochenplan:</strong> alle Aufgaben der Woche pro Person. Offenes aus der
+                        Vergangenheit steht gesondert oben.</li>
+                    <li><strong>Heute:</strong> was heute dran ist, inklusive Überfälligem.</li>
+                    <li><strong>Hausarbeiten:</strong> die Vorlagen, aus denen die Aufgaben entstehen.</li>
+                    <li><strong>Auswertung:</strong> wer wie viel geschafft hat (Woche, Monat, Jahr).</li>
+                    <li><strong>Belohnungen:</strong> Prämien, die man mit gesammelten Gutschriften einlösen kann.</li>
+                </ul>
+
+                <h3>Aufgabe erledigen</h3>
+                <ol>
+                    <li>Öffne die Aufgabe oder tippe in der Liste auf das Kästchen.</li>
+                    <li>Wähle den <strong>Aufwand</strong> (leicht, mittel, schwer) und bei Bedarf die
+                        <strong>tatsächliche Dauer</strong>.</li>
+                    <li>Haben andere <strong>mitgeholfen</strong>, hake sie an – sie bekommen die Zeit ebenfalls
+                        gutgeschrieben. Ein anderes Datum trägst du unter <em>Erledigt am</em> ein.</li>
+                    <li>Tippe auf <strong>Buchen</strong>.</li>
+                </ol>
+                <p class="hint">Falsch abgehakt? In der Aufgabe gibt es <strong>Erledigung zurücknehmen</strong>.
+                    Die Gutschriften werden entfernt und die Aufgabe ist wieder offen.</p>
+                <p>Mit <strong>Zuständigkeit ändern</strong> gibst du eine Aufgabe an jemand anderen ab. Aufgaben
+                    mit der Verteilung „Offen zum Nehmen“ kann sich jede und jeder selbst schnappen.</p>
+
+                <h3>Hausarbeit anlegen</h3>
+                <ol>
+                    <li>Gehe auf <strong>Hausarbeiten → Neue Hausarbeit</strong>.</li>
+                    <li>Gib <strong>Titel</strong>, <strong>Bereich</strong> (z. B. Bad) und eine
+                        <strong>Beschreibung</strong> ein.</li>
+                    <li><strong>Wann ist sie fällig?</strong> Vier Möglichkeiten: <em>Regelmäßig</em> (z. B. jede
+                        Woche – die Regel <code>FREQ=WEEKLY;BYDAY=MO,TH</code> bedeutet montags und donnerstags),
+                        <em>Feste Termine</em> (einzelne Daten, die du selbst einträgst), <em>Nach Erledigung</em>
+                        („wieder fällig nach … Tagen“, gezählt ab dem Tag, an dem sie zuletzt erledigt wurde) und
+                        <em>Bei Bedarf</em> (kein Plan, du buchst sie, wenn du sie machst).</li>
+                    <li><strong>Wer bekommt sie?</strong> <em>Fest zugewiesen</em> an eine Person,
+                        <em>Reihum</em>, <em>Ausgleichend</em> (wer gerade die wenigste Last hat) oder <em>Offen zum
+                        Nehmen</em>. Bei den Mitgliedern wählst du die Kandidaten in der gewünschten Reihenfolge.</li>
+                    <li>Trage den <strong>Zeitaufwand in Minuten</strong> für leicht, mittel und schwer ein.</li>
+                    <li>Optional: <strong>Uhrzeit</strong> sowie <strong>Frühestens</strong> / <strong>Spätestens</strong>,
+                        damit sie nur in einem bestimmten Zeitfenster eingeplant wird.</li>
+                    <li><strong>Speichern</strong> – Nestwerk legt die Aufgaben sofort in den Plan.</li>
+                </ol>
+                <p>Eine Hausarbeit, die du nicht mehr brauchst, kannst du <strong>deaktivieren</strong> (die Historie
+                    bleibt) oder – wenn noch nichts gebucht wurde – löschen. Hausarbeiten mit festen Terminen lassen
+                    sich auch aus einem Kalender per <em>iCal-Link</em> füttern.</p>
+
+                <h3>Auswertung und Belohnungen</h3>
+                <p>In der <strong>Auswertung</strong> siehst du, was im gewählten Zeitraum abgehakt wurde. Ohne
+                    besondere Rechte siehst du nur deine eigenen Werte. Unter <strong>Belohnungen</strong> sammelst
+                    du erledigte Minuten und löst sie gegen Prämien ein, die zum Beispiel „Kinoabend“ für 300 Minuten
+                    heißen. Eine Einlösung wartet auf <strong>Bestätigung</strong> und kann bestätigt oder abgelehnt
+                    werden; wer das Recht hat, legt neue Belohnungen an. Alle Einlösungen stehen im
+                    <strong>Verlauf</strong>.</p>
+            </section>
+
+            <section id="tablet" class="sheet manual-section">
+                <h2>Wand-Tablet</h2>
+                <p>Ein Tablet in der Küche oder im Flur kann den Haushaltsplan für alle zeigen – ohne dass sich
+                    jemand anmelden muss.</p>
+                <ol>
+                    <li>Ein Administrator erzeugt unter <strong>Wand-Tablets</strong> einen Kopplungs-Code.</li>
+                    <li>Auf dem Tablet öffnest du die Seite <code>/tablet</code> von Nestwerk, gibst den Code ein und
+                        tippst auf <strong>Koppeln</strong>.</li>
+                    <li>Das Tablet zeigt nun für jede Person die offenen Aufgaben. Tippe eine Aufgabe an, wähle
+                        <strong>Wer hat es erledigt?</strong>, gib die PIN dieser Person ein und tippe auf
+                        <strong>Buchen</strong>.</li>
+                </ol>
+                <p>Damit nicht jeder für jeden bucht, richtet jedes Familienmitglied eine eigene <strong>PIN fürs
+                    Tablet</strong> ein: im Benutzermenü unter <em>PIN fürs Tablet</em> (4 bis 8 Ziffern).
+                    Administratoren können sie auch unter <em>Familienmitglieder</em> setzen.</p>
+            </section>
+
+            <section id="kueche" class="sheet manual-section">
+                <h2>Küche</h2>
+                <p>Die Küche verbindet Rezepte, Essensplan, Vorrat und Einkauf. Oben wechselst du zwischen
+                    <strong>Essensplan</strong>, <strong>Rezepte</strong>, <strong>Lebensmittel</strong>,
+                    <strong>Vorrat</strong> und <strong>Einkauf</strong>.</p>
+
+                <h3>Rezepte</h3>
+                <ul>
+                    <li><strong>Suchen:</strong> oben nach Titel oder Schlagwort. Kalorien pro Portion stehen
+                        auf jeder Karte. Ein Stern (*) heißt: Für manche Zutaten fehlen Nährwerte.</li>
+                    <li><strong>Neues Rezept:</strong> Titel, Portionen, Dauer, Schlagworte und die Zutaten (Menge,
+                        Einheit, Name) sowie die Zubereitung eintragen. Nestwerk ordnet jede Zutat einem
+                        Lebensmittel zu und rechnet so Kalorien, Eiweiß, Fett und Kohlenhydrate aus.</li>
+                    <li><strong>Aus Link:</strong> Rezept von einer Webseite übernehmen – Adresse einfügen, auf
+                        <em>Rezept lesen</em> tippen, prüfen, speichern.</li>
+                    <li><strong>Foto:</strong> im Rezept hochladen. Ohne Foto zeigt Nestwerk einfach keinen
+                        Bildbereich.</li>
+                    <li><strong>Portionen umrechnen:</strong> In der Rezeptansicht änderst du die Portionszahl, und
+                        die Mengen passen sich an.</li>
+                </ul>
+
+                <h3>Essensplan</h3>
+                <p>Der Essensplan sieht aus wie ein Kalender: eine Spalte pro Tag, darin je ein Feld für
+                    Frühstück, Mittag- und Abendessen (die Mahlzeiten lassen sich in den Küchen-Einstellungen
+                    ändern).</p>
+                <ol>
+                    <li>Tippe im gewünschten Feld auf das <strong>+</strong>.</li>
+                    <li>Es öffnet sich die Rezeptsuche. Tippe die ersten Buchstaben – die Vorschläge passen sich
+                        sofort an, Treffer vom Wortanfang stehen oben.</li>
+                    <li>Tippe auf ein Rezept (oder drücke Enter für den obersten Vorschlag). Gibt es kein passendes
+                        Rezept, wird dein Text als freier Eintrag übernommen, z. B. „Reste“ oder „Pizza vom
+                        Lieferdienst“.</li>
+                </ol>
+                <p>Ist ein Rezept mit Foto gewählt, erscheint das Foto im Feld. Mit den Pfeilen oben blätterst du
+                    durch die Wochen. Einträge ziehst du auf ein anderes Feld, um sie zu verschieben.
+                    <strong>Woche auffüllen</strong> belegt leere Felder automatisch mit passenden Rezepten – dabei
+                    zählen bald ablaufende Vorräte, Abwechslung und volle Tage.</p>
+                <p>Tippst du auf einen Eintrag, siehst du die Mitesser: <strong>Wer isst mit?</strong> Jede Person
+                    hat ein Häkchen und eine Portionszahl; der <em>Vorschlag</em> richtet sich nach dem
+                    Kalorienziel. Unter den Tagesspalten zeigen Balken, wie viel von ihrem Tagesziel jede Person
+                    schon erreicht. <strong>Gekocht</strong> trägt die Mahlzeit als erledigt ein und bucht die
+                    Zutaten vom Vorrat ab; du siehst vorher, was abgezogen würde, und kannst Mengen korrigieren.
+                    <strong>Aus dem Plan nehmen</strong> entfernt den Eintrag.</p>
+
+                <h3>Lebensmittel</h3>
+                <p>Hier steht die Nährwert-Datenbank (pro 100 g). Fehlt etwas, legst du es mit <strong>Neu</strong> an – mit Kategorie, Nährwerten, Stückgewicht und üblicher Haltbarkeit.
+                    Über <strong>Barcode</strong> holt Nestwerk Produkte aus Open Food Facts.</p>
+
+                <h3>Vorrat</h3>
+                <ul>
+                    <li><strong>Hinzufügen:</strong> Lebensmittel, Menge, Einheit, Ort (Kühlschrank, Vorrat,
+                        Tiefkühler) und optional das MHD. Ohne MHD gilt die übliche Haltbarkeit.</li>
+                    <li><strong>Sortierung:</strong> nach Ort, innerhalb davon nach MHD. Bald Ablaufendes ist
+                        markiert („läuft morgen ab“).</li>
+                    <li><strong>Zum Verbrauchen:</strong> Rezepte, die bald ablaufende Zutaten aufbrauchen.</li>
+                    <li><strong>Posten antippen</strong> zum Ändern, <em>Entnehmen</em> oder <em>Entfernen</em>.</li>
+                    <li><strong>Barcode:</strong> Mit dem Handy ein Produkt scannen; das Formular füllt sich
+                        vor.</li>
+                </ul>
+
+                <h3>Einkauf</h3>
+                <ol>
+                    <li><strong>Aus Plan erzeugen</strong> setzt alles auf die Liste, was für die noch nicht
+                        gekochten Mahlzeiten fehlt (Bedarf minus Vorrat). Zeitraum mit „Von … bis“ wählen.</li>
+                    <li>Eigene Artikel trägst du unten ein, z. B. „2 Dosen Tomaten“ oder „Klopapier“.</li>
+                    <li>Beim Einkaufen Artikel antippen = <em>gekauft</em>.</li>
+                    <li>Nach dem Einkauf geht es über <strong>Einräumen</strong> in den Vorrat: Menge, Ort und MHD
+                        bestätigen, fertig.</li>
+                </ol>
+                <p>Mit <strong>Bring!</strong> (Einkaufs-App) lässt sich die Liste teilen: <em>An Bring! senden</em>
+                    schickt die offenen Artikel, <em>Von Bring! abgleichen</em> übernimmt, was dort schon abgehakt
+                    ist. Das Konto verbindest du unter <em>Einstellungen</em> der Küche.</p>
+
+                <h3>Einstellungen der Küche</h3>
+                <p>Hier legst du die <strong>Mahlzeiten</strong> fest (Name, Anteil am Tagesbedarf, ob „Woche
+                    auffüllen“ sie füllt), trägst für jede Person das <strong>Kalorienziel</strong> pro Tag ein und
+                    verbindest <strong>Bring!</strong>. Dafür brauchst du das Recht <em>Küche: Einstellungen</em>.</p>
+            </section>
+
+            <section id="kontakte" class="sheet manual-section">
+                <h2>Kontakte</h2>
+                <p>Das gemeinsame Adressbuch für Ärztin, Handwerker, Schule und alle anderen.</p>
+                <ul>
+                    <li><strong>Suchen:</strong> über das Suchfeld oben. Kontakte sind nach Kategorie sortiert.</li>
+                    <li><strong>Neuer Kontakt:</strong> Name, Firma, Kategorie (z. B. Handwerker), Telefon,
+                        E-Mail, Adresse, Webseite und Notiz.</li>
+                                        <li><strong>Import und Export:</strong> Kontakte als vCard oder CSV (Excel) herausgeben und
+                        solche Dateien importieren. Vor dem Übernehmen zeigt Nestwerk eine Vorschau.</li>
+                    <li>Kontakte lassen sich in ToDos als Zuständige oder Verknüpfung nutzen.</li>
+                </ul>
+            </section>
+
+            <section id="benachrichtigungen" class="sheet manual-section">
+                <h2>Benachrichtigungen</h2>
+                <p>Nestwerk sagt dir Bescheid, wenn dir etwas zugewiesen wird, ein ToDo fällig wird oder jemand
+                    kommentiert. Die Glocke oben zeigt neue Nachrichten; <strong>Benachrichtigungen</strong> im
+                    Benutzermenü öffnet die ganze Liste (<em>Alle</em> oder nur <em>Ungelesen</em>). Mit
+                    <strong>Alle als gelesen markieren</strong> räumst du auf.</p>
+                <h3>Wie du benachrichtigt wirst</h3>
+                <p>Unter <strong>Meine Benachrichtigungswege</strong> (Benutzermenü) stellst du ein, wofür und wie
+                    du informiert werden willst:</p>
+                <ul>
+                    <li><strong>Wofür und wie:</strong> In der Tabelle wählst du je Anlass (zum Beispiel „ToDo mir
+                        zugewiesen“), ob du per Push oder – wenn der Server E-Mail versenden kann – per E-Mail
+                        benachrichtigt wirst. In der Glocke erscheint die Nachricht immer.</li>
+                    <li><strong>E-Mail:</strong> E-Mail-Adresse eintragen und speichern.</li>
+                    <li><strong>Push:</strong> Nachricht aufs Gerät, auch wenn Nestwerk geschlossen ist. Auf diesem
+                        Gerät aktivieren und mit <em>Testnachricht senden</em> ausprobieren. Beim iPhone muss
+                        Nestwerk dafür über „Teilen → Zum Home-Bildschirm“ installiert sein.</li>
+                </ul>
+            </section>
+
+            <section id="ki" class="sheet manual-section">
+                <h2>KI-Assistent</h2>
+                <p>Wenn du das Recht dazu hast, kannst du einen KI-Assistenten wie Claude mit Nestwerk verbinden.
+                    Er kann dann zum Beispiel Termine eintragen, Rezepte anlegen, den Essensplan füllen oder
+                    Hausarbeiten planen – in deinem Namen und mit deinen Rechten. Löschen kann er nichts.</p>
+                <p>Die Adresse, die der Assistent braucht, steht im Benutzermenü unter <strong>KI-Zugänge</strong>
+                    (sie endet auf <code>/mcp</code>). Es gibt zwei Wege:</p>
+
+                <h3>Mit deinem Nestwerk-Login (empfohlen)</h3>
+                <p>Du gibst dem Assistenten nur die Adresse. Beim Verbinden öffnet sich ein Browserfenster, du meldest
+                    dich mit Benutzername und Passwort an und stimmst zu. Ein Token musst du nicht kopieren, und der
+                    Assistent bleibt angemeldet, bis du die Verbindung trennst oder ihn 90 Tage nicht benutzt.</p>
+                <p><strong>Claude im Browser, in der Desktop-App oder auf dem Smartphone:</strong></p>
+                <ol>
+                    <li>In Claude <strong>Einstellungen → Konnektoren → Benutzerdefinierten Konnektor
+                        hinzufügen</strong> öffnen.</li>
+                    <li>Als Name <em>Nestwerk</em> und als Adresse die MCP-Adresse eintragen, dann
+                        <strong>Verbinden</strong>.</li>
+                    <li>Im Fenster bei Nestwerk anmelden (falls nötig) und auf der Seite <em>Assistent verbinden</em>
+                        <strong>Zustimmen</strong> wählen.</li>
+                </ol>
+                <p>Das klappt nur, wenn Nestwerk über HTTPS aus dem Internet erreichbar ist – Claude verbindet sich von
+                    den Servern von Anthropic aus. Den Konnektor kannst du danach in jeder Unterhaltung über das
+                    Werkzeug-Menü ein- und ausschalten.</p>
+                <p><strong>Claude Code:</strong> Im Terminal <code>claude mcp add --transport http nestwerk</code>
+                    gefolgt von der MCP-Adresse eingeben. Danach in Claude Code <code>/mcp</code> aufrufen,
+                    <em>nestwerk</em> wählen und <strong>Authenticate</strong> – der Browser öffnet die Anmeldung.
+                    Das funktioniert auch im Heimnetz ohne Internet-Freigabe.</p>
+                <p>Unter <strong>KI-Zugänge → Verbundene Assistenten</strong> siehst du, welche Assistenten verbunden
+                    sind und wann sie zuletzt aktiv waren. Mit <strong>Trennen</strong> beendest du den Zugriff
+                    sofort; der Assistent muss sich dann neu anmelden.</p>
+
+                <h3>Mit Zugangstoken</h3>
+                <p>Für Programme, die keine Anmeldung im Browser unterstützen:</p>
+                <ol>
+                    <li>Öffne im Benutzermenü <strong>KI-Zugänge</strong>.</li>
+                    <li>Gib unter <em>Neues Zugangstoken</em> einen <strong>Namen</strong> ein (z. B. „Claude am
+                        Laptop“) und wähle, wie lange der Zugang gültig sein soll (<em>Gültig bis</em>).</li>
+                    <li>Tippe auf <strong>Token erzeugen</strong>. Der Token wird nur einmal angezeigt – kopiere ihn
+                        sofort.</li>
+                    <li>Folge der Anleitung <em>So verbindest du einen Assistenten mit Token</em> auf der Seite (für
+                        Claude Code oder andere Programme).</li>
+                </ol>
+                <p>Bei Verlust oder Weitergabe widerrufst du den Zugang mit <strong>Widerrufen</strong>.</p>
+            </section>
+
+            <section id="verwaltung" class="sheet manual-section"
+                     sec:authorize="hasAnyAuthority('USER_MANAGE', 'ACCESS_ROLE_MANAGE', 'MEMBER_MANAGE', 'NOTIFICATION_SETTINGS_MANAGE', 'HOUSEHOLD_DEVICE_MANAGE', 'BACKUP_MANAGE', 'UPDATE_MANAGE')">
+                <h2>Verwaltung</h2>
+                <p>Dieser Abschnitt erscheint nur, wenn du Verwaltungsrechte hast.</p>
+
+                <h3 sec:authorize="hasAuthority('MEMBER_MANAGE')">Familienmitglieder</h3>
+                <p sec:authorize="hasAuthority('MEMBER_MANAGE')">Familienmitglieder sind die Personen, die Termine,
+                    Aufgaben und Mahlzeiten betreffen – auch Kinder ohne eigenes Konto. Mit <strong>Mitglied
+                    anlegen</strong> vergibst du Name und <strong>Farbe</strong> (die Farbe taucht überall in der App auf)
+                    und verknüpfst bei Bedarf ein <strong>Benutzerkonto</strong>. Hier setzt du auch die <strong>PIN
+                    fürs Wand-Tablet</strong>. Beim Löschen bleiben zugewiesene Termine erhalten.</p>
+
+                <h3 sec:authorize="hasAuthority('USER_MANAGE')">Benutzer</h3>
+                <p sec:authorize="hasAuthority('USER_MANAGE')">Mit <strong>Benutzer anlegen</strong> erhält jemand ein
+                    Konto (Benutzername, Passwort) und eine oder mehrere <strong>Rollen</strong>. Später kannst du
+                    Rollen ändern oder das <strong>Passwort zurücksetzen</strong>.</p>
+
+                <h3 sec:authorize="hasAuthority('ACCESS_ROLE_MANAGE')">Rollen und Rechte</h3>
+                <p sec:authorize="hasAuthority('ACCESS_ROLE_MANAGE')">Eine Rolle bündelt Rechte, etwa „Eltern“ oder
+                    „Kinder“. Mit <strong>Rolle anlegen</strong> startest du am besten von einer <strong>Vorlage</strong>
+                    und passt sie an. Pro Bereich (Kalender, ToDos, Haushalt, Küche, Kontakte …) wählst du, was die
+                    Rolle darf. Die <strong>Zugriffsregeln</strong> bestimmen zusätzlich, was jemand je nach Beziehung
+                    zum Eintrag tun darf (zum Beispiel „nur eigene“ oder „alle“). Private Einträge schließt „alle“ nie
+                    ein.</p>
+
+                <h3 sec:authorize="hasAuthority('NOTIFICATION_SETTINGS_MANAGE')">Benachrichtigungen einstellen</h3>
+                <p sec:authorize="hasAuthority('NOTIFICATION_SETTINGS_MANAGE')">Hier legst du fest, über welche
+                    <strong>Zustellwege</strong> Nestwerk Nachrichten verschickt, die
+                    <strong>Standard-Kanäle</strong>, wie viele Tage vor „bis“ standardmäßig erinnert wird und um
+                    welche Uhrzeit die tägliche Erinnerung kommt. <em>Testmail an mich senden</em> prüft die
+                    Einstellung; fehlgeschlagene Zustellungen siehst du in einer Liste.</p>
+
+                <h3 sec:authorize="hasAuthority('HOUSEHOLD_DEVICE_MANAGE')">Wand-Tablets</h3>
+                <p sec:authorize="hasAuthority('HOUSEHOLD_DEVICE_MANAGE')">Mit <strong>Code erzeugen</strong> und einem
+                    Namen koppelst du ein neues Tablet (siehe Abschnitt „Wand-Tablet“). Gekoppelte Tablets kannst du
+                    hier wieder <strong>abmelden</strong>.</p>
+
+                <h3 sec:authorize="hasAuthority('BACKUP_MANAGE')">Sicherungen</h3>
+                <p sec:authorize="hasAuthority('BACKUP_MANAGE')">Mit <strong>Jetzt sichern</strong> entsteht eine
+                    Sicherung aller Daten. Unter <strong>Automatisch sichern</strong> stellst du ein, wie oft das
+                    geschieht und wie lange sie aufbewahrt werden. Zusätzlich lässt sich jede Sicherung an
+                    <strong>Ziele</strong> kopieren (externe Platte, WebDAV, SFTP); diese Kopien sind mit der
+                    <strong>Passphrase</strong> verschlüsselt. Bewahre die Passphrase gut auf – ohne sie lässt sich eine
+                    Sicherung nicht wiederherstellen. Sicherungen kannst du herunterladen, hochladen und
+                    wiederherstellen.</p>
+
+                <h3 sec:authorize="hasAuthority('UPDATE_MANAGE')">Updates</h3>
+                <p sec:authorize="hasAuthority('UPDATE_MANAGE')">Unter <strong>Updates</strong> siehst du die laufende
+                    Version. <strong>Jetzt prüfen</strong> sucht eine neuere; <strong>Update auf …</strong> installiert
+                    sie, danach startet Nestwerk neu und die Seite lädt sich selbst. Der <strong>Kanal</strong> bestimmt,
+                    welche Versionen angeboten werden. <em>Verlauf</em> und <em>Protokoll</em>
+                    zeigen, was passiert ist.</p>
+            </section>
+
+            <section id="hilfe" class="sheet manual-section">
+                <h2>Tipps und Hilfe</h2>
+                <dl class="manual-faq">
+                    <dt>Ich sehe einen Bereich nicht.</dt>
+                    <dd>Deine Rolle hat dafür keine Rechte. Bitte einen Administrator, sie zu ergänzen.</dd>
+                    <dt>Ich habe etwas versehentlich geändert.</dt>
+                    <dd>Bei ToDos zeigt der <em>Verlauf</em>, was sich wann geändert hat. Erledigte Hausarbeiten
+                        nimmst du über <em>Erledigung zurücknehmen</em> zurück. Einen Essensplan-Eintrag kannst du
+                        jederzeit neu setzen.</dd>
+                    <dt>Der Kalender warnt vor einer Überschneidung.</dt>
+                    <dd>Nestwerk hat eine eingetragene Zeit (zum Beispiel Arbeit) oder einen anderen Termin
+                        gefunden. Prüfe die Uhrzeit oder speichere mit <em>Trotzdem speichern</em>.</dd>
+                    <dt>Eine Hausarbeit wird mir nie zugeteilt.</dt>
+                    <dd>Prüfe in der Hausarbeit, ob du bei den Mitgliedern eingetragen bist, ob du zur fraglichen Zeit
+                        durch eine <em>Zeit</em> oder einen Abwesenheits-Termin blockiert bist und ob die Verteilung
+                        „Offen zum Nehmen“ gewählt ist.</dd>
+                    <dt>Im Essensplan fehlen Nährwerte.</dt>
+                    <dd>Eine Zutat ist keinem Lebensmittel zugeordnet oder dessen Nährwerte fehlen. Öffne das Rezept
+                        und wähle bei der Zutat das passende Lebensmittel, oder ergänze es unter
+                        <em>Küche → Lebensmittel</em>.</dd>
+                    <dt>Push-Nachrichten kommen nicht an.</dt>
+                    <dd>Erlaube Benachrichtigungen im Browser und aktiviere Push unter <em>Meine
+                        Benachrichtigungswege</em>. Beim iPhone muss Nestwerk als App auf dem Home-Bildschirm liegen.</dd>
+                    <dt>Ich habe mein Passwort vergessen.</dt>
+                    <dd>Ein Administrator kann es unter <em>Benutzer</em> zurücksetzen.</dd>
+                </dl>
+            </section>
+        </div>
+    </div>
+</main>
+</body>
+</html>

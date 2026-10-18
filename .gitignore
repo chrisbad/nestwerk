@@ -35,3 +35,6 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Testläufe legen relative Datenverzeichnisse im Modul an
+/nestwerk-app/data/
