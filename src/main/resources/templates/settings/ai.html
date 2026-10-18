@@ -16,6 +16,49 @@
     <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
     <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
 
+    <section class="sheet settings-section ai-help">
+        <h2>Mit deinem Nestwerk-Login verbinden</h2>
+        <p>Am einfachsten: Du gibst dem Assistenten nur die Adresse <code th:text="${mcpUrl}">https://nestwerk.example.org/mcp</code>.
+            Beim ersten Zugriff öffnet sich ein Browserfenster, du meldest dich wie gewohnt an und stimmst zu. Ein
+            Token musst du nicht kopieren.</p>
+        <h3>Claude (claude.ai, Desktop-App, Smartphone)</h3>
+        <ol>
+            <li>In Claude <strong>Einstellungen → Konnektoren → Benutzerdefinierten Konnektor hinzufügen</strong>
+                öffnen.</li>
+            <li>Name <em>Nestwerk</em> und die Adresse oben eintragen, dann <strong>Verbinden</strong>.</li>
+            <li>Im Browser bei Nestwerk anmelden und <strong>Zustimmen</strong> wählen.</li>
+        </ol>
+        <p class="muted">Dafür muss Nestwerk über HTTPS aus dem Internet erreichbar sein, denn claude.ai verbindet
+            sich von den Servern von Anthropic aus.</p>
+        <h3>Claude Code</h3>
+        <pre class="code-snippet" id="snippet-claude-code-oauth"
+             th:text="'claude mcp add --transport http nestwerk ' + ${mcpUrl}">claude mcp add …</pre>
+        <button type="button" class="button button-ghost button-small" data-copy="snippet-claude-code-oauth">Kopieren</button>
+        <p>Danach in Claude Code <code>/mcp</code> eingeben, <em>nestwerk</em> wählen und
+            <strong>Authenticate</strong> – der Browser öffnet die Anmeldung.</p>
+    </section>
+
+    <section class="chore-section" th:unless="${#lists.isEmpty(connections)}">
+        <h2>Verbundene Assistenten</h2>
+        <ul class="sheet credit-list">
+            <li th:each="c : ${connections}">
+                <div class="credit-main">
+                    <strong th:text="${c.name}">Claude</strong>
+                    <span class="badge">verbunden</span>
+                    <span class="muted" th:text="'seit ' + ${c.since}">seit</span>
+                    <span class="muted" th:text="'zuletzt aktiv ' + ${c.lastActive}">zuletzt</span>
+                    <span class="pending-actions">
+                        <form method="post" th:action="@{/settings/ai/connections/{id}/disconnect(id=${c.clientId})}"
+                              th:attr="data-confirm=|„${c.name}“ trennen? Der Assistent muss sich danach neu anmelden.|">
+                            <button type="submit" class="button button-danger button-small">Trennen</button>
+                        </form>
+                    </span>
+                </div>
+            </li>
+        </ul>
+    </section>
+
+
     <section class="sheet pairing-code" th:if="${newToken != null}" role="status">
         <h2 th:text="'Zugang „' + ${newTokenName} + '“'">Zugang</h2>
         <p>Kopiere das Token jetzt. Es wird hier nicht noch einmal angezeigt.</p>
@@ -27,7 +70,9 @@
     </section>
 
     <section class="sheet event-form settings-section">
-        <h2>Neuer Zugang</h2>
+        <h2>Neues Zugangstoken</h2>
+        <p class="muted">Für Programme, die keine Anmeldung im Browser unterstützen: Token erzeugen und selbst
+            eintragen.</p>
         <form method="post" th:action="@{/settings/ai}" class="inline-form">
             <div class="field">
                 <label for="name">Name</label>
@@ -43,7 +88,7 @@
     </section>
 
     <section class="chore-section" th:unless="${#lists.isEmpty(tokens)}">
-        <h2>Deine Zugänge</h2>
+        <h2>Deine Zugangstoken</h2>
         <ul class="sheet credit-list">
             <li th:each="t : ${tokens}">
                 <div class="credit-main">
@@ -64,7 +109,7 @@
     </section>
 
     <section class="sheet settings-section ai-help">
-        <h2>So verbindest du einen Assistenten</h2>
+        <h2>So verbindest du einen Assistenten mit Token</h2>
         <p>Adresse des MCP-Servers: <code th:text="${mcpUrl}">https://nestwerk.example.org/mcp</code>.
             Das Token gehört in den Header <code>Authorization: Bearer …</code>.</p>
         <h3>Claude Code</h3>

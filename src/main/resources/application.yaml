@@ -34,7 +34,7 @@ spring:
           completion: false
         instructions: >-
           Nestwerk ist die Familien-App mit Kalender, ToDos, Haushaltsplan, Kontakten und Benachrichtigungen.
-          Alle Tools handeln im Namen des Benutzers, dem das Zugangstoken gehört, und haben genau seine Rechte.
+          Alle Tools handeln im Namen des angemeldeten Benutzers und haben genau seine Rechte.
           Beginne mit today_overview oder whoami. IDs von Familienmitgliedern liefert list_members.
           Datumsangaben im Format JJJJ-MM-TT, Uhrzeiten als HH:MM in der Zeitzone der App.
           Löschen ist über diese Schnittstelle nicht möglich.

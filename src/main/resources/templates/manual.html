@@ -382,14 +382,43 @@
                 <p>Wenn du das Recht dazu hast, kannst du einen KI-Assistenten wie Claude mit Nestwerk verbinden.
                     Er kann dann zum Beispiel Termine eintragen, Rezepte anlegen, den Essensplan füllen oder
                     Hausarbeiten planen – in deinem Namen und mit deinen Rechten. Löschen kann er nichts.</p>
+                <p>Die Adresse, die der Assistent braucht, steht im Benutzermenü unter <strong>KI-Zugänge</strong>
+                    (sie endet auf <code>/mcp</code>). Es gibt zwei Wege:</p>
+
+                <h3>Mit deinem Nestwerk-Login (empfohlen)</h3>
+                <p>Du gibst dem Assistenten nur die Adresse. Beim Verbinden öffnet sich ein Browserfenster, du meldest
+                    dich mit Benutzername und Passwort an und stimmst zu. Ein Token musst du nicht kopieren, und der
+                    Assistent bleibt angemeldet, bis du die Verbindung trennst oder ihn 90 Tage nicht benutzt.</p>
+                <p><strong>Claude im Browser, in der Desktop-App oder auf dem Smartphone:</strong></p>
+                <ol>
+                    <li>In Claude <strong>Einstellungen → Konnektoren → Benutzerdefinierten Konnektor
+                        hinzufügen</strong> öffnen.</li>
+                    <li>Als Name <em>Nestwerk</em> und als Adresse die MCP-Adresse eintragen, dann
+                        <strong>Verbinden</strong>.</li>
+                    <li>Im Fenster bei Nestwerk anmelden (falls nötig) und auf der Seite <em>Assistent verbinden</em>
+                        <strong>Zustimmen</strong> wählen.</li>
+                </ol>
+                <p>Das klappt nur, wenn Nestwerk über HTTPS aus dem Internet erreichbar ist – Claude verbindet sich von
+                    den Servern von Anthropic aus. Den Konnektor kannst du danach in jeder Unterhaltung über das
+                    Werkzeug-Menü ein- und ausschalten.</p>
+                <p><strong>Claude Code:</strong> Im Terminal <code>claude mcp add --transport http nestwerk</code>
+                    gefolgt von der MCP-Adresse eingeben. Danach in Claude Code <code>/mcp</code> aufrufen,
+                    <em>nestwerk</em> wählen und <strong>Authenticate</strong> – der Browser öffnet die Anmeldung.
+                    Das funktioniert auch im Heimnetz ohne Internet-Freigabe.</p>
+                <p>Unter <strong>KI-Zugänge → Verbundene Assistenten</strong> siehst du, welche Assistenten verbunden
+                    sind und wann sie zuletzt aktiv waren. Mit <strong>Trennen</strong> beendest du den Zugriff
+                    sofort; der Assistent muss sich dann neu anmelden.</p>
+
+                <h3>Mit Zugangstoken</h3>
+                <p>Für Programme, die keine Anmeldung im Browser unterstützen:</p>
                 <ol>
                     <li>Öffne im Benutzermenü <strong>KI-Zugänge</strong>.</li>
-                    <li>Gib einen <strong>Namen</strong> ein (z. B. „Claude am Laptop“) und wähle, wie lange der
-                        Zugang gültig sein soll (<em>Gültig bis</em>).</li>
+                    <li>Gib unter <em>Neues Zugangstoken</em> einen <strong>Namen</strong> ein (z. B. „Claude am
+                        Laptop“) und wähle, wie lange der Zugang gültig sein soll (<em>Gültig bis</em>).</li>
                     <li>Tippe auf <strong>Token erzeugen</strong>. Der Token wird nur einmal angezeigt – kopiere ihn
                         sofort.</li>
-                    <li>Folge der Anleitung <em>So verbindest du einen Assistenten</em> auf der Seite (für Claude
-                        Code oder andere Programme).</li>
+                    <li>Folge der Anleitung <em>So verbindest du einen Assistenten mit Token</em> auf der Seite (für
+                        Claude Code oder andere Programme).</li>
                 </ol>
                 <p>Bei Verlust oder Weitergabe widerrufst du den Zugang mit <strong>Widerrufen</strong>.</p>
             </section>

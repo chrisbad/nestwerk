@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Assistent verbinden')}"></head>
+<body>
+<div class="login">
+    <section class="login-art">
+        <div class="brand">
+            <svg th:replace="~{fragments/layout :: nestmark}"></svg>
+            <span>Nestwerk</span>
+        </div>
+        <p class="login-claim">Alles, was die Familie zusammenhält.</p>
+    </section>
+
+    <main class="login-form-wrap">
+        <div class="login-form">
+            <h1>Assistent verbinden</h1>
+            <p><strong th:text="${clientName}">Claude</strong> möchte als <strong th:text="${username}">mama</strong>
+                auf Nestwerk zugreifen.</p>
+
+            <ul class="consent-list">
+                <li>Er sieht und darf genau das, was du darfst: Termine, ToDos, Haushaltsplan, Küche, Kontakte und
+                    Benachrichtigungen.</li>
+                <li>Löschen kann er nichts.</li>
+                <li>Du kannst die Verbindung jederzeit unter <em>KI-Zugänge</em> trennen.</li>
+            </ul>
+            <p class="notice">Nach der Zustimmung geht es zurück zu
+                <strong th:text="${#strings.listJoin(targets, ', ')}">claude.ai</strong>.
+                Stimme nur zu, wenn du die Verbindung gerade selbst eingerichtet hast.</p>
+
+            <form method="post" th:action="@{/oauth2/authorize}">
+                <input type="hidden" name="client_id" th:value="${clientId}">
+                <input type="hidden" name="state" th:value="${state}">
+                <input type="hidden" name="scope" th:value="${scope}">
+                <button type="submit" class="button">Zustimmen</button>
+            </form>
+            <form method="post" th:action="@{/oauth2/authorize}" class="consent-deny">
+                <input type="hidden" name="client_id" th:value="${clientId}">
+                <input type="hidden" name="state" th:value="${state}">
+                <button type="submit" class="button button-ghost">Ablehnen</button>
+            </form>
+        </div>
+    </main>
+</div>
+</body>
+</html>

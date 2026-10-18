@@ -1,6 +1,7 @@
 package club.badernet.nestwerk.web;
 
 import club.badernet.nestwerk.ai.AiTokenService;
+import club.badernet.nestwerk.ai.McpOAuthService;
 import club.badernet.nestwerk.security.CurrentUser;
 import club.badernet.nestwerk.user.User;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,7 +20,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
-/** Eigene Zugangstoken für KI-Assistenten (MCP) anlegen und widerrufen. */
+/** Eigene Zugangstoken für KI-Assistenten (MCP) anlegen und widerrufen, per Login verbundene Assistenten trennen. */
 @Controller
 public class AiTokenController {
 
@@ -27,17 +28,23 @@ public class AiTokenController {
     public record TokenRow(Long id, String name, String created, String lastUsed, String expires, boolean active) {
     }
 
+    /** Ein per Nestwerk-Login verbundener Assistent für die Liste. */
+    public record ConnectionRow(String clientId, String name, String since, String lastActive) {
+    }
+
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
     private static final DateTimeFormatter MOMENT = DateTimeFormatter.ofPattern("dd.MM.yyyy, HH:mm");
 
     private final AiTokenService tokens;
+    private final McpOAuthService oauth;
     private final CurrentUser currentUser;
     private final Clock clock;
     private final String mcpUrl;
 
-    public AiTokenController(AiTokenService tokens, CurrentUser currentUser, Clock clock,
+    public AiTokenController(AiTokenService tokens, McpOAuthService oauth, CurrentUser currentUser, Clock clock,
                              @Value("${nestwerk.base-url:http://localhost:8080}") String baseUrl) {
         this.tokens = tokens;
+        this.oauth = oauth;
         this.currentUser = currentUser;
         this.clock = clock;
         this.mcpUrl = (baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl) + "/mcp";
@@ -50,6 +57,8 @@ public class AiTokenController {
         model.addAttribute("tokens", tokens.mine(user).stream().map(t -> new TokenRow(t.getId(), t.getName(),
                 moment(t.getCreatedAt()), moment(t.getLastUsedAt()),
                 t.getExpiresOn() == null ? null : t.getExpiresOn().format(DAY), t.isActive(today))).toList());
+        model.addAttribute("connections", oauth.connections(user).stream().map(c -> new ConnectionRow(c.clientId(),
+                c.name(), moment(c.since()), moment(c.lastActive()))).toList());
         model.addAttribute("mcpUrl", mcpUrl);
         return "settings/ai";
     }
@@ -76,6 +85,13 @@ public class AiTokenController {
     String revoke(@PathVariable Long id, RedirectAttributes redirect) {
         tokens.revoke(id, currentUser.require());
         redirect.addFlashAttribute("success", "Der Zugang ist widerrufen.");
+        return "redirect:/settings/ai";
+    }
+
+    @PostMapping("/settings/ai/connections/{clientId}/disconnect")
+    String disconnect(@PathVariable String clientId, RedirectAttributes redirect) {
+        oauth.disconnect(clientId, currentUser.require());
+        redirect.addFlashAttribute("success", "Der Assistent ist getrennt.");
         return "redirect:/settings/ai";
     }
 

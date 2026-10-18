@@ -2,6 +2,7 @@ package club.badernet.nestwerk.config;
 
 import club.badernet.nestwerk.ai.AiTokenService;
 import club.badernet.nestwerk.ai.McpCaller;
+import club.badernet.nestwerk.ai.McpOAuthService;
 import club.badernet.nestwerk.ai.McpTokenFilter;
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.json.jackson3.JacksonMcpJsonMapper;
@@ -21,15 +22,15 @@ import tools.jackson.databind.json.JsonMapper;
 import java.util.Map;
 
 /**
- * MCP-Server unter {@code /mcp}: eigene, zustandslose Filterkette mit Bearer-Token statt Formular-Login und ein
- * Transport, der den angemeldeten Benutzer an die Tools weiterreicht.
+ * MCP-Server unter {@code /mcp}: eigene, zustandslose Filterkette mit Bearer-Token (KI-Zugangstoken oder OAuth, siehe
+ * {@link OAuthConfig}) statt Formular-Login und ein Transport, der den angemeldeten Benutzer an die Tools weiterreicht.
  */
 @Configuration
 public class McpConfig {
 
     @Bean
     @Order(1)
-    SecurityFilterChain mcpSecurityFilterChain(HttpSecurity http, AiTokenService tokens,
+    SecurityFilterChain mcpSecurityFilterChain(HttpSecurity http, AiTokenService tokens, McpOAuthService oauth,
                                                UserDetailsService userDetails) throws Exception {
         http
                 .securityMatcher("/mcp", "/mcp/**")
@@ -40,7 +41,7 @@ public class McpConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
-                .addFilterBefore(new McpTokenFilter(tokens, userDetails), AnonymousAuthenticationFilter.class);
+                .addFilterBefore(new McpTokenFilter(tokens, oauth, userDetails), AnonymousAuthenticationFilter.class);
         return http.build();
     }
 

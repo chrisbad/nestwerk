@@ -159,9 +159,21 @@ kann er nichts; nur Verknüpfungen lösen, einzelne Terminvorkommen absagen und 
   Tablet-Kopplung, Push-Geräte einrichten.
 
 - Der Assistent handelt immer als ein Benutzer und hat genau dessen Rechte. Ein Administrator gibt einer Rolle das
-  Recht „KI-Zugang nutzen“. Danach legt jeder Benutzer unter „KI-Zugänge“ (Benutzermenü) ein eigenes Token an.
-  Das Token wird nur einmal angezeigt und lässt sich jederzeit widerrufen.
-- Claude Code verbinden:
+  Recht „KI-Zugang nutzen“. Danach verbindet sich jeder Benutzer auf einem von zwei Wegen:
+- **Mit dem Nestwerk-Login (OAuth 2.1):** Der Client bekommt nur die Adresse. Nestwerk ist zugleich Authorization
+  Server: Der Client findet ihn über `/.well-known/oauth-protected-resource/mcp`, registriert sich selbst
+  (`/oauth2/register`, RFC 7591), der Benutzer meldet sich im Browser an und stimmt zu. Zugriffstoken gelten eine
+  Stunde, Refresh-Tokens 90 Tage und werden bei jeder Nutzung erneuert. Unter „KI-Zugänge → Verbundene Assistenten“
+  lässt sich jede Verbindung trennen. Für claude.ai (Konnektoren) muss Nestwerk per HTTPS aus dem Internet
+  erreichbar sein; Claude Code klappt auch im Heimnetz:
+
+  ```bash
+  claude mcp add --transport http nestwerk https://<nestwerk>/mcp
+  # danach in Claude Code: /mcp → nestwerk → Authenticate
+  ```
+
+- **Mit Zugangstoken:** Unter „KI-Zugänge“ ein eigenes Token anlegen. Es wird nur einmal angezeigt und lässt sich
+  jederzeit widerrufen.
 
   ```bash
   claude mcp add --transport http nestwerk https://<nestwerk>/mcp --header "Authorization: Bearer nw_…"
@@ -169,8 +181,9 @@ kann er nichts; nur Verknüpfungen lösen, einzelne Terminvorkommen absagen und 
 
   Andere Clients brauchen die Adresse und den Header `Authorization: Bearer <token>`. Die Seite „KI-Zugänge“ zeigt
   passende Schnipsel mit der Adresse aus `NESTWERK_BASE_URL`.
-- Der Server arbeitet zustandslos. Am Reverse Proxy ist nichts Besonderes nötig, außer dass der Header
-  `Authorization` durchgereicht wird.
+- Der MCP-Server arbeitet zustandslos. Am Reverse Proxy ist nichts Besonderes nötig, außer dass der Header
+  `Authorization` durchgereicht wird und `X-Forwarded-Proto`/`X-Forwarded-Host` stimmen – daraus bildet Nestwerk
+  die OAuth-Adressen.
 
 ### Update
 

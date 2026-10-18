@@ -1364,6 +1364,8 @@ a.day-num:hover { background: var(--sage); }
 .login-form > p { color: var(--ink-soft); margin-bottom: 1.75rem; }
 .login-form .notice { margin-bottom: 1.25rem; }
 .login-form .button { width: 100%; margin-top: 1.75rem; }
+.consent-list { margin: 0 0 1.25rem 1.1rem; display: grid; gap: 0.4rem; }
+.consent-deny .button { margin-top: 0.75rem; }
 
 @media (max-width: 48rem) {
     .login { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }

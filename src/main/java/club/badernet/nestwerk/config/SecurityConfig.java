@@ -20,6 +20,9 @@ public class SecurityConfig {
                         .requestMatchers("/login", "/error", "/actuator/health/**",
                                 "/css/**", "/js/**", "/fonts/**", "/favicon.svg", "/icons/**",
                                 "/sw.js", "/manifest.webmanifest").permitAll()
+                        // OAuth-Metadaten des MCP-Servers, damit KI-Assistenten den Login finden (OAuthConfig)
+                        .requestMatchers("/.well-known/oauth-protected-resource",
+                                "/.well-known/oauth-protected-resource/**").permitAll()
                         // Wand-Tablet: eigene Prüfung über das Geräte-Cookie im TabletController
                         .requestMatchers("/tablet", "/tablet/**").permitAll()
                         .anyRequest().authenticated())
