@@ -34,6 +34,7 @@
         <p th:if="${row.active != null}">
             <a class="button button-small" th:href="@{/school/years/{id}/timetable(id=${row.active.id})}">Stundenplan</a>
             <a class="button button-small" th:href="@{/school/years/{id}/homework(id=${row.active.id})}">Hausaufgaben</a>
+            <a class="button button-small" th:href="@{/school/years/{id}/exams(id=${row.active.id})}">Klassenarbeiten</a>
         </p>
 
         <h3>Schuljahre</h3>
@@ -65,6 +66,8 @@
             <p class="muted">Das bisher aktive Schuljahr bleibt mit allen Daten erhalten und ist weiter einsehbar.</p>
         </details>
     </section>
+
+    <p><a th:href="@{/school/holidays}">Schulferien ansehen</a></p>
 
     <section class="sheet settings-block" th:if="${canSettings and !#lists.isEmpty(freeMembers)}">
         <h2>Schulprofil anlegen</h2>

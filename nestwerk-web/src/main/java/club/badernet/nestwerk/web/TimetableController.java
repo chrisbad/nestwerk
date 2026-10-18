@@ -4,6 +4,7 @@ import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberService;
 import club.badernet.nestwerk.school.ChangeKind;
 import club.badernet.nestwerk.school.SchoolAccess;
+import club.badernet.nestwerk.school.SchoolDays;
 import club.badernet.nestwerk.school.SchoolPermission;
 import club.badernet.nestwerk.school.SchoolProfile;
 import club.badernet.nestwerk.school.SchoolService;
@@ -48,10 +49,12 @@ public class TimetableController {
     private final FamilyMemberService members;
     private final CurrentUser currentUser;
     private final CalendarSettings calendarSettings;
+    private final SchoolDays schoolDays;
 
     public TimetableController(SchoolService school, TimetableService timetable, SchoolAccess access,
                                FamilyMemberService members, CurrentUser currentUser,
-                               CalendarSettings calendarSettings) {
+                               CalendarSettings calendarSettings, SchoolDays schoolDays) {
+        this.schoolDays = schoolDays;
         this.school = school;
         this.timetable = timetable;
         this.access = access;
@@ -61,7 +64,8 @@ public class TimetableController {
     }
 
     /** Ein Wochentag der Ansicht. */
-    public record DayView(LocalDate date, String name, WeekKind weekKind, List<Timetable.Entry> entries) {
+    public record DayView(LocalDate date, String name, WeekKind weekKind, List<Timetable.Entry> entries,
+                          String free) {
     }
 
     @GetMapping("/years/{yearId}/timetable")
@@ -77,11 +81,13 @@ public class TimetableController {
 
         Map<DayOfWeek, List<Timetable.Entry>> entries = timetable.week(yearId, monday);
         boolean weekend = !entries.get(DayOfWeek.SATURDAY).isEmpty() || !entries.get(DayOfWeek.SUNDAY).isEmpty();
+        Map<LocalDate, String> free = schoolDays.freeDays(profile.getState(), monday, monday.plusDays(6));
         List<DayView> days = new ArrayList<>();
         for (int i = 0; i < (weekend ? 7 : 5); i++) {
             LocalDate date = monday.plusDays(i);
             days.add(new DayView(date, date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.GERMAN),
-                    Timetable.weekKind(date, year.getWeekAStart()), entries.get(date.getDayOfWeek())));
+                    Timetable.weekKind(date, year.getWeekAStart()), entries.get(date.getDayOfWeek()),
+                    free.get(date)));
         }
 
         var user = currentUser.require();

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Klassenarbeiten')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='school')}"></header>
+<main class="event-main school-main">
+    <p><a th:href="@{/school}">← Schule</a></p>
+    <h1 th:text="|Klassenarbeiten und Termine ${member.name}|">Klassenarbeiten und Termine Lena</h1>
+    <p class="muted" th:text="|${year.school}, Klasse ${year.className}, Schuljahr ${year.label}|">Grundschule, Klasse 3a</p>
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <section class="sheet settings-block">
+        <h2>Anstehend</h2>
+        <p class="muted" th:if="${#lists.isEmpty(upcoming)}">Keine anstehenden Termine.</p>
+        <ul class="plain-list">
+            <li th:each="e : ${upcoming}"
+                th:style="${e.subjectId != null and subjects[e.subjectId] != null} ? |border-left: 4px solid ${subjects[e.subjectId].color}; padding-left: .6rem|">
+                <strong th:text="${#temporals.format(e.day, 'dd.MM.yyyy')}">10.09.2026</strong>
+                <span th:text="${e.kind.label()}">Klassenarbeit</span>
+                <span th:if="${e.subjectId != null and subjects[e.subjectId] != null}" th:text="${subjects[e.subjectId].name}">Mathe</span>
+                <span class="muted" th:if="${e.title != e.kind.label()}" th:text="${e.title}">Bruchrechnen</span>
+                <span class="badge" th:if="${e.studyDays > 0}" th:text="|Lernen ab ${e.studyDays} Tagen vorher|"></span>
+                <a th:if="${e.eventId != null}" th:href="@{/calendar/events/{id}(id=${e.eventId})}" class="muted">Im Kalender</a>
+                <form method="post" th:action="@{/school/exams/{id}/delete(id=${e.id})}" th:if="${canEdit}"
+                      data-confirm="Termin löschen?" class="inline-form">
+                    <input type="hidden" name="yearId" th:value="${year.id}">
+                    <button type="submit" class="button button-ghost button-small">Löschen</button>
+                </form>
+            </li>
+        </ul>
+    </section>
+
+    <section class="sheet settings-block" th:if="${canEdit}">
+        <h2>Neuer Termin</h2>
+        <form method="post" th:action="@{/school/years/{id}/exams(id=${year.id})}" class="slot-row">
+            <select name="kind" aria-label="Art">
+                <option th:each="k : ${kinds}" th:value="${k.name()}" th:text="${k.label()}">Klassenarbeit</option>
+            </select>
+            <select name="subjectId" aria-label="Fach">
+                <option value="">Ohne Fach</option>
+                <option th:each="s : ${subjectList}" th:value="${s.id}" th:text="${s.name}">Mathe</option>
+            </select>
+            <input type="text" name="title" maxlength="150" placeholder="Thema (optional)" aria-label="Thema">
+            <input type="date" name="day" required aria-label="Datum">
+            <label>Lernen ab
+                <input type="number" name="studyDays" min="0" max="60" value="3" aria-label="Tage vorher"> Tagen vorher
+            </label>
+            <button type="submit" class="button button-small">Anlegen</button>
+        </form>
+        <p class="muted">Der Termin steht auch im Familienkalender. Erinnert wird am Lerntag und am Vortag.</p>
+    </section>
+
+    <section class="sheet settings-block" th:if="${!#lists.isEmpty(past)}">
+        <h2>Vergangen</h2>
+        <ul class="plain-list">
+            <li th:each="e : ${past}">
+                <span th:text="${#temporals.format(e.day, 'dd.MM.yyyy')}">01.09.2026</span>
+                <span th:text="${e.kind.label()}">Test</span>
+                <span th:if="${e.subjectId != null and subjects[e.subjectId] != null}" th:text="${subjects[e.subjectId].name}">Mathe</span>
+                <span class="muted" th:if="${e.title != e.kind.label()}" th:text="${e.title}"></span>
+            </li>
+        </ul>
+    </section>
+</main>
+</body>
+</html>

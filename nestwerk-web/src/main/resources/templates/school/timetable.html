@@ -22,7 +22,9 @@
     <section class="sheet settings-block" th:each="d : ${days}">
         <h2 th:text="|${d.name}, ${#temporals.format(d.date, 'dd.MM.')}|"
             th:classappend="${d.date == today} ? 'today'">Montag, 03.08.</h2>
-        <p class="muted" th:if="${#lists.isEmpty(d.entries)}">Keine Stunden.</p>
+        <p class="notice" th:if="${d.free != null and !#lists.isEmpty(d.entries)}" th:text="|Schulfrei: ${d.free}|">Schulfrei: Sommerferien</p>
+        <p class="muted" th:if="${#lists.isEmpty(d.entries)}"
+           th:text="${d.free != null} ? |Schulfrei: ${d.free}| : 'Keine Stunden.'">Keine Stunden.</p>
         <ul class="plain-list">
             <li th:each="e : ${d.entries}" th:style="|border-left: 4px solid ${e.subject.color}; padding-left: .6rem|">
                 <span th:classappend="${e.cancelled()} ? 'struck'">

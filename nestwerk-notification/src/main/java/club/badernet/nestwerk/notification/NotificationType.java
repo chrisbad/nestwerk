@@ -21,7 +21,10 @@ public enum NotificationType {
     BACKUP_DONE("Sicherung erstellt", false),
     UPDATE_AVAILABLE("Update verfügbar", false),
     UPDATE_DONE("Update eingespielt", false),
-    UPDATE_FAILED("Update fehlgeschlagen", false);
+    UPDATE_FAILED("Update fehlgeschlagen", false),
+    SCHOOL_EXAM("Klassenarbeit / Schultermin", true),
+    SCHOOL_LETTER("Elternbrief", true),
+    SCHOOL_CANCELLED("Schulausfall", false);
 
     private final String label;
     private final boolean reminder;

@@ -98,6 +98,7 @@ public class SchoolBlockerSync {
                 .forEach(c -> changesByDay.computeIfAbsent(c.getDay(), d -> new LinkedHashMap<>())
                         .put(c.getLessonId(), c));
 
+        Map<LocalDate, String> free = days.freeDays(profile.getState(), year.getStartsOn(), year.getEndsOn());
         record Key(DayOfWeek weekday, LocalTime start, LocalTime end) {
         }
         Map<Key, Set<LocalDate>> groups = new LinkedHashMap<>();
@@ -105,7 +106,7 @@ public class SchoolBlockerSync {
         for (LocalDate cursor = year.getStartsOn(); !cursor.isAfter(year.getEndsOn()); cursor = cursor.plusDays(1)) {
             final LocalDate day = cursor;
             allDays.computeIfAbsent(day.getDayOfWeek(), d -> new TreeSet<>()).add(day);
-            if (days.isFree(day, profile.getState())) {
+            if (free.containsKey(day)) {
                 continue;
             }
             var entries = Timetable.day(day, year, yearLessons, subjectsById,
