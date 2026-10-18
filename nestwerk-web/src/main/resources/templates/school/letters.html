@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Elternbriefe')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='school')}"></header>
+<main class="event-main school-main">
+    <p><a th:href="@{/school}">← Schule</a></p>
+    <h1 th:text="|Elternbriefe ${member.name}|">Elternbriefe Lena</h1>
+    <p class="muted" th:text="|${year.school}, Klasse ${year.className}, Schuljahr ${year.label}|">Grundschule, Klasse 3a</p>
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <p class="muted" th:if="${#lists.isEmpty(items)}">Noch keine Elternbriefe.</p>
+
+    <section class="sheet settings-block" th:each="i : ${items}">
+        <h2 th:classappend="${i.letter.signed} ? 'struck'" th:text="${i.letter.title}">Ausflug Zoo</h2>
+        <p>
+            <span class="badge" th:if="${i.letter.dueOn != null and !i.letter.signed}"
+                  th:classappend="${i.letter.dueOn.isBefore(today)} ? 'badge-warn'"
+                  th:text="|Frist ${#temporals.format(i.letter.dueOn, 'dd.MM.yyyy')}|">Frist 10.09.2026</span>
+            <span class="badge" th:if="${i.letter.signed}"
+                  th:text="|unterschrieben ${#temporals.format(i.letter.signedAt, 'dd.MM.yyyy', 'Europe/Berlin')}|">unterschrieben</span>
+        </p>
+        <p class="muted" th:if="${i.letter.note != null}" th:text="${i.letter.note}"></p>
+        <div th:replace="~{todos/fragments :: attachments(${i.attachments}, '/school/years/' + ${year.id} + '/letters', ${canEdit} ? '/school/letters/' + ${i.letter.id} + '/attachments' : null)}"></div>
+        <form method="post" th:action="@{/school/letters/{id}/sign(id=${i.letter.id})}" th:if="${canEdit}" class="inline-form">
+            <input type="hidden" name="signed" th:value="${!i.letter.signed}">
+            <button type="submit" class="button button-small"
+                    th:classappend="${i.letter.signed} ? 'button-ghost'"
+                    th:text="${i.letter.signed} ? 'Unterschrift zurücknehmen' : '✓ Unterschrieben'">✓ Unterschrieben</button>
+        </form>
+        <form method="post" th:action="@{/school/letters/{id}/delete(id=${i.letter.id})}" th:if="${canEdit}"
+              data-confirm="Brief samt Anhängen löschen?" class="inline-form">
+            <button type="submit" class="button button-ghost button-small">Löschen</button>
+        </form>
+    </section>
+
+    <section class="sheet settings-block" th:if="${canEdit}">
+        <h2>Neuer Brief</h2>
+        <form method="post" enctype="multipart/form-data" th:action="@{/school/years/{id}/letters(id=${year.id})}"
+              class="slot-row">
+            <input type="text" name="title" maxlength="150" required placeholder="Titel" aria-label="Titel">
+            <input type="date" name="dueOn" aria-label="Frist">
+            <input type="text" name="note" maxlength="500" placeholder="Notiz" aria-label="Notiz">
+            <input type="file" name="files" multiple aria-label="Anhang"
+                   accept="image/png,image/jpeg,image/gif,image/webp,.pdf,.doc,.docx,.txt">
+            <button type="submit" class="button button-small">Anlegen</button>
+        </form>
+        <p class="muted">Erinnert wird drei Tage vorher, am Vortag und am Tag der Frist, solange der Brief nicht unterschrieben ist.</p>
+    </section>
+</main>
+</body>
+</html>

@@ -1,9 +1,9 @@
 package club.badernet.nestwerk.attachment;
 
-/** Wem ein Anhang gehört: einem ToDo, einem Kommentar, einem Kontakt oder einem Rezept. */
+/** Wem ein Anhang gehört: einem ToDo, einem Kommentar, einem Kontakt, einem Rezept oder einem Elternbrief. */
 public record AttachmentOwner(Type type, Long id) {
 
-    public enum Type { TODO, COMMENT, CONTACT, RECIPE }
+    public enum Type { TODO, COMMENT, CONTACT, RECIPE, LETTER }
 
     public static AttachmentOwner todo(Long id) {
         return new AttachmentOwner(Type.TODO, id);
@@ -19,5 +19,9 @@ public record AttachmentOwner(Type type, Long id) {
 
     public static AttachmentOwner recipe(Long id) {
         return new AttachmentOwner(Type.RECIPE, id);
+    }
+
+    public static AttachmentOwner letter(Long id) {
+        return new AttachmentOwner(Type.LETTER, id);
     }
 }
