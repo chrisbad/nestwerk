@@ -67,9 +67,30 @@
         </ul>
         <p class="sheet sheet-empty" th:if="${#lists.isEmpty(myChores)}">Heute ist im Haushalt nichts mehr für dich offen.</p>
     </section>
+    <section class="home-todos panel" th:if="${showSchool and !#lists.isEmpty(schoolDays)}" data-panel="school">
+        <div class="home-todos-head">
+            <h2><span class="panel-grip" data-panel-grip title="Ziehen zum Umsortieren" aria-hidden="true"></span>Heute in der Schule</h2>
+            <a th:href="@{/school}">Zur Schule</a>
+        </div>
+        <ul class="plain-list">
+            <li th:each="c : ${schoolDays}" th:style="|border-left: 4px solid ${c.member.color}; padding-left: .6rem|">
+                <strong th:text="${c.member.name}">Lena</strong>
+                <span th:if="${c.free != null}" th:text="|Schulfrei: ${c.free}|">Schulfrei</span>
+                <span th:if="${c.free == null and c.span() != null}"
+                      th:text="|${#lists.size(c.lessons)} Stunden, ${c.span()}|">5 Stunden, 08:00–12:30</span>
+                <span th:if="${c.free == null and c.span() == null}" class="muted">Keine Schule</span>
+                <span class="badge badge-warn" th:each="e : ${c.lessons}" th:if="${e.cancelled()}"
+                      th:text="|${e.subject.name} entfällt|">Mathe entfällt</span>
+                <span class="badge" th:each="h : ${c.homework}" th:classappend="${h.overdue} ? 'badge-warn'"
+                      th:text="|${h.title} (${#temporals.format(h.dueOn, 'dd.MM.')})|">Seite 12 (05.08.)</span>
+                <span class="muted" th:if="${c.nextExam != null}"
+                      th:text="|${c.nextExam.kind.label()} am ${#temporals.format(c.nextExam.day, 'dd.MM.')}|">Klassenarbeit am 20.10.</span>
+            </li>
+        </ul>
+    </section>
     </div>
 
-    <ul class="areas" data-sortable-areas th:if="${showTodos or showContacts or showHousehold or #authorization.expression('hasAnyAuthority(''CALENDAR_VIEW'', ''USER_MANAGE'', ''ACCESS_ROLE_MANAGE'', ''MEMBER_MANAGE'')')}">
+    <ul class="areas" data-sortable-areas th:if="${showTodos or showContacts or showHousehold or showSchool or #authorization.expression('hasAnyAuthority(''CALENDAR_VIEW'', ''USER_MANAGE'', ''ACCESS_ROLE_MANAGE'', ''MEMBER_MANAGE'')')}">
         <li data-area="calendar" sec:authorize="hasAuthority('CALENDAR_VIEW')">
             <a class="area area-feature" th:href="@{/calendar}">
                 <span class="area-icon">
@@ -101,6 +122,17 @@
                 </span>
                 <h2>Haushalt</h2>
                 <p>Haushaltsplan, Zeitkonto und Belohnungen</p>
+            </a>
+        </li>
+        <li data-area="school" th:if="${showSchool}">
+            <a class="area" th:href="@{/school}">
+                <span class="area-icon">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M2.5 9 12 4.5 21.5 9 12 13.5z"/><path d="M6.5 11.2V16c0 1.2 2.5 2.5 5.5 2.5s5.5-1.3 5.5-2.5v-4.8"/><path d="M21.5 9v5"/>
+                    </svg>
+                </span>
+                <h2>Schule</h2>
+                <p>Stundenplan, Hausaufgaben und Noten</p>
             </a>
         </li>
         <li data-area="contacts" th:if="${showContacts}">

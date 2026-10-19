@@ -1,5 +1,6 @@
 package club.badernet.nestwerk.school;
 
+import club.badernet.nestwerk.member.FamilyMemberRepository;
 import club.badernet.nestwerk.user.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,9 +31,17 @@ public class TimetableService {
     private final LessonChangeRepository changes;
     private final SchoolAccess access;
     private final SchoolBlockerSync sync;
+    private final CancellationNotifier notifier;
+    private final SchoolProfileRepository profiles;
+    private final FamilyMemberRepository members;
 
     public TimetableService(SchoolYearRepository years, SchoolSubjectRepository subjects, LessonRepository lessons,
-                            LessonChangeRepository changes, SchoolAccess access, SchoolBlockerSync sync) {
+                            LessonChangeRepository changes, SchoolAccess access, SchoolBlockerSync sync,
+                            CancellationNotifier notifier, SchoolProfileRepository profiles,
+                            FamilyMemberRepository members) {
+        this.notifier = notifier;
+        this.profiles = profiles;
+        this.members = members;
         this.years = years;
         this.subjects = subjects;
         this.lessons = lessons;
@@ -204,6 +213,12 @@ public class TimetableService {
         }
         changes.flush();
         sync.sync(lesson.getYearId());
+        if (kind == ChangeKind.CANCELLED) {
+            SchoolYear year = requireYear(lesson.getYearId());
+            String child = profiles.findById(year.getProfileId()).flatMap(p -> members.findById(p.getMemberId()))
+                    .map(m -> m.getName()).orElse("");
+            notifier.cancelled(lesson, requireSubject(lesson.getSubjectId()), year, child, day, cleanNote);
+        }
     }
 
     @Transactional

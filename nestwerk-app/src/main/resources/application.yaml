@@ -33,7 +33,7 @@ spring:
           resource: false
           completion: false
         instructions: >-
-          Nestwerk ist die Familien-App mit Kalender, ToDos, Haushaltsplan, Kontakten und Benachrichtigungen.
+          Nestwerk ist die Familien-App mit Kalender, ToDos, Haushaltsplan, Küche, Schule, Kontakten und Benachrichtigungen.
           Alle Tools handeln im Namen des angemeldeten Benutzers und haben genau seine Rechte.
           Beginne mit today_overview oder whoami. IDs von Familienmitgliedern liefert list_members.
           Datumsangaben im Format JJJJ-MM-TT, Uhrzeiten als HH:MM in der Zeitzone der App.

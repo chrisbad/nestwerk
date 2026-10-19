@@ -33,6 +33,7 @@ Der Build ist ein Maven-Multi-Module-Projekt. Die Abhängigkeiten laufen nur in 
 | `nestwerk-household` | Haushaltsplan, Belohnungen, Tablet-Geräte | core, calendar, notification |
 | `nestwerk-kitchen` | Rezepte, Vorrat, Essensplan, Einkaufsliste | core, calendar, notification |
 | `nestwerk-attachment` | Dateianhänge | core, contact, todo, kitchen |
+| `nestwerk-school` | Schuljahre, Stundenplan, Hausaufgaben, Klassenarbeiten, Ferien, Noten, Elternbriefe | core, calendar, notification, todo, attachment |
 | `nestwerk-transfer` | Import/Export (iCalendar, vCard, CSV) | core, calendar, contact, todo |
 | `nestwerk-maintenance` | Datensicherung und Updates | core, notification, attachment |
 | `nestwerk-web` | Controller, Formulare, Templates, statische Dateien | alle Fachmodule |

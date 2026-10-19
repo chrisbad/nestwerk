@@ -24,6 +24,7 @@
                 <li><a href="#haushalt">Haushalt</a></li>
                 <li><a href="#tablet">Wand-Tablet</a></li>
                 <li><a href="#kueche">Küche</a></li>
+                <li sec:authorize="hasAuthority('SCHOOL_VIEW')"><a href="#schule">Schule</a></li>
                 <li><a href="#kontakte">Kontakte</a></li>
                 <li><a href="#benachrichtigungen">Benachrichtigungen</a></li>
                 <li><a href="#ki">KI-Assistent</a></li>
@@ -342,6 +343,37 @@
                 <p>Hier legst du die <strong>Mahlzeiten</strong> fest (Name, Anteil am Tagesbedarf, ob „Woche
                     auffüllen“ sie füllt), trägst für jede Person das <strong>Kalorienziel</strong> pro Tag ein und
                     verbindest <strong>Bring!</strong>. Dafür brauchst du das Recht <em>Küche: Einstellungen</em>.</p>
+            </section>
+
+            <section id="schule" class="sheet manual-section" sec:authorize="hasAuthority('SCHOOL_VIEW')">
+                <h2>Schule</h2>
+                <p>Stundenplan, Hausaufgaben, Klassenarbeiten, Ferien, Noten und Elternbriefe für jedes Schulkind.</p>
+                <ul>
+                    <li><strong>Schulprofil und Schuljahr:</strong> Unter „Schule“ legt man für ein Familienmitglied ein
+                        Profil mit Bundesland an und beginnt ein Schuljahr (Schule, Klasse, Zeitraum). Ein neues Schuljahr
+                        ersetzt das aktive; das alte bleibt mit allen Daten erhalten und lässt sich wieder aktivieren.</li>
+                    <li><strong>Stundenplan:</strong> Fächer und Stunden im Wochenraster. Wechselt der Plan alle zwei
+                        Wochen, gibt man eine A-Woche an und ordnet Stunden der A- oder B-Woche zu. Unter
+                        „Ausfall / Vertretung“ markiert man einzelne Stunden; ausfallende Stunden kürzen den Schultag und
+                        werden allen gemeldet. Die Schulzeit erscheint im Kalender als Band (Art „Schule“).</li>
+                    <li><strong>Hausaufgaben:</strong> sind ToDos, die dem Kind zugewiesen sind. Sie lassen sich einmalig,
+                        an jedem Schultag oder wöchentlich wiederholen. Erledigen und Wiederöffnen geht in der Liste
+                        oder im ToDo selbst.</li>
+                    <li><strong>Klassenarbeiten und Termine:</strong> Klassenarbeit, Test, Elternabend oder Ausflug mit
+                        Datum. Sie stehen auch im Familienkalender; Nestwerk erinnert am Lerntag (einstellbar) und am Vortag.</li>
+                    <li><strong>Ferien:</strong> Nestwerk holt die Schulferien des Bundeslands einmal täglich von
+                        openholidaysapi.org. An Ferientagen und Feiertagen entfällt die Schulzeit. Eigene freie Tage
+                        trägt man unter „Schulferien ansehen“ ein.</li>
+                    <li><strong>Noten:</strong> Noten von 1 bis 6 mit Tendenz (2+ ist 1,7, 2- ist 2,3), je Fach und
+                        Halbjahr, mündlich oder schriftlich, einfach oder doppelt gewichtet. Nestwerk zeigt den
+                        Durchschnitt und einen kleinen Verlauf; die Zeugnisnote trägt man getrennt ein. Wer das Recht
+                        „Noten aller Kinder“ hat, sieht und pflegt alle; mit „Eigene Noten“ sieht man nur die des
+                        eigenen Kindes-Profils. Auf dem Wand-Tablet erscheinen nie Noten.</li>
+                    <li><strong>Elternbriefe:</strong> Brief mit Frist und Anhang (Foto oder PDF). Mit „Unterschrieben“
+                        ist er erledigt; vorher erinnert Nestwerk drei Tage vorher, am Vortag und am Tag der Frist.</li>
+                    <li><strong>Heute in der Schule:</strong> Die Startseite und das Wand-Tablet zeigen je Kind die
+                        Stunden von heute, ausfallende Stunden, fällige Hausaufgaben und den nächsten Termin.</li>
+                </ul>
             </section>
 
             <section id="kontakte" class="sheet manual-section">

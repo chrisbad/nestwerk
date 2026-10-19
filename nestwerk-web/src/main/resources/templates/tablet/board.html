@@ -38,6 +38,36 @@
             </ul>
         </section>
     </div>
+    <section class="tablet-school" th:if="${!#lists.isEmpty(school)}" aria-label="Schule">
+        <h2>Schule heute</h2>
+        <div class="tablet-columns">
+            <section class="tablet-column" th:each="c : ${school}" th:style="|--member-color: ${c.member.color}|">
+                <h3 th:text="${c.member.name}">Lena</h3>
+                <p class="muted" th:if="${c.free != null}" th:text="|Schulfrei: ${c.free}|">Schulfrei: Sommerferien</p>
+                <ul class="tablet-cards" th:if="${c.free == null}">
+                    <li class="tablet-card" th:each="e : ${c.lessons}" th:classappend="${e.cancelled()} ? 'is-done'">
+                        <span class="tablet-card-title" th:text="${e.subject.name}">Mathe</span>
+                        <span class="tablet-card-meta">
+                            <span th:text="|${#temporals.format(e.lesson.startsAt, 'HH:mm')}–${#temporals.format(e.lesson.endsAt, 'HH:mm')}|">08:00–08:45</span>
+                            <span th:if="${e.lesson.room != null}" th:text="${e.lesson.room}">R12</span>
+                            <span th:if="${e.change != null}" th:text="${e.change.kind.label()}">Entfällt</span>
+                        </span>
+                    </li>
+                </ul>
+                <p class="muted" th:if="${c.free == null and #lists.isEmpty(c.lessons)}">Keine Stunden.</p>
+                <h4 th:if="${!#lists.isEmpty(c.homework)}">Hausaufgaben</h4>
+                <ul class="tablet-cards" th:if="${!#lists.isEmpty(c.homework)}">
+                    <li class="tablet-card" th:each="h : ${c.homework}" th:classappend="${h.overdue} ? 'is-overdue'">
+                        <span class="tablet-card-title" th:text="${h.title}">Seite 12 lesen</span>
+                        <span class="tablet-card-meta">
+                            <span th:if="${h.subject != null}" th:text="${h.subject}">Deutsch</span>
+                            <span th:text="|fällig ${#temporals.format(h.dueOn, 'dd.MM.')}|">fällig 05.08.</span>
+                        </span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+    </section>
     <p class="hint tablet-hint" th:if="${#lists.isEmpty(members)}">
         Noch hat niemand eine PIN. Jedes Mitglied richtet sie unter „PIN fürs Tablet“ ein.
     </p>

@@ -12,6 +12,7 @@ import club.badernet.nestwerk.household.HouseholdDevice;
 import club.badernet.nestwerk.household.MemberPins;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
+import club.badernet.nestwerk.school.SchoolToday;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -67,10 +68,12 @@ public class TabletController {
     private final FamilyMemberRepository members;
     private final HouseholdViews views;
     private final Clock clock;
+    private final SchoolToday schoolToday;
 
     public TabletController(DeviceService devices, MemberPins pins, ChoreTaskRepository tasks,
                             ChoreTaskService taskService, FamilyMemberRepository members, HouseholdViews views,
-                            Clock clock) {
+                            Clock clock, SchoolToday schoolToday) {
+        this.schoolToday = schoolToday;
         this.devices = devices;
         this.pins = pins;
         this.tasks = tasks;
@@ -131,6 +134,8 @@ public class TabletController {
             columns.add(new Column("Offen", null, unassigned));
         }
         model.addAttribute("device", device.get());
+        model.addAttribute("school", schoolToday.forDate(today).stream()
+                .filter(c -> !c.lessons().isEmpty() || !c.homework().isEmpty() || c.free() != null).toList());
         model.addAttribute("columns", columns);
         model.addAttribute("members", all.stream().filter(FamilyMember::hasPin).toList());
         model.addAttribute("todayLabel", HouseholdViews.longDay(today));
