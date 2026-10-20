@@ -88,7 +88,8 @@ public class RecurrenceExpander {
             if (end.isAfter(from) && start.isBefore(to)) {
                 result.add(new Occurrence(event.getId(), event.getUid(), original, title, description,
                         location, start.atZone(zone), end.atZone(zone), event.isAllDay(), event.isPrivateEvent(),
-                        event.getRrule() != null, event.getCreatedBy(), event.getMemberIds()));
+                        event.getRrule() != null, event.getCreatedBy(), event.getMemberIds(),
+                        event.getCategoryId().orElse(null)));
             }
         }
         result.sort(Comparator.comparing(Occurrence::start));

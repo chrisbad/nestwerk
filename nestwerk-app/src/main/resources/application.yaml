@@ -37,7 +37,8 @@ spring:
           Alle Tools handeln im Namen des angemeldeten Benutzers und haben genau seine Rechte.
           Beginne mit today_overview oder whoami. IDs von Familienmitgliedern liefert list_members.
           Datumsangaben im Format JJJJ-MM-TT, Uhrzeiten als HH:MM in der Zeitzone der App.
-          Löschen ist über diese Schnittstelle nicht möglich.
+          Löschen geht nur, wo ein Tool dafür ausdrücklich existiert (z. B. delete_event); solche Tools sind als
+          destruktiv markiert und sollten nur nach Rückfrage benutzt werden.
   jpa:
     open-in-view: false
     hibernate:

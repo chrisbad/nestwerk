@@ -4,6 +4,8 @@ import club.badernet.nestwerk.calendar.CalendarEvent;
 import club.badernet.nestwerk.calendar.CalendarEventRepository;
 import club.badernet.nestwerk.calendar.CalendarEventService;
 import club.badernet.nestwerk.calendar.CalendarIcs;
+import club.badernet.nestwerk.calendar.EventCategory;
+import club.badernet.nestwerk.calendar.EventCategoryService;
 import club.badernet.nestwerk.settings.CalendarSettings;
 import club.badernet.nestwerk.calendar.EventInput;
 import club.badernet.nestwerk.user.User;
@@ -16,9 +18,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-/** Kalender als iCal-Datei exportieren und importieren. Gleiche UID heißt: derselbe Termin wird aktualisiert. */
+/**
+ * Exports and imports the calendar as iCal file. The same UID means: the same event is updated. Categories travel
+ * by name; unknown names are imported without a category.
+ */
 @Service
 public class CalendarTransfer {
 
@@ -26,13 +33,15 @@ public class CalendarTransfer {
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
     private final CalendarEventService events;
+    private final EventCategoryService categories;
     private final CalendarEventRepository repository;
     private final RowRunner runner;
     private final ZoneId zone;
 
-    public CalendarTransfer(CalendarEventService events, CalendarEventRepository repository, RowRunner runner,
-                            CalendarSettings settings) {
+    public CalendarTransfer(CalendarEventService events, EventCategoryService categories,
+                            CalendarEventRepository repository, RowRunner runner, CalendarSettings settings) {
         this.events = events;
+        this.categories = categories;
         this.repository = repository;
         this.runner = runner;
         this.zone = settings.zone();
@@ -40,10 +49,12 @@ public class CalendarTransfer {
 
     @Transactional(readOnly = true)
     public String exportIcs(User viewer) {
-        return CalendarIcs.write(events.visibleEvents(viewer), zone);
+        Map<Long, String> names = categories.list(viewer).stream()
+                .collect(Collectors.toMap(EventCategory::getId, EventCategory::getName));
+        return CalendarIcs.write(events.visibleEvents(viewer), zone, names);
     }
 
-    /** Vorschau ({@code commit = false}) oder Import. */
+    /** Preview ({@code commit = false}) or import. */
     public ImportReport importIcs(byte[] data, User actor, boolean commit) {
         if (!events.canCreate(actor)) {
             throw new AccessDeniedException("Keine Berechtigung, Termine anzulegen");
@@ -68,30 +79,32 @@ public class CalendarTransfer {
         if (p.privateEvent() && !events.canCreatePrivate(actor)) {
             return ImportReport.Row.skip(p.title(), detail, "privater Termin, dafür fehlt das Recht");
         }
+        Long categoryId = categories.findByName(p.category(), actor).map(EventCategory::getId).orElse(null);
         var existing = events.findVisibleByUid(p.uid(), actor);
         if (existing.isPresent()) {
             CalendarEvent current = existing.get();
             if (!events.canEdit(current, actor)) {
                 return ImportReport.Row.skip(p.title(), detail, "vorhanden, Bearbeiten nicht erlaubt");
             }
-            events.update(current.getId(), input(p, current.getMemberIds(), current.isAbsence()), actor);
+            Long keptCategory = categoryId != null ? categoryId : current.getCategoryId().orElse(null);
+            events.update(current.getId(), input(p, current.getMemberIds(), current.isAbsence(), keptCategory), actor);
             return new ImportReport.Row(p.title(), detail, ImportReport.Action.UPDATE, null);
         }
         if (repository.findByUid(p.uid()).isPresent()) {
             return ImportReport.Row.skip(p.title(), detail, "UID gehört zu einem anderen, nicht sichtbaren Termin");
         }
-        events.create(input(p, Set.of(), false), actor, p.uid());
+        events.create(input(p, Set.of(), false, categoryId), actor, p.uid());
         return new ImportReport.Row(p.title(), detail, ImportReport.Action.NEW, null);
     }
 
-    private static EventInput input(CalendarIcs.Parsed p, Set<Long> members, boolean absence) {
+    private static EventInput input(CalendarIcs.Parsed p, Set<Long> members, boolean absence, Long categoryId) {
         String title = p.title().length() > 200 ? p.title().substring(0, 200) : p.title();
         if (p.allDay()) {
             return new EventInput(title, p.description(), p.location(), p.startDate(), null, p.endDate(), null, true,
-                    p.rrule(), p.privateEvent(), members, absence);
+                    p.rrule(), p.privateEvent(), members, absence, categoryId);
         }
         return new EventInput(title, p.description(), p.location(), p.start().toLocalDate(),
                 p.start().toLocalTime(), p.end().toLocalDate(), p.end().toLocalTime(), false, p.rrule(),
-                p.privateEvent(), members, absence);
+                p.privateEvent(), members, absence, categoryId);
     }
 }

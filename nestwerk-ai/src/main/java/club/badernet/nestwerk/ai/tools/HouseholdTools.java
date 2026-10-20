@@ -26,8 +26,9 @@ import java.util.stream.Collectors;
 @Component
 public class HouseholdTools {
 
+    /** {@code plannedAt}: time of day the task is planned at in the calendar ({@code null} = not planned). */
     public record ChoreTaskItem(Long taskId, String chore, String area, LocalDate dueOn, String dueTime,
-                                String assignee, String status, int plannedMinutes) {
+                                String assignee, String status, int plannedMinutes, String plannedAt) {
     }
 
     public record ChoreItem(Long choreId, String title, String area, String description, String kind, String rrule,
@@ -276,6 +277,21 @@ public class HouseholdTools {
         });
     }
 
+    @McpTool(name = "reschedule_chore_task", description = "Plant eine offene Aufgabe zu einer anderen Uhrzeit am "
+            + "selben Tag ein (wie Verschieben im Kalender). Die automatische Planung behält diese Uhrzeit, solange die "
+            + "zuständige Person da ist.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public ChoreTaskItem rescheduleChoreTask(McpTransportContext context,
+                                             @McpToolParam(description = "ID der Aufgabe (taskId)") Long taskId,
+                                             @McpToolParam(description = "Neue Uhrzeit HH:MM") String time) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(taskId, "taskId");
+            tasks.reschedule(id, Tools.required(Tools.time(time, "time"), "time"), user);
+            return item(tasks.get(id, user), names());
+        });
+    }
+
     @McpTool(name = "book_chore", description = "Bucht eine Hausarbeit ohne geplante Aufgabe, z. B. „bei Bedarf“ "
             + "(Staubsaugen, das gerade erledigt wurde). Ohne doerMemberId hat der Benutzer sie selbst erledigt.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
@@ -315,6 +331,7 @@ public class HouseholdTools {
         return new ChoreTaskItem(t.getId(), t.getChore().getTitle(), t.getChore().getArea(), t.getDueOn(),
                 t.getDueTime() == null ? null : t.getDueTime().toString(),
                 t.getAssigneeMemberId() == null ? null : names.getOrDefault(t.getAssigneeMemberId(), "?"),
-                t.getStatus().name(), t.getChore().getPlanMinutes());
+                t.getStatus().name(), t.getChore().getPlanMinutes(),
+                t.getPlannedAt() == null ? null : t.getPlannedAt().toString());
     }
 }

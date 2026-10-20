@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Bottom sheet of an event in the time grid: quick edit, delete, link to all details -->
+<div th:fragment="event" class="grid-sheet-content"
+     th:with="detailsUrl=@{/calendar/events/{id}(id=${event.id}, occurrence=${occurrenceId})},
+              scope=${recurring ? 'OCCURRENCE' : 'SINGLE'}">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="dialog-head">
+        <h2 th:text="${form.title}">Zahnarzt</h2>
+        <button type="button" class="icon-button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            <span class="visually-hidden">Schließen</span>
+        </button>
+    </div>
+
+    <form th:action="@{/calendar/actions/events/{id}/update(id=${event.id})}" method="post"
+          data-grid-form="update" th:with="locked=${!canEdit}">
+        <input type="hidden" name="recurrenceId" th:value="${occurrenceId}" th:if="${occurrenceId != null}">
+        <input type="hidden" name="shownStart" th:unless="${form.allDay}"
+               th:value="${form.startDate + 'T' + #temporals.format(form.startTime, 'HH:mm')}">
+        <input type="hidden" name="shownEnd" th:unless="${form.allDay}"
+               th:value="${form.endDate + 'T' + #temporals.format(form.endTime, 'HH:mm')}">
+        <input type="hidden" name="allDay" th:value="${form.allDay}">
+        <input type="hidden" name="scope" th:value="${scope}" th:unless="${recurring}">
+        <div class="dialog-body">
+            <fieldset class="field segmented-field" th:if="${recurring and canEdit}">
+                <legend>Ändern</legend>
+                <div class="segmented segmented-choice">
+                    <label><input type="radio" name="scope" value="OCCURRENCE" checked data-sheet-scope> Nur dieses Vorkommen</label>
+                    <label><input type="radio" name="scope" value="SERIES" data-sheet-scope> Ganze Serie</label>
+                </div>
+                <p class="hint" data-scope-hint="OCCURRENCE">Kategorie und Personen gelten immer für die ganze Serie.</p>
+                <p class="hint" data-scope-hint="SERIES" hidden>Die Serie behält ihre Tage; Uhrzeit und Dauer gelten für alle Vorkommen.</p>
+            </fieldset>
+
+            <fieldset class="event-fields" th:disabled="${locked}">
+                <div class="field">
+                    <label for="sheet-title">Titel</label>
+                    <input id="sheet-title" type="text" name="title" th:value="${form.title}" maxlength="200" required>
+                </div>
+                <div class="field-row field-row-when">
+                    <div class="field">
+                        <label for="sheet-start-date">Beginn</label>
+                        <div class="date-time">
+                            <input id="sheet-start-date" type="date" name="startDate" th:value="${form.startDate}" required>
+                            <input type="time" name="startTime" th:unless="${form.allDay}" aria-label="Uhrzeit Beginn"
+                                   th:value="${#temporals.format(form.startTime, 'HH:mm')}" required>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="sheet-end-date">Ende</label>
+                        <div class="date-time">
+                            <input id="sheet-end-date" type="date" name="endDate" th:value="${form.endDate}" required>
+                            <input type="time" name="endTime" th:unless="${form.allDay}" aria-label="Uhrzeit Ende"
+                                   th:value="${#temporals.format(form.endTime, 'HH:mm')}" required>
+                        </div>
+                    </div>
+                </div>
+                <div data-series-only>
+                    <div th:replace="~{calendar/fragments :: categorySelect('sheet-category', ${form.categoryId})}"></div>
+                    <fieldset class="field choices" th:unless="${#maps.isEmpty(memberById)}">
+                        <legend>Betrifft</legend>
+                        <label class="choice choice-member" th:each="entry : ${memberById}"
+                               th:style="|--member-color: ${entry.value.color}|">
+                            <input type="checkbox" name="memberIds" th:value="${entry.key}"
+                                   th:checked="${form.memberIds.contains(entry.key)}">
+                            <span th:text="${entry.value.name}">Name</span>
+                        </label>
+                    </fieldset>
+                </div>
+                <p class="muted sheet-place" th:if="${event.location != null}">
+                    <strong>Ort:</strong> <span th:text="${event.location}">Praxis</span>
+                </p>
+            </fieldset>
+        </div>
+        <div class="dialog-foot">
+            <a class="button button-ghost" th:href="${detailsUrl}">Alle Details</a>
+            <button type="submit" class="button" th:if="${canEdit}">Speichern</button>
+        </div>
+    </form>
+
+    <div class="dialog-section dialog-section-last sheet-danger" th:if="${canEdit or canDelete}">
+        <form th:if="${recurring and canEdit and occurrenceId != null}" method="post" data-grid-form="cancel"
+              th:action="@{/calendar/actions/events/{id}/occurrence/cancel(id=${event.id})}"
+              data-confirm="Dieses Vorkommen absagen?" data-confirm-label="Absagen">
+            <input type="hidden" name="recurrenceId" th:value="${occurrenceId}">
+            <button type="submit" class="button button-ghost">Dieses Vorkommen absagen</button>
+        </form>
+        <form th:if="${canDelete}" method="post" data-grid-form="delete"
+              th:action="@{/calendar/actions/events/{id}/delete(id=${event.id})}"
+              th:attr="data-confirm=${recurring} ? |Die ganze Serie „${event.title}“ löschen?| : |„${event.title}“ löschen?|">
+            <button type="submit" class="button button-danger"
+                    th:text="${recurring} ? 'Ganze Serie löschen' : 'Termin löschen'">Termin löschen</button>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>

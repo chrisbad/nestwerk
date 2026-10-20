@@ -3,7 +3,7 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
 
-<!-- Kopfzeile: Titel, Blättern, Ansichtswahl, Termin anlegen -->
+<!-- Toolbar: title, paging, choice of view, grid snapping, new event -->
 <div th:fragment="toolbar(title, view, date, prevUrl, todayUrl, nextUrl)" class="cal-toolbar">
     <div class="cal-title">
         <h1 th:text="${title}">Oktober 2026</h1>
@@ -25,12 +25,20 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></svg>
             ToDos
         </button>
+        <div class="segmented segmented-slots" role="group" aria-label="Raster" th:if="${gridDays != null}">
+            <button type="button" data-slot-choice="coarse" aria-pressed="true"
+                    th:title="|Grob: rastet auf ${slotCoarse} Minuten ein|">Grob</button>
+            <button type="button" data-slot-choice="fine" aria-pressed="false"
+                    th:title="|Fein: rastet auf ${slotFine} Minuten ein und zeigt mehr Platz pro Stunde|">Fein</button>
+        </div>
         <nav class="segmented" aria-label="Ansicht" hx-boost="true" hx-target="#calendar" hx-select="#calendar" hx-swap="outerHTML">
             <a th:href="@{/calendar/month(date=${date})}" th:aria-current="${view == 'month'} ? 'page'">Monat</a>
-            <a th:href="@{/calendar/week(date=${date})}" th:aria-current="${view == 'week'} ? 'page'">Woche</a>
+            <a class="segment-week" th:href="@{/calendar/week(date=${date})}" th:aria-current="${view == 'week'} ? 'page'">Woche</a>
+            <a th:href="@{/calendar/days3(date=${date})}" th:aria-current="${view == 'days3'} ? 'page'">3 Tage</a>
+            <a th:href="@{/calendar/day(date=${date})}" th:aria-current="${view == 'day'} ? 'page'">Tag</a>
             <a th:href="@{/calendar/agenda(from=${date})}" th:aria-current="${view == 'agenda'} ? 'page'">Agenda</a>
         </nav>
-        <!-- schlichte Links: die Leiste wird beim Blättern per htmx ersetzt -->
+        <!-- plain links: the toolbar is replaced by htmx when paging -->
         <a class="button button-ghost button-small" th:href="@{/export/calendar.ics}"
            title="Alle sichtbaren Termine als iCal-Datei herunterladen">Export</a>
         <a class="button button-ghost button-small" th:href="@{/import/calendar}"
@@ -43,7 +51,7 @@
     </div>
 </div>
 
-<!-- Legende der Familienmitglieder -->
+<!-- Blocker and school bands of a day -->
 <ul th:fragment="bands(list, compact)" class="bands" th:classappend="${compact} ? 'bands-compact'"
     th:if="${list != null and !list.isEmpty()}">
     <li th:each="b : ${list}" class="band" th:classappend="'band-' + ${b.kind}"
@@ -53,16 +61,26 @@
     </li>
 </ul>
 
-<ul th:fragment="legend" class="cal-legend" th:unless="${#maps.isEmpty(memberById)}">
-    <li th:each="entry : ${memberById}">
-        <span class="swatch" th:style="|background-color: ${entry.value.color}|"></span>
-        <span th:text="${entry.value.name}">Name</span>
-    </li>
-</ul>
+<!-- Legend: categories colour the events, members appear as dots -->
+<div th:fragment="calendarLegend" class="cal-legend-row">
+    <ul class="cal-legend" th:unless="${#maps.isEmpty(categoryById)}" aria-label="Kategorien">
+        <li th:each="entry : ${categoryById}">
+            <span class="swatch" th:style="|background-color: ${entry.value.color.hex()}|"></span>
+            <span th:text="${entry.value.name}">Arzt</span>
+        </li>
+    </ul>
+    <ul class="cal-legend cal-legend-members" th:unless="${#maps.isEmpty(memberById)}" aria-label="Familienmitglieder">
+        <li th:each="entry : ${memberById}">
+            <span class="swatch swatch-round" th:style="|background-color: ${entry.value.color}|"></span>
+            <span th:text="${entry.value.name}">Name</span>
+        </li>
+    </ul>
+    <a class="cal-legend-manage" th:if="${canManageCategories}" th:href="@{/calendar/categories}">Kategorien verwalten</a>
+</div>
 
-<!-- Ein fälliges ToDo als Ganztags-Eintrag mit Häkchen-Symbol -->
+<!-- A due to-do as all-day entry with check mark -->
 <a th:fragment="todo(t)" class="occ occ-allday occ-todo" th:href="@{/todos/{id}(id=${t.id})}"
-   th:classappend="'occ-todo-' + ${#strings.toLowerCase(t.priority.name())}">
+   th:classappend="'occ-todo-' + ${#strings.toLowerCase(t.priority.name())}" th:title="${t.title}">
     <span class="occ-title">
         <svg class="occ-lock" viewBox="0 0 24 24" role="img" aria-label="ToDo">
             <rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/>
@@ -71,9 +89,9 @@
     </span>
 </a>
 
-<!-- Eine eingeplante Hausarbeit; Farbe der zuständigen Person -->
+<!-- A planned chore; colour of the responsible person -->
 <a th:fragment="chore(c)" class="occ occ-chore" th:href="@{/household/tasks/{id}(id=${c.id})}"
-   th:style="${c.color != null} ? |--occ-color: ${c.color}|">
+   th:style="${c.color != null} ? |--occ-color: ${c.color}|" th:title="|${c.time} ${c.title}|">
     <span class="occ-time" th:text="${c.time}">18:30–18:55</span>
     <span class="occ-title">
         <svg class="occ-lock" viewBox="0 0 24 24" role="img" aria-label="Hausarbeit">
@@ -83,11 +101,14 @@
     </span>
 </a>
 
-<!-- Ein Vorkommen als Eintrag; Farbe vom ersten zugewiesenen Mitglied -->
+<!-- An occurrence as entry; colour of its category, else of the first member -->
 <a th:fragment="occurrence(o)" class="occ"
    th:classappend="${o.allDay} ? 'occ-allday'"
-   th:with="firstMember=${#sets.isEmpty(o.memberIds) ? null : memberById[o.memberIds.iterator().next()]}"
-   th:style="${firstMember != null} ? |--occ-color: ${firstMember.color}|"
+   th:with="category=${o.categoryId == null ? null : categoryById[o.categoryId]},
+            firstMember=${#sets.isEmpty(o.memberIds) ? null : memberById[o.memberIds.iterator().next()]},
+            color=${category != null ? category.color.hex() : (firstMember != null ? firstMember.color : null)}"
+   th:style="${color != null} ? |--occ-color: ${color}|"
+   th:title="${o.allDay} ? ${o.title} : |${#temporals.format(o.start, 'HH:mm')} ${o.title}|"
    th:href="@{/calendar/events/{id}(id=${o.eventId}, occurrence=${o.recurring} ? ${o.recurrenceId} : null)}"
    th:attr="data-event-id=${o.eventId}, data-start=${#temporals.format(o.start, 'yyyy-MM-dd')},
             data-movable=${!o.recurring and #authorization.expression('hasAnyAuthority(''CALENDAR_EVENT_EDIT_OWN'', ''CALENDAR_EVENT_EDIT_ALL'')')} ? 'true' : null">
@@ -98,13 +119,39 @@
         </svg>
         <span th:text="${o.title}">Titel</span>
     </span>
-    <span class="occ-members" th:if="${#sets.size(o.memberIds) > 1}">
-        <span th:each="mid : ${o.memberIds}" class="dot"
-              th:if="${memberById[mid] != null}"
-              th:style="|background-color: ${memberById[mid].color}|"
-              th:title="${memberById[mid].name}"></span>
-    </span>
+    <span th:replace="~{calendar/fragments :: memberDots(${o.memberIds}, ${category != null})}"></span>
 </a>
+
+<!-- Member dots; with a category all members are shown, otherwise only from two on (the colour is the first) -->
+<span th:fragment="memberDots(ids, always)" class="occ-members"
+      th:if="${#sets.size(ids) > 1 or (always and #sets.size(ids) > 0)}">
+    <span th:each="mid : ${ids}" class="dot"
+          th:if="${memberById[mid] != null}"
+          th:style="|background-color: ${memberById[mid].color}|"
+          th:title="${memberById[mid].name}"></span>
+</span>
+
+<!-- Colour choice from the fixed palette -->
+<fieldset th:fragment="palette(selected)" class="field palette">
+    <legend>Farbe</legend>
+    <label class="palette-option" th:each="color : ${T(club.badernet.nestwerk.calendar.CategoryColor).values()}"
+           th:style="|--swatch: ${color.hex()}|" th:title="${color.label()}">
+        <input type="radio" name="color" th:value="${color.name()}" th:checked="${color == selected}" required>
+        <span class="palette-dot" aria-hidden="true"></span>
+        <span class="palette-label" th:text="${color.label()}">Rot</span>
+    </label>
+</fieldset>
+
+<!-- Category choice for event forms -->
+<div th:fragment="categorySelect(id, selected)" class="field" th:unless="${#lists.isEmpty(allCategories)}">
+    <label th:for="${id}">Kategorie <span class="hint">optional</span></label>
+    <select th:id="${id}" name="categoryId" data-category-select>
+        <option value="">Keine</option>
+        <option th:each="c : ${allCategories}" th:value="${c.id}" th:text="${c.name}"
+                th:selected="${selected != null and selected == c.id}"
+                th:attr="data-color=${c.color.hex()}">Arzt</option>
+    </select>
+</div>
 
 </body>
 </html>

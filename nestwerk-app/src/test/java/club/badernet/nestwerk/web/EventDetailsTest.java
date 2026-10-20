@@ -18,7 +18,7 @@ class EventDetailsTest {
     private static Occurrence occurrence(LocalDateTime start, LocalDateTime end, boolean allDay) {
         ZonedDateTime s = start.atZone(BERLIN);
         return new Occurrence(1L, "uid", s.toInstant(), "Termin", null, null, s, end.atZone(BERLIN),
-                allDay, false, false, 1L, Set.of());
+                allDay, false, false, 1L, Set.of(), null);
     }
 
     @Test

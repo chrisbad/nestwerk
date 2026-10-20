@@ -68,6 +68,8 @@
                        placeholder="Was steht an?">
             </div>
 
+            <div th:replace="~{calendar/fragments :: categorySelect('categoryId', ${form.categoryId})}"></div>
+
             <div class="field-switch">
                 <label class="switch">
                     <input type="checkbox" th:field="*{allDay}" data-allday-toggle>

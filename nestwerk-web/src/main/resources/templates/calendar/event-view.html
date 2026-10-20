@@ -14,6 +14,11 @@
         <p class="event-when" th:text="${details.when}">Montag, 12. Oktober 2026, 19:00–21:00 Uhr</p>
 
         <dl class="event-facts">
+            <th:block th:if="${category != null}">
+                <dt>Kategorie</dt>
+                <dd><span class="member-chip" th:style="|--member-color: ${category.color.hex()}|"
+                          th:text="${category.name}">Arzt</span></dd>
+            </th:block>
             <th:block th:if="${details.repeat != null}">
                 <dt>Wiederholung</dt>
                 <dd th:text="${details.repeat}">Wöchentlich</dd>

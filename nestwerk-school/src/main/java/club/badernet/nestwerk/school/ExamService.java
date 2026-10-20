@@ -79,7 +79,7 @@ public class ExamService {
         SchoolExam exam = new SchoolExam(yearId, in.subjectId(), in.kind(), cleanTitle(in.title(), in.kind()),
                 in.day(), in.studyDays());
         apply(exam, yearId, in);
-        exam.linkEvent(events.create(eventFor(exam), actor).getId());
+        exam.linkEvent(events.create(eventFor(exam, null), actor).getId());
         return exams.save(exam);
     }
 
@@ -101,13 +101,15 @@ public class ExamService {
         apply(exam, exam.getYearId(), in);
         if (exam.getEventId() != null) {
             try {
-                events.update(exam.getEventId(), eventFor(exam), actor);
+                // the category is chosen in the calendar and stays when the exam changes
+                Long category = events.get(exam.getEventId(), actor).getCategoryId().orElse(null);
+                events.update(exam.getEventId(), eventFor(exam, category), actor);
                 return;
             } catch (EventNotFoundException e) {
                 // the calendar event was deleted in the meantime: create it again
             }
         }
-        exam.linkEvent(events.create(eventFor(exam), actor).getId());
+        exam.linkEvent(events.create(eventFor(exam, null), actor).getId());
     }
 
     @Transactional
@@ -146,14 +148,14 @@ public class ExamService {
         exam.setMemberIds(chosen);
     }
 
-    private EventInput eventFor(SchoolExam exam) {
+    private EventInput eventFor(SchoolExam exam, Long categoryId) {
         String title = eventTitle(exam);
         if (exam.isAllDay()) {
             return new EventInput(title, null, exam.getLocation(), exam.getDay(), null, exam.getDay(), null, true,
-                    null, false, exam.getMemberIds());
+                    null, false, exam.getMemberIds(), false, categoryId);
         }
         return new EventInput(title, null, exam.getLocation(), exam.getDay(), exam.getStartsAt(), exam.getDay(),
-                exam.getEndsAt(), false, null, false, exam.getMemberIds());
+                exam.getEndsAt(), false, null, false, exam.getMemberIds(), false, categoryId);
     }
 
     private Long childOf(Long yearId) {

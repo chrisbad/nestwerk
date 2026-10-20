@@ -72,6 +72,38 @@ class ChorePlanningTest {
     }
 
     @Test
+    void timeSetByHandSurvivesReplanningUntilAssigneeIsAbsent() {
+        Chore c = chores.create(input(ChoreKind.RECURRING, "FREQ=DAILY;COUNT=2", null, Distribution.FIXED,
+                lena.getId()), admin);
+        ChoreTask task = tasksOf(c).getLast();
+
+        taskService.reschedule(task.getId(), LocalTime.of(20, 15), admin);
+        planner.reassignAbsent(today);
+
+        assertThat(task.getPlannedAt()).isEqualTo(LocalTime.of(20, 15));
+        assertThat(task.isPlannedManually()).isTrue();
+
+        events.create(new EventInput("Krank", null, null, task.getDueOn(), null, task.getDueOn(), null,
+                true, null, false, Set.of(lena.getId()), true), admin);
+        entityManager.flush();
+        planner.reassignAbsent(today);
+        assertThat(task.isPlannedManually()).isFalse();
+    }
+
+    @Test
+    void rescheduleNeedsATimeAndAnOpenTask() {
+        Chore c = chores.create(input(ChoreKind.RECURRING, "FREQ=DAILY;COUNT=1", null, Distribution.FIXED,
+                lena.getId()), admin);
+        ChoreTask task = tasksOf(c).getFirst();
+
+        assertThatThrownBy(() -> taskService.reschedule(task.getId(), null, admin))
+                .isInstanceOf(IllegalArgumentException.class);
+        taskService.complete(task.getId(), admin, lena.getId(), Set.of(), ChoreTaskService.Booking.now());
+        assertThatThrownBy(() -> taskService.reschedule(task.getId(), LocalTime.of(9, 0), admin))
+                .isInstanceOf(ChoreConflictException.class);
+    }
+
+    @Test
     void recurringPlansWholeHorizon() {
         Chore c = chores.create(new ChoreInput("Spülmaschine", "Küche", null, 15, 15, 15,
                 ChoreKind.RECURRING, "FREQ=DAILY", today, LocalTime.of(7, 0), null, Distribution.FIXED,

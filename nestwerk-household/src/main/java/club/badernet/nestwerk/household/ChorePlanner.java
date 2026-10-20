@@ -176,9 +176,9 @@ public class ChorePlanner {
     }
 
     /**
-     * Prüft künftige offene Aufgaben nach Änderungen an Abwesenheiten, Blockern oder Terminen: Hat der Zuständige
-     * keine Zeit mehr, wird reihum/ausgleichend neu verteilt (feste Zuweisung: niemand); sonst nur die Uhrzeit
-     * aktualisiert.
+     * Checks future open tasks after changes to absences, blockers or events: if the assignee has no time any more,
+     * the task is distributed again (round robin/balanced, fixed assignment: nobody); otherwise only the time is
+     * updated, unless it was set by hand.
      */
     @Transactional
     public void reassignAbsent(LocalDate today) {
@@ -193,6 +193,9 @@ public class ChorePlanner {
             }
             Long current = task.getAssigneeMemberId();
             if (current != null && !absent.isAbsent(current, task.getDueOn())) {
+                if (task.isPlannedManually()) {
+                    continue;
+                }
                 Optional<LocalTime> gap = availability.firstGap(current, task.getDueOn(), chore, task.getId());
                 if (gap.isPresent()) {
                     if (!gap.get().equals(task.getPlannedAt())) {
