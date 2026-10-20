@@ -87,15 +87,55 @@
             <section id="kalender" class="sheet manual-section">
                 <h2>Kalender</h2>
                 <p>Der Familienkalender sammelt alle Termine. Oben schaltest du zwischen <strong>Monat</strong>,
-                    <strong>Woche</strong> und <strong>Agenda</strong> (Liste der kommenden Termine) um. Mit
-                    <strong>Heute</strong> springst du zum aktuellen Tag; die Pfeile blättern vor und zurück.</p>
+                    <strong>Woche</strong>, <strong>3 Tage</strong>, <strong>Tag</strong> und <strong>Agenda</strong>
+                    (Liste der kommenden Termine) um. Mit <strong>Heute</strong> springst du zum aktuellen Tag; die
+                    Pfeile oder ein Wischen zur Seite blättern vor und zurück. Auf dem Handy zeigt
+                    <strong>Woche</strong> drei Tage, damit die Termine lesbar bleiben.</p>
+
+                <h3>Zeitraster: Woche, 3 Tage und Tag</h3>
+                <p>Diese Ansichten zeigen den Tag als Stundenraster mit einer roten Linie für die aktuelle Uhrzeit.
+                    Mit <strong>Grob</strong> und <strong>Fein</strong> wählst du, worauf Termine beim Ziehen
+                    einrasten: grob auf 15 Minuten, fein auf 5 Minuten mit mehr Platz pro Stunde. Die Wahl merkt
+                    sich jedes Gerät. Ganztägige Termine und fällige ToDos stehen in der Leiste
+                    <strong>ganztägig</strong> über dem Raster.</p>
+                <ul>
+                    <li><strong>Anlegen:</strong> Tippe auf eine freie Zeit – es öffnet sich ein kurzes Formular für
+                        eine Stunde ab dort. Hältst du den Finger gedrückt und ziehst, spannst du Beginn und Ende
+                        selbst auf. <strong>Mehr Details</strong> führt zum vollständigen Formular.</li>
+                    <li><strong>Verschieben:</strong> Halte einen Termin kurz gedrückt, bis er sich anhebt, und ziehe
+                        ihn an eine andere Zeit oder auf einen anderen Tag. Hältst du ihn am linken oder rechten Rand,
+                        wandert er Tag für Tag weiter. Ziehst du ihn in die Leiste <strong>ganztägig</strong>, wird er
+                        ganztägig – und umgekehrt bekommt ein ganztägiger Termin so eine Uhrzeit. Mit der Maus geht
+                        das ohne Warten.</li>
+                    <li><strong>Beginn und Ende ändern:</strong> Hebst du einen Termin an und lässt ihn los, ohne ihn
+                        zu bewegen, erscheinen oben und unten Griffe; ziehe daran. Mit der Maus erscheinen die Griffe
+                        beim Darüberfahren. Bei ganztägigen Terminen ändert der Griff rechts die Anzahl der Tage.</li>
+                    <li><strong>Bearbeiten und Löschen:</strong> Tippe einen Termin an. Im Blatt änderst du Titel,
+                        Zeiten, Kategorie und Personen oder löschst den Termin (mit Rückfrage).</li>
+                    <li><strong>Serien:</strong> Nach dem Ziehen fragt Nestwerk, ob nur dieses Vorkommen oder die
+                        ganze Serie gemeint ist. Die ganze Serie lässt sich nur in Uhrzeit und Dauer ändern; abgesagte
+                        Vorkommen bleiben abgesagt.</li>
+                    <li><strong>Hausarbeiten</strong> aus dem Haushaltsplan lassen sich am selben Tag auf eine andere
+                        Uhrzeit ziehen. Die Planung behält diese Zeit, solange die Person da ist.</li>
+                </ul>
+                <p class="hint">Während du ziehst, zeigt das Raster gesperrte Zeiten der betroffenen Personen
+                    schraffiert. Landet ein Termin dort, springt er zurück. Bei Warnungen (zum Beispiel Arbeitszeit)
+                    wird er gespeichert, und die Meldung bietet <strong>Rückgängig</strong> an.</p>
+
+                <h3>Kategorien und Farben</h3>
+                <p>Termine können eine <strong>Kategorie</strong> haben, etwa Arzt, Schule, Sport oder Geburtstag.
+                    Die Kategorie färbt den Termin; die betroffenen Personen erscheinen als farbige Punkte. Ohne
+                    Kategorie bekommt der Termin die Farbe der ersten Person. Wer das Recht
+                    <strong>Terminkategorien verwalten</strong> hat, legt unter <strong>Kategorien verwalten</strong>
+                    (über dem Kalender) eigene Kategorien mit einer Farbe aus der Palette an, ändert oder löscht
+                    sie. Gelöschte Kategorien nehmen ihre Termine nicht mit.</p>
 
                 <h3>Termin anlegen</h3>
                 <ol>
                     <li>Tippe oben auf <strong>Neuer Termin</strong>.</li>
                     <li>Gib einen <strong>Titel</strong> ein („Was steht an?“) sowie <strong>Beginn</strong> und
                         <strong>Ende</strong>. Für Geburtstage und Ähnliches schaltest du <strong>Ganztägig</strong> ein.</li>
-                    <li>Optional: <strong>Ort</strong> und <strong>Notizen</strong>.</li>
+                    <li>Optional: <strong>Kategorie</strong>, <strong>Ort</strong> und <strong>Notizen</strong>.</li>
                     <li>Unter <strong>Wiederholung</strong> kannst du einen Termin täglich, wöchentlich, alle
                         2 Wochen, monatlich oder jährlich wiederholen lassen. Für Sonderfälle gibt es
                         <em>Benutzerdefiniert …</em> mit einer Regel wie <code>FREQ=MONTHLY;BYDAY=-1FR</code>
@@ -122,7 +162,8 @@
                 <h3>Import und Export</h3>
                 <p>Über <strong>Import</strong> (nur mit Recht zum Anlegen von Terminen) liest du Termine aus einer
                     Kalenderdatei (iCal, <code>.ics</code>) ein, über <strong>Export</strong> lädst du alle für dich
-                    sichtbaren Termine als Datei herunter, etwa für andere Kalender-Apps. Beim Import zeigt dir
+                    sichtbaren Termine als Datei herunter, etwa für andere Kalender-Apps; Kategorien reisen dabei per
+                    Namen mit. Beim Import zeigt dir
                     Nestwerk zuerst eine Vorschau; erst nach deiner Bestätigung wird übernommen. Mit dem Schalter
                     <strong>ToDos</strong> blendest du fällige ToDos im Kalender ein oder aus.</p>
             </section>
@@ -435,7 +476,8 @@
                 <h2>KI-Assistent</h2>
                 <p>Wenn du das Recht dazu hast, kannst du einen KI-Assistenten wie Claude mit Nestwerk verbinden.
                     Er kann dann zum Beispiel Termine eintragen, Rezepte anlegen, den Essensplan füllen oder
-                    Hausarbeiten planen – in deinem Namen und mit deinen Rechten. Löschen kann er nichts.</p>
+                    Hausarbeiten planen – in deinem Namen und mit deinen Rechten. Löschen kann er nur Termine und
+                    Terminkategorien; gute Assistenten fragen vorher nach.</p>
                 <p>Die Adresse, die der Assistent braucht, steht im Benutzermenü unter <strong>KI-Zugänge</strong>
                     (sie endet auf <code>/mcp</code>). Es gibt zwei Wege:</p>
 

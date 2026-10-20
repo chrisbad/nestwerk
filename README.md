@@ -120,7 +120,8 @@ Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich:
   *Sperren* (für andere; man selbst bekommt höchstens eine Warnung). Ausgewählte Personen dürfen trotzdem einplanen.
   Das gilt für Formular, Ziehen im Kalender, MCP und iCal-Import.
 - **Sichtbarkeit:** mit Titel, nur „belegt“ oder unsichtbar; Betroffene und Admins sehen immer den Titel.
-  Im Kalender erscheinen Zeiten als Bänder (Woche, Monat).
+  Im Kalender erscheinen Zeiten als Bänder; beim Ziehen im Zeitraster zeigt das Raster gesperrte Zeiten der
+  betroffenen Personen schraffiert.
 - **Ruhe-Modus:** Push und Mail warten bis zum Ende der Zeit. **Feiertage:** Zeiten mit „an Feiertagen frei“
   entfallen an den gesetzlichen Feiertagen des eingestellten Bundeslands.
 - **Ruhe-Ziele:** z. B. „mind. 2 freie Abende“ oder „mind. 6 Stunden Ruhe pro Woche“; Stand auf „Zeiten“ und der
@@ -169,7 +170,10 @@ Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich:
 
 Nestwerk enthält einen MCP-Server unter `https://<nestwerk>/mcp`. Darüber kann ein KI-Assistent wie Claude
 Termine, ToDos, den Haushaltsplan, die Küche, Kontakte, Zeiten und Benachrichtigungen lesen und bearbeiten. Löschen
-kann er nichts; nur Verknüpfungen lösen, einzelne Terminvorkommen absagen und feste Haushalts-Termine entfernen geht.
+geht nur mit ausdrücklich dafür vorgesehenen, als destruktiv markierten Tools: Termine (`delete_event`) und
+Terminkategorien (`delete_event_category`); dazu Verknüpfungen lösen, einzelne Terminvorkommen absagen und feste
+Haushalts-Termine entfernen. Termine lassen sich wie im Kalender auf neue Zeiten legen (`reschedule_event`,
+`reschedule_event_series`), Hausarbeiten auf eine andere Uhrzeit (`reschedule_chore_task`).
 
 - **Umfang:** ToDos mit Unterstruktur, Verknüpfungen, Beobachtern, Wiedervorlage und Verlauf; Termine samt
   einzelner Serienvorkommen; Kontakte; Haushaltsplan mit Auswertung, Gutschrift-Korrekturen, Belohnungen und
