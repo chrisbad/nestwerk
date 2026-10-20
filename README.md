@@ -171,9 +171,10 @@ Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich:
 Nestwerk enthält einen MCP-Server unter `https://<nestwerk>/mcp`. Darüber kann ein KI-Assistent wie Claude
 Termine, ToDos, den Haushaltsplan, die Küche, Kontakte, Zeiten und Benachrichtigungen lesen und bearbeiten. Löschen
 geht nur mit ausdrücklich dafür vorgesehenen, als destruktiv markierten Tools: Termine (`delete_event`) und
-Terminkategorien (`delete_event_category`); dazu Verknüpfungen lösen, einzelne Terminvorkommen absagen und feste
-Haushalts-Termine entfernen. Termine lassen sich wie im Kalender auf neue Zeiten legen (`reschedule_event`,
-`reschedule_event_series`), Hausarbeiten auf eine andere Uhrzeit (`reschedule_chore_task`).
+Terminkategorien (`delete_event_category`), Hausarbeiten (`delete_chore`), einzelne Termine einer Hausarbeit
+(`cancel_chore_task`) und ToDos (`delete_todo`); dazu Verknüpfungen lösen, einzelne Terminvorkommen absagen und
+feste Haushalts-Termine entfernen. Termine lassen sich wie im Kalender auf neue Zeiten legen (`reschedule_event`,
+`reschedule_event_series`), Hausarbeiten auf eine andere Uhrzeit oder einen anderen Tag (`reschedule_chore_task`).
 
 - **Umfang:** ToDos mit Unterstruktur, Verknüpfungen, Beobachtern, Wiedervorlage und Verlauf; Termine samt
   einzelner Serienvorkommen; Kontakte; Haushaltsplan mit Auswertung, Gutschrift-Korrekturen, Belohnungen und
