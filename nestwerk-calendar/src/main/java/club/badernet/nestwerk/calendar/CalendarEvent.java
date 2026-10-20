@@ -16,6 +16,8 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -58,9 +60,12 @@ public class CalendarEvent {
     @Column(name = "private_event", nullable = false)
     private boolean privateEvent;
 
-    /** Die teilnehmenden Mitglieder sind abwesend (z. B. Urlaub); der Haushaltsplan überspringt sie. */
+    /** The participating members are absent (e.g. holidays); the household plan skips them. */
     @Column(nullable = false)
     private boolean absence;
+
+    @Column(name = "category_id")
+    private Long categoryId;
 
     @Column(name = "created_by", nullable = false)
     private Long createdBy;
@@ -111,6 +116,7 @@ public class CalendarEvent {
     public String getRrule() { return rrule; }
     public boolean isPrivateEvent() { return privateEvent; }
     public boolean isAbsence() { return absence; }
+    public Optional<Long> getCategoryId() { return Optional.ofNullable(categoryId); }
     public Long getCreatedBy() { return createdBy; }
     public int getSequence() { return sequence; }
     public Instant getUpdatedAt() { return updatedAt; }
@@ -123,6 +129,7 @@ public class CalendarEvent {
     public void setRrule(String rrule) { this.rrule = rrule; }
     public void setPrivateEvent(boolean privateEvent) { this.privateEvent = privateEvent; }
     public void setAbsence(boolean absence) { this.absence = absence; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
 
     public void setTimes(Instant startsAt, Instant endsAt, boolean allDay) {
         this.startsAt = startsAt;
@@ -135,13 +142,21 @@ public class CalendarEvent {
         memberIds.addAll(ids);
     }
 
-    /** Erhöht die iCal-SEQUENCE; bei jeder inhaltlichen Änderung aufzurufen. */
+    /** Increments the iCal SEQUENCE; to be called on every change of content. */
     public void markChanged() {
         sequence++;
     }
 
     public void clearExceptions() {
         exceptions.clear();
+    }
+
+    /**
+     * Keeps cancelled and changed occurrences attached when the series moves to another time of day: every
+     * exception refers to the occurrence on the same day at the new start time.
+     */
+    void moveExceptionsTo(LocalTime start, ZoneId zone) {
+        exceptions.forEach(ex -> ex.referTo(ex.getRecurrenceId().atZone(zone).with(start).toInstant()));
     }
 
     public Optional<CalendarEventException> exceptionFor(Instant recurrenceId) {

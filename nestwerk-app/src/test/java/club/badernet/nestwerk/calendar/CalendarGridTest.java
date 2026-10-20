@@ -19,7 +19,7 @@ class CalendarGridTest {
 
     private static Occurrence occ(String title, ZonedDateTime start, ZonedDateTime end, boolean allDay) {
         return new Occurrence(1L, "u", start.toInstant(), title, null, null, start, end,
-                allDay, false, false, 1L, Set.of());
+                allDay, false, false, 1L, Set.of(), null);
     }
 
     private static ZonedDateTime z(int m, int d, int h, int min) {

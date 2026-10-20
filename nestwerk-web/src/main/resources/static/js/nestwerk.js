@@ -1357,7 +1357,8 @@
         let s = null;
         document.addEventListener("pointerdown", event => {
             const toast = event.target.closest(".toast");
-            if (!toast) return;
+            // buttons in a toast (e.g. "Rückgängig") must receive their click
+            if (!toast || event.target.closest("button")) return;
             s = { toast, x: event.clientX, id: event.pointerId };
             toast.classList.add("is-dragging");
             toast.setPointerCapture?.(event.pointerId);
@@ -1479,6 +1480,9 @@
             }
         }, { passive: true });
     }
+
+    /* Helpers shared with calendar-grid.js */
+    window.Nestwerk = Object.freeze({ showToast, haptic, reloadCalendar, markDragged, closeDialog, reducedMotion });
 
     document.addEventListener("DOMContentLoaded", () => {
         initTheme();
