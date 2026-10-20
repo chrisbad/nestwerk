@@ -53,6 +53,10 @@ public class ChoreTask {
     @Column(name = "planned_at")
     private LocalTime plannedAt;
 
+    /** The time was set by hand (e.g. moved in the calendar); automatic re-planning keeps it. */
+    @Column(name = "planned_manually", nullable = false)
+    private boolean plannedManually;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private ChoreTaskStatus status = ChoreTaskStatus.OPEN;
@@ -106,6 +110,12 @@ public class ChoreTask {
     void plan(Long memberId, LocalTime at) {
         this.assigneeMemberId = memberId;
         this.plannedAt = at;
+        this.plannedManually = false;
+    }
+
+    void planManually(LocalTime at) {
+        this.plannedAt = at;
+        this.plannedManually = true;
     }
 
     /** Bucht die Aufgabe und verschiebt sie auf den Zeitpunkt der Durchführung. */
@@ -161,6 +171,7 @@ public class ChoreTask {
     public LocalTime getDueTime() { return dueTime; }
     public Long getAssigneeMemberId() { return assigneeMemberId; }
     public LocalTime getPlannedAt() { return plannedAt; }
+    public boolean isPlannedManually() { return plannedManually; }
     public ChoreTaskStatus getStatus() { return status; }
     public Instant getCompletedAt() { return completedAt; }
     public Long getCompletedByUser() { return completedByUser; }

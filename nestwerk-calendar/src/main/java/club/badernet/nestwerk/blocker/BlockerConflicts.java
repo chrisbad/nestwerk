@@ -147,7 +147,8 @@ public class BlockerConflicts {
         return result;
     }
 
-    private static Optional<BlockerStrength> strength(Blocker blocker, Long memberId, Long actorMember) {
+    /** How strongly the blocker keeps the actor from planning the member; empty = not at all. */
+    static Optional<BlockerStrength> strength(Blocker blocker, Long memberId, Long actorMember) {
         if (blocker.getStrength() == BlockerStrength.SHOW) {
             return Optional.empty();
         }

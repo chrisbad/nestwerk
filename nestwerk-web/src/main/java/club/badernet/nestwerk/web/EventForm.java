@@ -28,8 +28,9 @@ public class EventForm {
     private boolean privateEvent;
     private boolean absence;
     private Set<Long> memberIds = new HashSet<>();
+    private Long categoryId;
     private Long todoId;
-    /** „Trotzdem speichern“ nach einer Warnung von Blockern. */
+    /** "Save anyway" after a warning of blockers. */
     private boolean confirmBlockers;
 
     public static EventForm forNew(LocalDate date) {
@@ -62,13 +63,17 @@ public class EventForm {
         f.privateEvent = e.isPrivateEvent();
         f.absence = e.isAbsence();
         f.memberIds = new HashSet<>(e.getMemberIds());
+        f.categoryId = e.getCategoryId().orElse(null);
         return f;
     }
 
     public EventInput toInput() {
         return new EventInput(title, description, location, startDate, startTime, endDate, endTime,
-                allDay, rrule, privateEvent, memberIds, absence);
+                allDay, rrule, privateEvent, memberIds, absence, categoryId);
     }
+
+    public Long getCategoryId() { return categoryId; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
 
     public boolean isConfirmBlockers() { return confirmBlockers; }
     public void setConfirmBlockers(boolean confirmBlockers) { this.confirmBlockers = confirmBlockers; }

@@ -77,6 +77,35 @@ class MigrationUpgradeTest {
                 .isEqualTo(25);
     }
 
+    @Test
+    void upgradesFreeTextSchoolsAndTeachersToContacts() throws SQLException {
+        flyway("latest").clean();
+        flyway("29").migrate();
+        try (Connection c = dataSource.getConnection()) {
+            ScriptUtils.executeSqlScript(c, new ClassPathResource("db/upgrade/V29-school-sample.sql"));
+        }
+
+        flyway("latest").migrate();
+
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        List<Long> schools = jdbc.queryForList(
+                "SELECT id FROM contacts WHERE category = 'Schule' AND name = 'Grundschule am Park'", Long.class);
+        assertThat(schools).hasSize(1);
+        assertThat(jdbc.queryForList("SELECT school_contact_id FROM school_year ORDER BY id", Long.class))
+                .containsExactly(schools.getFirst(), schools.getFirst());
+        List<Long> teachers = jdbc.queryForList(
+                "SELECT id FROM contacts WHERE category = 'Lehrkraft' AND name = 'Frau Weber'", Long.class);
+        assertThat(teachers).hasSize(1);
+        assertThat(jdbc.queryForList("SELECT subject_id FROM school_subject_teacher WHERE contact_id = ? "
+                + "ORDER BY subject_id", Long.class, teachers.getFirst())).containsExactly(4201L, 4202L);
+        assertThat(jdbc.queryForObject("SELECT created_by FROM contacts WHERE id = ?", Long.class,
+                schools.getFirst())).isEqualTo(1001L);
+        assertThat(jdbc.queryForList("SELECT member_id FROM school_exam_member WHERE exam_id = 4301", Long.class))
+                .containsExactly(2001L);
+        assertThat(jdbc.queryForObject("SELECT period_from FROM school_lesson WHERE id = 4251", Integer.class))
+                .isNull();
+    }
+
     private static Map<String, Integer> counts(JdbcTemplate jdbc) {
         return TABLES.stream().collect(Collectors.toMap(t -> t,
                 t -> jdbc.queryForObject("SELECT count(*) FROM " + t, Integer.class)));

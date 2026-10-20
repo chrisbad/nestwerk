@@ -137,7 +137,7 @@ class McpToolsTest {
     @Test
     void managesSingleOccurrencesAndMovesEvents() {
         CalendarTools.Event series = calendarTools.createEvent(as(mama), "Chor", "2030-03-04", "18:00", null,
-                "19:00", null, null, null, "FREQ=WEEKLY", null, null, null);
+                "19:00", null, null, null, "FREQ=WEEKLY", null, null, null, null);
         List<CalendarTools.Event> listed = calendarTools.listEvents(as(mama), "2030-03-04", "2030-03-18");
         assertThat(listed).hasSize(3).allMatch(e -> e.recurrenceId() != null);
 
@@ -150,7 +150,7 @@ class McpToolsTest {
                         org.assertj.core.api.Assertions.tuple("Chor extra", "2030-03-18T17:00:00"));
 
         CalendarTools.Event single = calendarTools.createEvent(as(mama), "Arzt", "2030-04-01", "09:00", null,
-                "10:00", null, null, null, null, null, null, null);
+                "10:00", null, null, null, null, null, null, null, null);
         assertThat(calendarTools.moveEvent(as(mama), single.eventId(), "2030-04-03").start())
                 .isEqualTo("2030-04-03T09:00:00");
         assertThatThrownBy(() -> calendarTools.moveEvent(as(mama), series.eventId(), "2030-04-03"))
@@ -184,7 +184,7 @@ class McpToolsTest {
     @Test
     void createsEventAndHidesForeignPrivateEvents() {
         CalendarTools.Event event = calendarTools.createEvent(as(mama), "Zahnarzt", "2030-03-04", "09:30", null,
-                "10:15", null, "Praxis", null, null, null, null, List.of(mamaM.getId()));
+                "10:15", null, "Praxis", null, null, null, null, List.of(mamaM.getId()), null);
         events.create(new EventInput("Geheim", null, null, LocalDate.of(2030, 3, 4), LocalTime.of(12, 0),
                 LocalDate.of(2030, 3, 4), LocalTime.of(13, 0), false, null, true, Set.of()), papa);
 
@@ -195,7 +195,7 @@ class McpToolsTest {
                 .extracting(CalendarTools.Event::title).containsExactly("Zahnarzt");
 
         CalendarTools.Event moved = calendarTools.updateEvent(as(mama), event.eventId(), null, null, "11:00", null,
-                "12:00", null, null, null, null, null, null, null);
+                "12:00", null, null, null, null, null, null, null, null);
         assertThat(moved.start()).isEqualTo("2030-03-04T11:00:00");
         assertThat(moved.location()).isEqualTo("Praxis");
     }
@@ -213,19 +213,19 @@ class McpToolsTest {
 
         // 4.3.2030 ist ein Montag
         CalendarTools.Event event = calendarTools.createEvent(as(papa), "Elterngespräch", "2030-03-04", "10:00", null,
-                "11:00", null, null, null, null, null, null, List.of(mamaM.getId()));
+                "11:00", null, null, null, null, null, null, List.of(mamaM.getId()), null);
         assertThat(event.eventId()).isNotNull();
         assertThat(event.warnings()).singleElement().asString().contains("Mama arbeitet da");
 
         assertThatThrownBy(() -> calendarTools.createEvent(as(papa), "Zahnarzt", "2030-03-04", "10:00", null,
-                "11:00", null, null, null, null, null, null, List.of(kidM.getId())))
+                "11:00", null, null, null, null, null, null, List.of(kidM.getId()), null))
                 .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Kind ist da nicht verfügbar");
     }
 
     @Test
     void allDayEventsShowInclusiveEnd() {
         CalendarTools.Event event = calendarTools.createEvent(as(mama), "Urlaub", "2030-07-01", null, "2030-07-03",
-                null, true, null, null, null, null, true, List.of(mamaM.getId()));
+                null, true, null, null, null, null, true, List.of(mamaM.getId()), null);
 
         assertThat(event.start()).isEqualTo("2030-07-01");
         assertThat(event.end()).isEqualTo("2030-07-03");

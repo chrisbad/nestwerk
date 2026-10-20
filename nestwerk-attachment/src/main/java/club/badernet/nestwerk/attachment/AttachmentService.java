@@ -32,7 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/** Anhänge an ToDos, Kommentaren, Kontakten und Rezepten mit Typ-, Größen- und Rechteprüfung. */
+/** Anhänge an ToDos, Kommentaren, Kontakten, Rezepten und Elternbriefen mit Typ-, Größen- und Rechteprüfung. */
 @Service
 public class AttachmentService {
 
@@ -52,11 +52,13 @@ public class AttachmentService {
     private final TodoCommentService comments;
     private final ContactService contacts;
     private final KitchenAccess kitchen;
+    private final Map<AttachmentOwner.Type, AttachmentOwnerPolicy> policies = new HashMap<>();
 
     public AttachmentService(AttachmentRepository attachments, AttachmentStorage storage, TodoService todos,
                              TodoAccess todoAccess, TodoCommentService comments, ContactService contacts,
-                             KitchenAccess kitchen) {
+                             KitchenAccess kitchen, List<AttachmentOwnerPolicy> ownerPolicies) {
         this.kitchen = kitchen;
+        ownerPolicies.forEach(p -> policies.put(p.type(), p));
         this.attachments = attachments;
         this.storage = storage;
         this.todos = todos;
@@ -139,6 +141,11 @@ public class AttachmentService {
         return attachments.findAllByRecipeIdOrderByUploadedAtAsc(recipeId);
     }
 
+    @Transactional(readOnly = true)
+    public List<Attachment> forLetter(Long letterId) {
+        return attachments.findAllByLetterIdOrderByUploadedAtAsc(letterId);
+    }
+
     /** Entfernt Dateien ohne Datensatz (z. B. nach Löschen des Besitzers); frische Dateien bleiben liegen. */
     @Scheduled(cron = "0 30 3 * * *")
     @Transactional(readOnly = true)
@@ -179,6 +186,7 @@ public class AttachmentService {
                 }
             }
             case RECIPE -> kitchen.require(actor, KitchenPermission.KITCHEN_RECIPES_EDIT);
+            case LETTER -> policy(owner).requireMayAttach(owner.id(), actor);
         }
     }
 
@@ -188,6 +196,7 @@ public class AttachmentService {
             case COMMENT -> comments.load(owner.id(), viewer);
             case CONTACT -> contacts.get(owner.id(), viewer);
             case RECIPE -> kitchen.require(viewer, KitchenPermission.KITCHEN_VIEW);
+            case LETTER -> policy(owner).requireVisible(owner.id(), viewer);
         }
     }
 
@@ -197,7 +206,16 @@ public class AttachmentService {
             case COMMENT -> comments.load(owner.id(), actor).getAuthorId().equals(actor.getId());
             case CONTACT -> contacts.can(actor, "EDIT", contacts.get(owner.id(), actor));
             case RECIPE -> kitchen.has(actor, KitchenPermission.KITCHEN_RECIPES_EDIT);
+            case LETTER -> policy(owner).mayEdit(owner.id(), actor);
         };
+    }
+
+    private AttachmentOwnerPolicy policy(AttachmentOwner owner) {
+        AttachmentOwnerPolicy policy = policies.get(owner.type());
+        if (policy == null) {
+            throw new IllegalStateException("Keine Regel für Anhänge vom Typ " + owner.type());
+        }
+        return policy;
     }
 
     /** Nur der letzte Pfadteil, ohne Steuerzeichen, höchstens 200 Zeichen. */

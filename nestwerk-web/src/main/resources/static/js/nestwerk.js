@@ -945,6 +945,27 @@
         });
     }
 
+    /* School: show the fields of an exam or an appointment and preset the participants of the kind */
+    function initSchoolExamForms() {
+        document.querySelectorAll("[data-exam-form]").forEach(form => {
+            const kind = form.querySelector("select[name=kind]");
+            const defaults = JSON.parse(form.dataset.defaults || "{}");
+            const apply = presetMembers => {
+                const exam = kind.selectedOptions[0]?.dataset.exam === "true";
+                form.querySelectorAll("[data-exam-only]").forEach(el => { el.hidden = !exam; });
+                form.querySelectorAll("[data-event-only]").forEach(el => { el.hidden = exam; });
+                if (presetMembers) {
+                    const chosen = (defaults[kind.value] || []).map(String);
+                    form.querySelectorAll("input[name=memberId]").forEach(box => {
+                        box.checked = chosen.includes(box.value);
+                    });
+                }
+            };
+            kind.addEventListener("change", () => apply(true));
+            apply(form.dataset.presetMembers === "true");
+        });
+    }
+
     function initGoalForms() {
         document.querySelectorAll("[data-goal-form]").forEach(form => {
             const kind = form.querySelector("[data-goal-kind]");
@@ -1336,7 +1357,8 @@
         let s = null;
         document.addEventListener("pointerdown", event => {
             const toast = event.target.closest(".toast");
-            if (!toast) return;
+            // buttons in a toast (e.g. "Rückgängig") must receive their click
+            if (!toast || event.target.closest("button")) return;
             s = { toast, x: event.clientX, id: event.pointerId };
             toast.classList.add("is-dragging");
             toast.setPointerCapture?.(event.pointerId);
@@ -1459,6 +1481,9 @@
         }, { passive: true });
     }
 
+    /* Helpers shared with calendar-grid.js */
+    window.Nestwerk = Object.freeze({ showToast, haptic, reloadCalendar, markDragged, closeDialog, reducedMotion });
+
     document.addEventListener("DOMContentLoaded", () => {
         initTheme();
         initNav();
@@ -1492,6 +1517,7 @@
         initUpdateRestart();
         initBlockerWarning();
         initGoalForms();
+        initSchoolExamForms();
         initBlockerKindDefaults();
         initIngredientRows();
         initBarcodeScan();

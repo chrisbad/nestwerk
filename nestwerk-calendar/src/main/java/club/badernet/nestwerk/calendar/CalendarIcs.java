@@ -26,6 +26,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -34,10 +35,13 @@ import java.util.Optional;
  */
 public final class CalendarIcs {
 
-    /** Ein eingelesener Termin. Ganztägig: {@code endDate} einschließlich. */
+    /**
+     * An event read from a file. All-day: {@code endDate} inclusive. {@code category} is the first entry of
+     * CATEGORIES, if any.
+     */
     public record Parsed(String uid, String title, String description, String location, LocalDate startDate,
                          ZonedDateTime start, LocalDate endDate, ZonedDateTime end, boolean allDay, String rrule,
-                         boolean privateEvent) {
+                         boolean privateEvent, String category) {
     }
 
     /** Ergebnis des Einlesens: Termine und übersprungene Einträge mit Grund. */
@@ -59,7 +63,8 @@ public final class CalendarIcs {
 
     // --- Schreiben -------------------------------------------------------------------
 
-    public static String write(Collection<CalendarEvent> events, ZoneId zone) {
+    /** Writes the events; {@code categoryNames} maps category ids to the names written as CATEGORIES. */
+    public static String write(Collection<CalendarEvent> events, ZoneId zone, Map<Long, String> categoryNames) {
         StringBuilder out = new StringBuilder();
         line(out, "BEGIN:VCALENDAR");
         line(out, "VERSION:2.0");
@@ -77,6 +82,7 @@ public final class CalendarIcs {
             text(out, "SUMMARY", e.getTitle());
             text(out, "DESCRIPTION", e.getDescription());
             text(out, "LOCATION", e.getLocation());
+            text(out, "CATEGORIES", e.getCategoryId().map(categoryNames::get).orElse(null));
             if (e.isPrivateEvent()) {
                 line(out, "CLASS:PRIVATE");
             }
@@ -206,13 +212,15 @@ public final class CalendarIcs {
         boolean privateEvent = value(event, Property.CLASS).map(v -> !v.equalsIgnoreCase("PUBLIC")).orElse(false);
         String description = value(event, Property.DESCRIPTION).orElse(null);
         String location = value(event, Property.LOCATION).orElse(null);
+        String category = value(event, Property.CATEGORIES).map(CalendarIcs::firstCategory).orElse(null);
         if (start instanceof LocalDate day) {
             LocalDate endDay = endProp.map(p -> time(p, zone)).filter(LocalDate.class::isInstance)
                     .map(LocalDate.class::cast).map(d -> d.minusDays(1)).orElse(day);
             if (endDay.isBefore(day)) {
                 endDay = day;
             }
-            return new Parsed(uid, title, description, location, day, null, endDay, null, true, rrule, privateEvent);
+            return new Parsed(uid, title, description, location, day, null, endDay, null, true, rrule, privateEvent,
+                    category);
         }
         ZonedDateTime begin = (ZonedDateTime) start;
         ZonedDateTime finish = endProp.map(p -> time(p, zone)).filter(ZonedDateTime.class::isInstance)
@@ -223,7 +231,14 @@ public final class CalendarIcs {
             finish = begin.plusMinutes(1);
         }
         return new Parsed(uid, title, description, location, null, begin.withZoneSameInstant(zone), null,
-                finish.withZoneSameInstant(zone), false, rrule, privateEvent);
+                finish.withZoneSameInstant(zone), false, rrule, privateEvent, category);
+    }
+
+    /** The first name of a CATEGORIES list; names may contain escaped commas. */
+    private static String firstCategory(String value) {
+        String first = value.split("(?<!\\\\),", 2)[0];
+        String name = first.replace("\\,", ",").replace("\\;", ";").replace("\\\\", "\\").trim();
+        return name.isEmpty() ? null : name;
     }
 
     /** {@link LocalDate} bei ganztägig, sonst {@link ZonedDateTime} (UTC, TZID oder ohne Zone = App-Zone). */

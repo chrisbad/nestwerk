@@ -17,6 +17,8 @@ public interface AttachmentRepository extends JpaRepository<Attachment, Long> {
 
     List<Attachment> findAllByRecipeIdOrderByUploadedAtAsc(Long recipeId);
 
+    List<Attachment> findAllByLetterIdOrderByUploadedAtAsc(Long letterId);
+
     @Query("select a.storageKey from Attachment a")
     Set<String> findAllStorageKeys();
 }

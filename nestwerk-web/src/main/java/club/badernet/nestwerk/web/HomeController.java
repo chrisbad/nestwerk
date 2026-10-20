@@ -40,6 +40,8 @@ public class HomeController {
     private final club.badernet.nestwerk.backup.BackupService backups;
     private final club.badernet.nestwerk.member.FamilyMemberRepository members;
     private final club.badernet.nestwerk.blocker.RestGoals restGoals;
+    private final club.badernet.nestwerk.school.SchoolToday schoolToday;
+    private final club.badernet.nestwerk.school.SchoolAccess schoolAccess;
 
     public HomeController(CurrentUser currentUser, TodoAccess todoAccess, TodoQuery todoQuery, TodoViews todoViews,
                           ContactService contactService,
@@ -48,7 +50,11 @@ public class HomeController {
                           HouseholdViews householdViews,
                           club.badernet.nestwerk.backup.BackupService backups,
                           club.badernet.nestwerk.member.FamilyMemberRepository members,
-                          club.badernet.nestwerk.blocker.RestGoals restGoals) {
+                          club.badernet.nestwerk.blocker.RestGoals restGoals,
+                          club.badernet.nestwerk.school.SchoolToday schoolToday,
+                          club.badernet.nestwerk.school.SchoolAccess schoolAccess) {
+        this.schoolToday = schoolToday;
+        this.schoolAccess = schoolAccess;
         this.backups = backups;
         this.members = members;
         this.restGoals = restGoals;
@@ -101,6 +107,10 @@ public class HomeController {
             myChores = householdViews.chips(choreTasks.mine(user, ctx.today()).stream().limit(TILE_LIMIT).toList(), ctx);
         }
         model.addAttribute("myChores", myChores);
+        boolean school = me.map(u -> schoolAccess.has(u, club.badernet.nestwerk.school.SchoolPermission.SCHOOL_VIEW))
+                .orElse(false);
+        model.addAttribute("showSchool", school);
+        model.addAttribute("schoolDays", school ? schoolToday.forDate(today, me.get()) : List.of());
         if (household) {
             User user = me.get();
             HouseholdViews.Context ctx = householdViews.context(user);

@@ -33,6 +33,7 @@ class CalendarEventServiceTest {
     private static final ZoneId BERLIN = ZoneId.of("Europe/Berlin");
 
     @Autowired CalendarEventService service;
+    @Autowired EventCategoryService categories;
     @Autowired UserService userService;
     @Autowired RoleService roleService;
     @Autowired FamilyMemberService memberService;
@@ -319,5 +320,132 @@ class CalendarEventServiceTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.moveToDate(single.getId(), LocalDate.of(2026, 10, 13), other))
                 .isInstanceOf(AccessDeniedException.class);
+    }
+
+    private static EventInput weekly(LocalTime start, LocalTime end) {
+        return new EventInput("Training", null, null, LocalDate.of(2026, 10, 5), start, LocalDate.of(2026, 10, 5), end,
+                false, "FREQ=WEEKLY", false, Set.of());
+    }
+
+    private static Instant berlin(int month, int day, int hour, int minute) {
+        return LocalDate.of(2026, month, day).atTime(hour, minute).atZone(BERLIN).toInstant();
+    }
+
+    @Test
+    void rescheduleGivesSingleEventNewStartAndEnd() {
+        CalendarEvent e = service.create(timed("Arzt", false), owner);
+
+        service.reschedule(e.getId(), new TimeChange.Timed(LocalDate.of(2026, 10, 13).atTime(14, 5),
+                LocalDate.of(2026, 10, 13).atTime(14, 50)), owner);
+
+        assertThat(e.getStartsAt()).isEqualTo(berlin(10, 13, 14, 5));
+        assertThat(e.getEndsAt()).isEqualTo(berlin(10, 13, 14, 50));
+        assertThat(e.isAllDay()).isFalse();
+    }
+
+    @Test
+    void rescheduleSwitchesBetweenTimedAndAllDay() {
+        CalendarEvent e = service.create(timed("Ausflug", false), owner);
+
+        service.reschedule(e.getId(), new TimeChange.AllDay(LocalDate.of(2026, 10, 14), LocalDate.of(2026, 10, 15)),
+                owner);
+        assertThat(e.isAllDay()).isTrue();
+        assertThat(e.getStartsAt()).isEqualTo(day(10, 14));
+        assertThat(e.getEndsAt()).isEqualTo(day(10, 16));
+
+        service.reschedule(e.getId(), new TimeChange.Timed(LocalDate.of(2026, 10, 14).atTime(9, 0),
+                LocalDate.of(2026, 10, 14).atTime(10, 0)), owner);
+        assertThat(e.isAllDay()).isFalse();
+    }
+
+    @Test
+    void rescheduleRejectsSeriesForeignEventsAndEndBeforeStart() {
+        CalendarEvent series = service.create(weekly(LocalTime.of(18, 0), LocalTime.of(19, 0)), owner);
+        CalendarEvent single = service.create(timed("Arzt", false), owner);
+        TimeChange later = new TimeChange.Timed(LocalDate.of(2026, 10, 12).atTime(12, 0),
+                LocalDate.of(2026, 10, 12).atTime(13, 0));
+
+        assertThatThrownBy(() -> service.reschedule(series.getId(), later, owner))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.reschedule(single.getId(), later, other))
+                .isInstanceOf(AccessDeniedException.class);
+        assertThatThrownBy(() -> service.reschedule(single.getId(), new TimeChange.Timed(
+                LocalDate.of(2026, 10, 12).atTime(13, 0), LocalDate.of(2026, 10, 12).atTime(12, 0)), owner))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Ende");
+    }
+
+    @Test
+    void rescheduleOccurrenceMovesOnlyThatOccurrenceAndKeepsItsTitle() {
+        CalendarEvent series = service.create(weekly(LocalTime.of(18, 0), LocalTime.of(19, 0)), owner);
+        Instant second = berlin(10, 12, 18, 0);
+
+        service.rescheduleOccurrence(series.getId(), second, new TimeChange.Timed(
+                LocalDate.of(2026, 10, 13).atTime(17, 30), LocalDate.of(2026, 10, 13).atTime(19, 15)), owner);
+
+        List<Occurrence> all = service.findOccurrences(day(10, 1), day(10, 20), owner);
+        assertThat(all).extracting(o -> o.start().toInstant())
+                .containsExactly(berlin(10, 5, 18, 0), berlin(10, 13, 17, 30), berlin(10, 19, 18, 0));
+        assertThat(all).extracting(Occurrence::title).containsOnly("Training");
+    }
+
+    @Test
+    void occurrenceCannotSwitchToAllDay() {
+        CalendarEvent series = service.create(weekly(LocalTime.of(18, 0), LocalTime.of(19, 0)), owner);
+
+        assertThatThrownBy(() -> service.rescheduleOccurrence(series.getId(), berlin(10, 12, 18, 0),
+                new TimeChange.AllDay(LocalDate.of(2026, 10, 12), LocalDate.of(2026, 10, 12)), owner))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void rescheduleSeriesMovesTimeOfDayAndKeepsCancelledOccurrences() {
+        CalendarEvent series = service.create(weekly(LocalTime.of(18, 0), LocalTime.of(19, 0)), owner);
+        service.cancelOccurrence(series.getId(), berlin(10, 12, 18, 0), owner);
+
+        service.rescheduleSeries(series.getId(), LocalTime.of(17, 15), java.time.Duration.ofMinutes(90), owner);
+
+        assertThat(service.findOccurrences(day(10, 1), day(10, 27), owner)).extracting(o -> o.start().toInstant())
+                .containsExactly(berlin(10, 5, 17, 15), berlin(10, 19, 17, 15), berlin(10, 26, 17, 15));
+        assertThat(service.get(series.getId(), owner).getEndsAt()).isEqualTo(berlin(10, 5, 18, 45));
+    }
+
+    @Test
+    void rescheduleSeriesRejectsSingleEventsAndAllDaySeries() {
+        CalendarEvent single = service.create(timed("Arzt", false), owner);
+        CalendarEvent allDay = service.create(new EventInput("Markt", null, null, LocalDate.of(2026, 10, 5), null,
+                LocalDate.of(2026, 10, 5), null, true, "FREQ=WEEKLY", false, Set.of()), owner);
+
+        assertThatThrownBy(() -> service.rescheduleSeries(single.getId(), LocalTime.of(9, 0),
+                java.time.Duration.ofHours(1), owner)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.rescheduleSeries(allDay.getId(), LocalTime.of(9, 0),
+                java.time.Duration.ofHours(1), owner)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void changeOccurrenceSetsOwnTitle() {
+        CalendarEvent series = service.create(weekly(LocalTime.of(18, 0), LocalTime.of(19, 0)), owner);
+        Instant second = berlin(10, 12, 18, 0);
+
+        service.changeOccurrence(series.getId(), second, "Training mit Turnier", new TimeChange.Timed(
+                LocalDate.of(2026, 10, 12).atTime(18, 0), LocalDate.of(2026, 10, 12).atTime(21, 0)), owner);
+
+        assertThat(service.findOccurrences(day(10, 12), day(10, 13), owner)).singleElement()
+                .satisfies(o -> assertThat(o.title()).isEqualTo("Training mit Turnier"));
+    }
+
+    @Test
+    void storesCategoryAndRejectsUnknownOne() {
+        EventCategory sport = categories.create(new CategoryInput("Mannschaft", CategoryColor.GREEN), admin);
+        EventInput withCategory = new EventInput("Spiel", null, null, LocalDate.of(2026, 10, 12), LocalTime.of(10, 0),
+                LocalDate.of(2026, 10, 12), LocalTime.of(11, 0), false, null, false, Set.of(), false, sport.getId());
+        EventInput unknown = new EventInput("Spiel", null, null, LocalDate.of(2026, 10, 12), LocalTime.of(10, 0),
+                LocalDate.of(2026, 10, 12), LocalTime.of(11, 0), false, null, false, Set.of(), false, 999_999L);
+
+        CalendarEvent e = service.create(withCategory, owner);
+
+        assertThat(e.getCategoryId()).contains(sport.getId());
+        assertThat(service.findOccurrences(day(10, 12), day(10, 13), owner)).singleElement()
+                .satisfies(o -> assertThat(o.categoryId()).isEqualTo(sport.getId()));
+        assertThatThrownBy(() -> service.create(unknown, owner)).isInstanceOf(IllegalArgumentException.class);
     }
 }

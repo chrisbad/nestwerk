@@ -31,11 +31,14 @@ class PermissionCatalogTest {
     void groupsByModuleInSortOrder() {
         Map<String, List<PermissionDefinition>> byModule = catalog.byModule();
 
-        assertThat(byModule.keySet()).containsExactly("Verwaltung", "Kalender", "Küche");
+        assertThat(byModule.keySet()).containsExactly("Verwaltung", "Kalender", "Küche", "Schule");
         assertThat(byModule.get("Verwaltung")).extracting(PermissionDefinition::key)
                 .containsExactly("USER_MANAGE", "ACCESS_ROLE_MANAGE", "MEMBER_MANAGE", "NOTIFICATION_SETTINGS_MANAGE",
                         "HOUSEHOLD_DEVICE_MANAGE", "AI_ACCESS", "BACKUP_MANAGE", "UPDATE_MANAGE");
         assertThat(byModule.get("Kalender").getFirst().label()).isEqualTo("Kalender ansehen");
+        assertThat(byModule.get("Schule")).extracting(PermissionDefinition::key)
+                .containsExactly("SCHOOL_VIEW", "SCHOOL_EDIT", "SCHOOL_HOMEWORK", "SCHOOL_GRADES",
+                        "SCHOOL_GRADES_OWN", "SCHOOL_SETTINGS");
     }
 
     @Test

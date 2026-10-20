@@ -45,6 +45,10 @@
         </dependency>
         <dependency>
             <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-school</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
             <artifactId>nestwerk-transfer</artifactId>
         </dependency>
         <dependency>
