@@ -2,6 +2,7 @@ package club.badernet.nestwerk.web;
 
 import club.badernet.nestwerk.blocker.GermanHolidays;
 import club.badernet.nestwerk.contact.Contact;
+import club.badernet.nestwerk.contact.ContactNotFoundException;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberService;
 import club.badernet.nestwerk.school.LessonInput;
@@ -168,7 +169,8 @@ public class SchoolSettingsController {
 
     private Long schoolOf(YearForm form) {
         if (form.newSchoolName() == null || form.newSchoolName().isBlank()) {
-            return form.schoolContactId();
+            return form.schoolContactId() == null ? null
+                    : schoolContacts.requireLinkable(form.schoolContactId(), currentUser.require()).getId();
         }
         return schoolContacts.createSchool(new SchoolContacts.SchoolInput(form.newSchoolName(),
                 form.newSchoolPhone(), form.newSchoolEmail(), null, null, null), currentUser.require()).getId();
@@ -399,7 +401,7 @@ public class SchoolSettingsController {
         try {
             action.run();
             redirect.addFlashAttribute("success", success);
-        } catch (IllegalArgumentException | AccessDeniedException e) {
+        } catch (IllegalArgumentException | AccessDeniedException | ContactNotFoundException e) {
             redirect.addFlashAttribute("error", e.getMessage());
         }
         if (yearId != null) {

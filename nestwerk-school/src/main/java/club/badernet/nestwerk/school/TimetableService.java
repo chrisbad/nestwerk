@@ -136,9 +136,7 @@ public class TimetableService {
         access.require(actor, SchoolPermission.SCHOOL_EDIT);
         SchoolSubject subject = requireSubject(subjectId);
         Set<Long> ids = contactIds == null ? Set.of() : new LinkedHashSet<>(contactIds);
-        if (schoolContacts.byIds(ids).size() != ids.size()) {
-            throw new IllegalArgumentException("Lehrkraft nicht gefunden");
-        }
+        ids.forEach(id -> schoolContacts.requireLinkable(id, actor));
         subject.setTeacherIds(ids);
     }
 

@@ -4,9 +4,12 @@ import club.badernet.nestwerk.TestcontainersConfiguration;
 import club.badernet.nestwerk.blocker.Blocker;
 import club.badernet.nestwerk.blocker.BlockerKind;
 import club.badernet.nestwerk.blocker.BlockerRepository;
+import club.badernet.nestwerk.contact.ContactNotFoundException;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberService;
+import club.badernet.nestwerk.role.Role;
 import club.badernet.nestwerk.role.RoleRepository;
+import club.badernet.nestwerk.role.RoleService;
 import club.badernet.nestwerk.user.User;
 import club.badernet.nestwerk.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +45,7 @@ class TimetableServiceTest {
     @Autowired FamilyMemberService members;
     @Autowired UserService users;
     @Autowired RoleRepository roles;
+    @Autowired RoleService roleService;
     @Autowired BlockerRepository blockers;
 
     User admin;
@@ -243,7 +247,7 @@ class TimetableServiceTest {
         assertThat(timetable.teachers(year.getId()).get(math.getId())).extracting(c -> c.getId())
                 .containsExactly(kaya.getId());
         assertThatThrownBy(() -> timetable.setTeachers(math.getId(), Set.of(999_999L), admin))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(ContactNotFoundException.class);
     }
 
     @Test
@@ -287,5 +291,16 @@ class TimetableServiceTest {
         assertThatThrownBy(() -> timetable.changeLesson(first.getId(), LessonInput.timed(english.getId(),
                 DayOfWeek.MONDAY, LocalTime.of(8, 50), LocalTime.of(9, 10), null, WeekKind.EVERY), admin))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("überschneidet");
+    }
+
+    @Test
+    void onlyContactsTheEditorMaySeeCanBeLinkedAsTeachers() {
+        var weber = timetable.addTeacher(math.getId(), "Frau Weber", "weber@schule.de", admin);
+        Role schoolOnly = roleService.create("Nur Schule", null, Set.of("SCHOOL_VIEW", "SCHOOL_EDIT"));
+        User editor = users.create("schulpflege", "passwort1", Set.of(schoolOnly.getId()));
+
+        assertThatThrownBy(() -> timetable.setTeachers(english.getId(), Set.of(weber.getId()), editor))
+                .isInstanceOf(ContactNotFoundException.class);
+        assertThat(timetable.teachers(year.getId()).get(english.getId())).isEmpty();
     }
 }

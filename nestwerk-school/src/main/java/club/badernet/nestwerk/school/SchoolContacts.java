@@ -60,6 +60,15 @@ public class SchoolContacts {
         return contacts.findLinked(ids).stream().collect(Collectors.toMap(Contact::getId, Function.identity()));
     }
 
+    /**
+     * A contact the actor may link as school or teacher. Linking shows the contact's details to everyone with school
+     * access, so only contacts the actor may see themselves qualify; others are reported as not found.
+     */
+    @Transactional(readOnly = true)
+    public Contact requireLinkable(Long id, User actor) {
+        return contacts.get(id, actor);
+    }
+
     public boolean mayCreate(User user) {
         return contacts.canCreate(user);
     }

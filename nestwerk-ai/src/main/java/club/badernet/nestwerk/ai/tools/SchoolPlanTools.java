@@ -136,12 +136,11 @@ public class SchoolPlanTools {
         return tools.write(context, user -> {
             access.require(user, SchoolPermission.SCHOOL_EDIT);
             SchoolYear year = year(yearId);
-            Long contactId = schoolContactId;
-            if (newSchoolName != null && !newSchoolName.isBlank()) {
-                contactId = contacts.createSchool(new SchoolContacts.SchoolInput(newSchoolName, phone, email, null,
-                        null, null), user).getId();
-            }
-            school.changeYear(year.getId(), year.getLabel(), Tools.required(contactId, "schoolContactId"),
+            Long contactId = newSchoolName != null && !newSchoolName.isBlank()
+                    ? contacts.createSchool(new SchoolContacts.SchoolInput(newSchoolName, phone, email, null, null,
+                    null), user).getId()
+                    : contacts.requireLinkable(Tools.required(schoolContactId, "schoolContactId"), user).getId();
+            school.changeYear(year.getId(), year.getLabel(), contactId,
                     year.getClassName(), year.getStartsOn(), year.getEndsOn());
             return contacts.get(contactId).map(SchoolPlanTools::contact).orElseThrow();
         });
