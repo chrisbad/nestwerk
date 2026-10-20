@@ -1,17 +1,27 @@
 package club.badernet.nestwerk.school;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.HashSet;
+import java.util.Set;
 
-/** Klassenarbeit, Test, Elternabend oder Ausflug; als ganztägiger Kalendertermin eingetragen. */
+/**
+ * Exam, test or school appointment (parents' evening, trip …); appears as a calendar event for its participants,
+ * all-day or with a time.
+ */
 @Entity
 @Table(name = "school_exam")
 public class SchoolExam {
@@ -42,6 +52,20 @@ public class SchoolExam {
     @Column(name = "event_id")
     private Long eventId;
 
+    @Column(name = "starts_at")
+    private LocalTime startsAt;
+
+    @Column(name = "ends_at")
+    private LocalTime endsAt;
+
+    @Column(length = 150)
+    private String location;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "school_exam_member", joinColumns = @JoinColumn(name = "exam_id"))
+    @Column(name = "member_id", nullable = false)
+    private Set<Long> memberIds = new HashSet<>();
+
     protected SchoolExam() {
     }
 
@@ -56,6 +80,18 @@ public class SchoolExam {
         this.title = title;
         this.day = day;
         this.studyDays = studyDays;
+    }
+
+    /** Time and location; without a start the appointment is all-day. */
+    public void schedule(LocalTime startsAt, LocalTime endsAt, String location) {
+        this.startsAt = startsAt;
+        this.endsAt = startsAt == null ? null : endsAt;
+        this.location = location;
+    }
+
+    public void setMemberIds(Set<Long> memberIds) {
+        this.memberIds.clear();
+        this.memberIds.addAll(memberIds);
     }
 
     public void linkEvent(Long eventId) {
@@ -86,12 +122,32 @@ public class SchoolExam {
         return day;
     }
 
-    /** Wie viele Tage vor dem Termin zusätzlich ans Lernen erinnert wird (0 = nur am Vortag). */
+    /** How many days ahead an extra study reminder is sent (0 = only the day before). */
     public int getStudyDays() {
         return studyDays;
     }
 
     public Long getEventId() {
         return eventId;
+    }
+
+    public LocalTime getStartsAt() {
+        return startsAt;
+    }
+
+    public LocalTime getEndsAt() {
+        return endsAt;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public boolean isAllDay() {
+        return startsAt == null;
+    }
+
+    public Set<Long> getMemberIds() {
+        return Set.copyOf(memberIds);
     }
 }

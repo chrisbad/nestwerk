@@ -1,67 +1,116 @@
 <!DOCTYPE html>
 <html lang="de" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Klassenarbeiten')}"></head>
+<head th:replace="~{fragments/layout :: head('Klassenarbeiten & Termine')}"></head>
 <body>
 <header th:replace="~{fragments/layout :: nav(active='school')}"></header>
-<main class="event-main school-main">
-    <p><a th:href="@{/school}">← Schule</a></p>
-    <h1 th:text="|Klassenarbeiten und Termine ${member.name}|">Klassenarbeiten und Termine Lena</h1>
-    <p class="muted" th:text="|${year.school}, Klasse ${year.className}, Schuljahr ${year.label}|">Grundschule, Klasse 3a</p>
-    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
-    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+<main class="event-main school-main school-wide">
+    <div th:replace="~{school/fragments :: header}"></div>
+
+    <p class="exam-legend muted">
+        <span class="exam-legend-exam">Klassenarbeit / Test</span>
+        <span class="exam-legend-event">Termin</span>
+    </p>
 
     <section class="sheet settings-block">
         <h2>Anstehend</h2>
-        <p class="muted" th:if="${#lists.isEmpty(upcoming)}">Keine anstehenden Termine.</p>
-        <ul class="plain-list">
-            <li th:each="e : ${upcoming}"
-                th:style="${e.subjectId != null and subjects[e.subjectId] != null} ? |border-left: 4px solid ${subjects[e.subjectId].color}; padding-left: .6rem|">
-                <strong th:text="${#temporals.format(e.day, 'dd.MM.yyyy')}">10.09.2026</strong>
-                <span th:text="${e.kind.label()}">Klassenarbeit</span>
-                <span th:if="${e.subjectId != null and subjects[e.subjectId] != null}" th:text="${subjects[e.subjectId].name}">Mathe</span>
-                <span class="muted" th:if="${e.title != e.kind.label()}" th:text="${e.title}">Bruchrechnen</span>
-                <span class="badge" th:if="${e.studyDays > 0}" th:text="|Lernen ab ${e.studyDays} Tagen vorher|"></span>
-                <a th:if="${e.eventId != null}" th:href="@{/calendar/events/{id}(id=${e.eventId})}" class="muted">Im Kalender</a>
-                <form method="post" th:action="@{/school/exams/{id}/delete(id=${e.id})}" th:if="${canEdit}"
-                      data-confirm="Termin löschen?" class="inline-form">
-                    <input type="hidden" name="yearId" th:value="${year.id}">
-                    <button type="submit" class="button button-ghost button-small">Löschen</button>
-                </form>
-            </li>
+        <p class="muted" th:if="${#lists.isEmpty(upcoming)}">Nichts geplant.</p>
+        <ul class="exam-list">
+            <th:block th:each="e : ${upcoming}"><li th:replace="~{this :: examItem(${e})}"></li></th:block>
         </ul>
     </section>
 
-    <section class="sheet settings-block" th:if="${canEdit}">
-        <h2>Neuer Termin</h2>
-        <form method="post" th:action="@{/school/years/{id}/exams(id=${year.id})}" class="slot-row">
-            <select name="kind" aria-label="Art">
-                <option th:each="k : ${kinds}" th:value="${k.name()}" th:text="${k.label()}">Klassenarbeit</option>
-            </select>
-            <select name="subjectId" aria-label="Fach">
-                <option value="">Ohne Fach</option>
-                <option th:each="s : ${subjectList}" th:value="${s.id}" th:text="${s.name}">Mathe</option>
-            </select>
-            <input type="text" name="title" maxlength="150" placeholder="Thema (optional)" aria-label="Thema">
-            <input type="date" name="day" required aria-label="Datum">
-            <label>Lernen ab
-                <input type="number" name="studyDays" min="0" max="60" value="3" aria-label="Tage vorher"> Tagen vorher
-            </label>
-            <button type="submit" class="button button-small">Anlegen</button>
+    <section class="sheet settings-block" th:if="${canEdit}" id="exam-form">
+        <h2 th:text="${editing != null} ? 'Bearbeiten' : 'Neu eintragen'">Neu eintragen</h2>
+        <form method="post" class="stack-form" data-exam-form th:attr="data-defaults=${defaultsJson}"
+              th:action="${editing != null} ? @{/school/exams/{id}(id=${editing.id})} : @{/school/years/{id}/exams(id=${year.id})}">
+            <input type="hidden" name="yearId" th:value="${year.id}">
+            <div class="slot-row">
+                <select name="kind" aria-label="Art">
+                    <option th:each="k : ${kinds}" th:value="${k.name()}" th:text="${k.label()}"
+                            th:attr="data-exam=${k.isExam()}"
+                            th:selected="${editing != null and editing.kind == k}">Klassenarbeit</option>
+                </select>
+                <input type="date" name="day" required aria-label="Datum" th:value="${editing?.day}">
+                <input type="text" name="title" maxlength="150" placeholder="Thema / Titel (optional)" aria-label="Thema"
+                       th:value="${editing != null and editing.title != editing.kind.label()} ? ${editing.title}">
+            </div>
+            <div class="slot-row" data-exam-only>
+                <select name="subjectId" aria-label="Fach">
+                    <option value="">Ohne Fach</option>
+                    <option th:each="s : ${subjectList}" th:value="${s.id}" th:text="${s.name}"
+                            th:selected="${editing != null and editing.subjectId == s.id}">Mathe</option>
+                </select>
+                <label>Lernen ab
+                    <input type="number" name="studyDays" min="0" max="60"
+                           th:value="${editing != null} ? ${editing.studyDays} : 3" aria-label="Tage vorher"> Tagen vorher
+                </label>
+            </div>
+            <div class="slot-row" data-event-only>
+                <label>Beginn <input type="time" name="startsAt" th:value="${editing?.startsAt}"></label>
+                <label>Ende <input type="time" name="endsAt" th:value="${editing?.endsAt}"></label>
+                <input type="text" name="location" maxlength="150" placeholder="Ort, z. B. Aula" aria-label="Ort"
+                       th:value="${editing?.location}">
+            </div>
+            <fieldset class="member-pick">
+                <legend>Im Kalender bei</legend>
+                <label th:each="p : ${people}" class="check-row" th:style="|--member-color: ${p.color}|">
+                    <input type="checkbox" name="memberId" th:value="${p.id}"
+                           th:checked="${editing != null} ? ${editing.memberIds.contains(p.id)} : ${childDefaults.contains(p.id)}">
+                    <span th:text="${p.name}">Lena</span>
+                </label>
+            </fieldset>
+            <div class="form-actions">
+                <button type="submit" class="button button-small" th:text="${editing != null} ? 'Speichern' : 'Eintragen'">Eintragen</button>
+                <a th:if="${editing != null}" class="button button-ghost button-small"
+                   th:href="@{/school/years/{id}/exams(id=${year.id})}">Abbrechen</a>
+            </div>
         </form>
-        <p class="muted">Der Termin steht auch im Familienkalender. Erinnert wird am Lerntag und am Vortag.</p>
+        <p class="muted">Steht auch im Familienkalender – ohne Uhrzeit ganztägig. Bei Klassenarbeiten wird am Lerntag
+            und am Vortag erinnert.</p>
     </section>
 
     <section class="sheet settings-block" th:if="${!#lists.isEmpty(past)}">
-        <h2>Vergangen</h2>
-        <ul class="plain-list">
-            <li th:each="e : ${past}">
-                <span th:text="${#temporals.format(e.day, 'dd.MM.yyyy')}">01.09.2026</span>
-                <span th:text="${e.kind.label()}">Test</span>
-                <span th:if="${e.subjectId != null and subjects[e.subjectId] != null}" th:text="${subjects[e.subjectId].name}">Mathe</span>
-                <span class="muted" th:if="${e.title != e.kind.label()}" th:text="${e.title}"></span>
-            </li>
-        </ul>
+        <details>
+            <summary th:text="|Vergangen (${past.size()})|">Vergangen (3)</summary>
+            <ul class="exam-list">
+                <th:block th:each="e : ${past}"><li th:replace="~{this :: examItem(${e})}"></li></th:block>
+            </ul>
+        </details>
     </section>
+
+    <th:block th:if="false">
+        <li th:fragment="examItem(e)" class="exam-item-card"
+            th:classappend="${e.kind.isExam()} ? 'is-exam' : 'is-event'"
+            th:style="${e.kind.isExam() and e.subjectId != null and subjects[e.subjectId] != null} ? |--subject-color: ${subjects[e.subjectId].color}|">
+            <span class="exam-icon" aria-hidden="true" th:text="${e.kind.isExam()} ? '✎' : '📅'">✎</span>
+            <span class="exam-when">
+                <strong th:text="${#temporals.format(e.day, 'EE dd.MM.yyyy')}">Do 22.10.2026</strong>
+                <span th:if="${!e.allDay}"
+                      th:text="${e.endsAt != null} ? |${#temporals.format(e.startsAt, 'HH:mm')}–${#temporals.format(e.endsAt, 'HH:mm')}| : ${#temporals.format(e.startsAt, 'HH:mm')}">19:30–21:00</span>
+            </span>
+            <span class="exam-what">
+                <span class="badge" th:classappend="${e.kind.isExam()} ? 'badge-exam'" th:text="${e.kind.label()}">Klassenarbeit</span>
+                <strong th:if="${e.subjectId != null and subjects[e.subjectId] != null}" th:text="${subjects[e.subjectId].name}">Mathe</strong>
+                <span th:if="${e.title != e.kind.label()}" th:text="${e.title}">Bruchrechnen</span>
+                <span class="muted" th:if="${e.location != null}" th:text="|· ${e.location}|">· Aula</span>
+                <span class="muted" th:if="${e.studyDays > 0}" th:text="|· lernen ab ${e.studyDays} Tagen vorher|"></span>
+                <span class="exam-people">
+                    <span th:each="id : ${e.memberIds}" th:if="${peopleById.get(id) != null}" class="member-tag"
+                          th:style="|--member-color: ${peopleById.get(id).color}|" th:text="${peopleById.get(id).name}">Lena</span>
+                </span>
+            </span>
+            <span class="exam-actions">
+                <a th:if="${e.eventId != null}" th:href="@{/calendar/events/{id}(id=${e.eventId})}" class="muted">Kalender</a>
+                <a th:if="${canEdit}" th:href="@{/school/years/{id}/exams(id=${year.id},edit=${e.id})} + '#exam-form'"
+                   class="button button-ghost button-small">Bearbeiten</a>
+                <form method="post" th:action="@{/school/exams/{id}/delete(id=${e.id})}" th:if="${canEdit}"
+                      data-confirm="Eintrag löschen? Der Kalendertermin wird mit gelöscht." class="inline-form">
+                    <input type="hidden" name="yearId" th:value="${year.id}">
+                    <button type="submit" class="button button-ghost button-small">Löschen</button>
+                </form>
+            </span>
+        </li>
+    </th:block>
 </main>
 </body>
 </html>

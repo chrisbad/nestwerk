@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-/** Schulprofile der Familienmitglieder und ihre Schuljahre. */
+/** School profiles of family members and their school years. */
 @Service
 public class SchoolService {
 
@@ -17,9 +17,14 @@ public class SchoolService {
     private final SchoolYearRepository years;
     private final FamilyMemberRepository members;
     private final SchoolBlockerSync sync;
+    private final SchoolContacts contacts;
+    private final PeriodService periods;
 
     public SchoolService(SchoolProfileRepository profiles, SchoolYearRepository years,
-                         FamilyMemberRepository members, SchoolBlockerSync sync) {
+                         FamilyMemberRepository members, SchoolBlockerSync sync, SchoolContacts contacts,
+                         PeriodService periods) {
+        this.contacts = contacts;
+        this.periods = periods;
         this.profiles = profiles;
         this.years = years;
         this.members = members;
@@ -72,13 +77,16 @@ public class SchoolService {
         return years.findById(id);
     }
 
-    /** Legt ein Schuljahr an und macht es zum aktiven; das bisher aktive wird inaktiv, bleibt aber erhalten. */
+    /**
+     * Starts a school year and makes it the active one; the previously active year stays available.
+     * {@code schoolContactId} is the contact of the school and may be {@code null}.
+     */
     @Transactional
-    public SchoolYear startYear(Long profileId, String label, String school, String className, LocalDate startsOn,
-                                LocalDate endsOn) {
+    public SchoolYear startYear(Long profileId, String label, Long schoolContactId, String className,
+                                LocalDate startsOn, LocalDate endsOn) {
         requireProfile(profileId);
         SchoolYear year = new SchoolYear(profileId, requireText(label, "Bezeichnung", 30),
-                requireText(school, "Schule", 150), requireText(className, "Klasse", 30), requireDate(startsOn),
+                requireSchool(schoolContactId), requireText(className, "Klasse", 30), requireDate(startsOn),
                 requireEnd(startsOn, endsOn));
         Long previous = deactivateCurrent(profileId);
         year.setActive(true);
@@ -91,15 +99,20 @@ public class SchoolService {
     }
 
     @Transactional
-    public void changeYear(Long yearId, String label, String school, String className, LocalDate startsOn,
+    public void changeYear(Long yearId, String label, Long schoolContactId, String className, LocalDate startsOn,
                            LocalDate endsOn) {
-        requireYear(yearId).change(requireText(label, "Bezeichnung", 30), requireText(school, "Schule", 150),
+        SchoolYear year = requireYear(yearId);
+        Long previousSchool = year.getSchoolContactId();
+        year.change(requireText(label, "Bezeichnung", 30), requireSchool(schoolContactId),
                 requireText(className, "Klasse", 30), requireDate(startsOn), requireEnd(startsOn, endsOn));
         years.flush();
+        if (!java.util.Objects.equals(previousSchool, schoolContactId)) {
+            periods.align(yearId);
+        }
         sync.sync(yearId);
     }
 
-    /** Macht ein früheres Schuljahr wieder zum aktiven. */
+    /** Makes an earlier school year the active one again. */
     @Transactional
     public void activate(Long yearId) {
         SchoolYear year = requireYear(yearId);
@@ -112,7 +125,7 @@ public class SchoolService {
         sync.sync(yearId);
     }
 
-    /** Macht das aktive Jahr inaktiv und gibt dessen ID zurück ({@code null}, wenn keines aktiv war). */
+    /** Deactivates the active year and returns its id ({@code null} if none was active). */
     private Long deactivateCurrent(Long profileId) {
         return years.findByProfileIdAndActiveTrue(profileId).map(old -> {
             old.setActive(false);
@@ -127,6 +140,13 @@ public class SchoolService {
 
     private SchoolYear requireYear(Long id) {
         return years.findById(id).orElseThrow(() -> new IllegalArgumentException("Schuljahr nicht gefunden"));
+    }
+
+    private Long requireSchool(Long contactId) {
+        if (contactId != null && !contacts.exists(contactId)) {
+            throw new IllegalArgumentException("Schule nicht gefunden");
+        }
+        return contactId;
     }
 
     private static String cleanState(String state) {

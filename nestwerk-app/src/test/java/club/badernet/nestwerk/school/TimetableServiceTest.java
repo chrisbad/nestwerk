@@ -58,15 +58,15 @@ class TimetableServiceTest {
         parent = users.create("mama", "passwort1", Set.of(roles.findByNameIgnoreCase("Benutzer").orElseThrow().getId()));
         lena = members.create("Lena", "#aabbcc", null);
         SchoolProfile profile = school.createProfile(lena.getId(), null);
-        year = school.startYear(profile.getId(), "2026/27", "Grundschule", "3a", MON_1, LocalDate.of(2026, 8, 30));
-        math = timetable.addSubject(year.getId(), "Mathe", null, "Frau Weber", admin);
-        german = timetable.addSubject(year.getId(), "Deutsch", "#e07a3f", null, admin);
-        english = timetable.addSubject(year.getId(), "Englisch", null, null, admin);
+        year = school.startYear(profile.getId(), "2026/27", null, "3a", MON_1, LocalDate.of(2026, 8, 30));
+        math = timetable.addSubject(year.getId(), "Mathe", null, admin);
+        german = timetable.addSubject(year.getId(), "Deutsch", "#e07a3f", admin);
+        english = timetable.addSubject(year.getId(), "Englisch", null, admin);
     }
 
     private Lesson lesson(SchoolSubject subject, int from, int to, WeekKind kind) {
-        return timetable.addLesson(year.getId(), subject.getId(), DayOfWeek.MONDAY, LocalTime.of(from / 60, from % 60),
-                LocalTime.of(to / 60, to % 60), "R1", kind, admin);
+        return timetable.addLesson(year.getId(), LessonInput.timed(subject.getId(), DayOfWeek.MONDAY,
+                LocalTime.of(from / 60, from % 60), LocalTime.of(to / 60, to % 60), "R1", kind), admin);
     }
 
     private Optional<Blocker> blockerOn(LocalDate day) {
@@ -107,9 +107,9 @@ class TimetableServiceTest {
     void subjectsGetPaletteColorAndRejectDuplicates() {
         assertThat(math.getColor()).matches("#[0-9a-f]{6}");
         assertThat(german.getColor()).isEqualTo("#e07a3f");
-        assertThatThrownBy(() -> timetable.addSubject(year.getId(), "mathe", null, null, admin))
+        assertThatThrownBy(() -> timetable.addSubject(year.getId(), "mathe", null, admin))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("gibt es schon");
-        assertThatThrownBy(() -> timetable.addSubject(year.getId(), "Kunst", "rot", null, admin))
+        assertThatThrownBy(() -> timetable.addSubject(year.getId(), "Kunst", "rot", admin))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Farbe");
     }
 
@@ -133,10 +133,10 @@ class TimetableServiceTest {
 
     @Test
     void onlyEditorsMayChange() {
-        assertThatThrownBy(() -> timetable.addSubject(year.getId(), "Kunst", null, null, parent))
+        assertThatThrownBy(() -> timetable.addSubject(year.getId(), "Kunst", null, parent))
                 .isInstanceOf(AccessDeniedException.class);
-        assertThatThrownBy(() -> timetable.addLesson(year.getId(), math.getId(), DayOfWeek.MONDAY,
-                LocalTime.of(8, 0), LocalTime.of(9, 0), null, WeekKind.EVERY, parent))
+        assertThatThrownBy(() -> timetable.addLesson(year.getId(), LessonInput.timed(math.getId(), DayOfWeek.MONDAY,
+                LocalTime.of(8, 0), LocalTime.of(9, 0), null, WeekKind.EVERY), parent))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
@@ -201,11 +201,11 @@ class TimetableServiceTest {
     void publicHolidaysAreFreeAndDeletingLessonsRemovesBlockers() {
         SchoolProfile profile = school.profileOf(lena.getId()).orElseThrow();
         school.changeState(profile.getId(), "BY");
-        SchoolYear holidayYear = school.startYear(profile.getId(), "2026/27 b", "Grundschule", "3a",
+        SchoolYear holidayYear = school.startYear(profile.getId(), "2026/27 b", null, "3a",
                 LocalDate.of(2026, 12, 21), LocalDate.of(2027, 1, 18));
-        SchoolSubject subject = timetable.addSubject(holidayYear.getId(), "Mathe", null, null, admin);
-        timetable.addLesson(holidayYear.getId(), subject.getId(), DayOfWeek.WEDNESDAY, LocalTime.of(8, 0),
-                LocalTime.of(9, 0), null, WeekKind.EVERY, admin);
+        SchoolSubject subject = timetable.addSubject(holidayYear.getId(), "Mathe", null, admin);
+        timetable.addLesson(holidayYear.getId(), LessonInput.timed(subject.getId(), DayOfWeek.WEDNESDAY,
+                LocalTime.of(8, 0), LocalTime.of(9, 0), null, WeekKind.EVERY), admin);
 
         assertThat(blockerOn(LocalDate.of(2026, 12, 23))).isPresent();
         assertThat(blockerOn(LocalDate.of(2027, 1, 6))).as("Heilige Drei Könige in Bayern").isEmpty();
@@ -222,11 +222,70 @@ class TimetableServiceTest {
         assertThat(blockerOn(MON_1)).isPresent();
         SchoolProfile profile = school.profileOf(lena.getId()).orElseThrow();
 
-        school.startYear(profile.getId(), "2027/28", "Grundschule", "4a", LocalDate.of(2027, 9, 1),
+        school.startYear(profile.getId(), "2027/28", null, "4a", LocalDate.of(2027, 9, 1),
                 LocalDate.of(2028, 7, 31));
         assertThat(blockerOn(MON_1)).isEmpty();
 
         school.activate(year.getId());
         assertThat(blockerOn(MON_1)).isPresent();
+    }
+
+    @Test
+    void subjectsHaveSeveralTeacherContacts() {
+        var weber = timetable.addTeacher(math.getId(), "Frau Weber", "weber@schule.de", admin);
+        var kaya = timetable.addTeacher(math.getId(), "Herr Kaya", null, admin);
+
+        assertThat(timetable.teachers(year.getId()).get(math.getId())).extracting(c -> c.getName())
+                .containsExactly("Frau Weber", "Herr Kaya");
+        assertThat(weber.getCategory()).isEqualTo(SchoolContacts.TEACHER);
+
+        timetable.setTeachers(math.getId(), Set.of(kaya.getId()), admin);
+        assertThat(timetable.teachers(year.getId()).get(math.getId())).extracting(c -> c.getId())
+                .containsExactly(kaya.getId());
+        assertThatThrownBy(() -> timetable.setTeachers(math.getId(), Set.of(999_999L), admin))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void markDayCancelsBySubjectAndClearDayResets() {
+        lesson(math, 480, 525, WeekKind.EVERY);
+        lesson(german, 525, 570, WeekKind.EVERY);
+        lesson(math, 570, 615, WeekKind.EVERY);
+
+        List<Timetable.Entry> marked = timetable.markDay(year.getId(), MON_1, new LessonSelection("mathe", null, null),
+                ChangeKind.CANCELLED, null, admin);
+
+        assertThat(marked).hasSize(2);
+        assertThat(timetable.day(year.getId(), MON_1)).extracting(Timetable.Entry::cancelled)
+                .containsExactly(true, false, true);
+        assertThat(timetable.clearDay(year.getId(), MON_1, LessonSelection.wholeDay(), admin)).isEqualTo(2);
+        assertThat(timetable.day(year.getId(), MON_1)).noneMatch(Timetable.Entry::cancelled);
+        assertThatThrownBy(() -> timetable.markDay(year.getId(), MON_1, new LessonSelection("Kunst", null, null),
+                ChangeKind.CANCELLED, null, admin))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("keine passende Stunde");
+    }
+
+    @Test
+    void roomChangeReplacesTheRoomForThatDay() {
+        Lesson l = lesson(math, 480, 525, WeekKind.EVERY);
+
+        timetable.markLesson(l.getId(), MON_1, ChangeKind.ROOM, "Aula", admin);
+
+        assertThat(timetable.day(year.getId(), MON_1).getFirst().room()).isEqualTo("Aula");
+        assertThat(timetable.day(year.getId(), MON_2).getFirst().room()).isEqualTo("R1");
+    }
+
+    @Test
+    void changeLessonMovesItAndChecksOverlaps() {
+        Lesson first = lesson(math, 480, 525, WeekKind.EVERY);
+        lesson(german, 525, 570, WeekKind.EVERY);
+
+        timetable.changeLesson(first.getId(), LessonInput.timed(english.getId(), DayOfWeek.MONDAY, LocalTime.of(7, 0),
+                LocalTime.of(7, 45), "R9", WeekKind.EVERY), admin);
+        assertThat(timetable.lessons(year.getId()).getFirst().getSubjectId()).isEqualTo(english.getId());
+
+        assertThatThrownBy(() -> timetable.changeLesson(first.getId(), LessonInput.timed(english.getId(),
+                DayOfWeek.MONDAY, LocalTime.of(8, 50), LocalTime.of(9, 10), null, WeekKind.EVERY), admin))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("überschneidet");
     }
 }

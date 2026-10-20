@@ -53,10 +53,10 @@ class GradeServiceTest {
         lena = members.create("Lena", "#aabbcc", kid.getId());
         members.create("Tom", "#ccbbaa", sibling.getId());
         SchoolProfile profile = school.createProfile(lena.getId(), null);
-        year = school.startYear(profile.getId(), "2026/27", "Grundschule", "3a", LocalDate.of(2026, 8, 1),
+        year = school.startYear(profile.getId(), "2026/27", null, "3a", LocalDate.of(2026, 8, 1),
                 LocalDate.of(2027, 7, 31));
-        math = timetable.addSubject(year.getId(), "Mathe", null, null, admin);
-        german = timetable.addSubject(year.getId(), "Deutsch", null, null, admin);
+        math = timetable.addSubject(year.getId(), "Mathe", null, admin);
+        german = timetable.addSubject(year.getId(), "Deutsch", null, admin);
     }
 
     @Test
@@ -142,7 +142,7 @@ class GradeServiceTest {
     @Test
     void subjectsOfOtherYearsAreRejected() {
         SchoolProfile profile = school.profileOf(lena.getId()).orElseThrow();
-        SchoolYear next = school.startYear(profile.getId(), "2027/28", "Grundschule", "4a", LocalDate.of(2027, 9, 1),
+        SchoolYear next = school.startYear(profile.getId(), "2027/28", null, "4a", LocalDate.of(2027, 9, 1),
                 LocalDate.of(2028, 7, 31));
 
         assertThatThrownBy(() -> grades.add(next.getId(), math.getId(), 1, "2", 100, GradeKind.WRITTEN, DAY, null,

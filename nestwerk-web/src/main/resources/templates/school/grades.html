@@ -3,12 +3,8 @@
 <head th:replace="~{fragments/layout :: head('Noten')}"></head>
 <body>
 <header th:replace="~{fragments/layout :: nav(active='school')}"></header>
-<main class="event-main school-main">
-    <p><a th:href="@{/school}">← Schule</a></p>
-    <h1 th:text="|Noten ${member.name}|">Noten Lena</h1>
-    <p class="muted" th:text="|${year.school}, Klasse ${year.className}, Schuljahr ${year.label}|">Grundschule, Klasse 3a</p>
-    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
-    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+<main class="event-main school-main school-wide">
+    <div th:replace="~{school/fragments :: header}"></div>
 
     <nav class="week-nav" aria-label="Halbjahr">
         <a class="button button-small" th:classappend="${term == 1} ? '' : 'button-ghost'"

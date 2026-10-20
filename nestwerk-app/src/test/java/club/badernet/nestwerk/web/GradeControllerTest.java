@@ -64,9 +64,9 @@ class GradeControllerTest {
         users.create("tom", "passwort1", Set.of(normal));
         FamilyMember lena = members.create("Lena", "#aabbcc", kid.getId());
         SchoolProfile profile = school.createProfile(lena.getId(), null);
-        year = school.startYear(profile.getId(), "2026/27", "Grundschule", "3a", LocalDate.of(2026, 8, 1),
+        year = school.startYear(profile.getId(), "2026/27", null, "3a", LocalDate.of(2026, 8, 1),
                 LocalDate.of(2027, 7, 31));
-        math = timetable.addSubject(year.getId(), "Mathe", "#4d74ff", null, admin);
+        math = timetable.addSubject(year.getId(), "Mathe", "#4d74ff", admin);
         grades.add(year.getId(), math.getId(), 1, "2+", 100, GradeKind.WRITTEN, LocalDate.of(2026, 10, 1), "Brüche",
                 admin);
         grades.add(year.getId(), math.getId(), 1, "3", 100, GradeKind.ORAL, LocalDate.of(2026, 10, 8), null, admin);
@@ -86,7 +86,7 @@ class GradeControllerTest {
     void parentSeesGradesAverageAndTheForm() throws Exception {
         mockMvc.perform(get("/school/years/{id}/grades", year.getId()).param("term", "1").with(allGrades()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Noten Lena")))
+                .andExpect(content().string(containsString("Schule Lena")))
                 .andExpect(content().string(containsString("2+")))
                 .andExpect(content().string(containsString("Brüche")))
                 .andExpect(content().string(containsString("Ø 2,35")))
@@ -153,9 +153,10 @@ class GradeControllerTest {
 
     @Test
     void overviewLinksToGradesOnlyWhenAllowed() throws Exception {
-        mockMvc.perform(get("/school").with(allGrades()))
+        mockMvc.perform(get("/school/years/{id}/timetable", year.getId()).with(allGrades()))
                 .andExpect(content().string(containsString("/grades")));
-        mockMvc.perform(get("/school").with(user("tom").authorities(new SimpleGrantedAuthority("SCHOOL_VIEW"))))
+        mockMvc.perform(get("/school/years/{id}/timetable", year.getId())
+                        .with(user("tom").authorities(new SimpleGrantedAuthority("SCHOOL_VIEW"))))
                 .andExpect(content().string(not(containsString("/grades"))));
     }
 }

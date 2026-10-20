@@ -3,19 +3,14 @@
 <head th:replace="~{fragments/layout :: head('Hausaufgaben')}"></head>
 <body>
 <header th:replace="~{fragments/layout :: nav(active='school')}"></header>
-<main class="event-main school-main">
-    <p><a th:href="@{/school}">← Schule</a></p>
-    <h1 th:text="|Hausaufgaben ${member.name}|">Hausaufgaben Lena</h1>
-    <p class="muted" th:text="|${year.school}, Klasse ${year.className}, Schuljahr ${year.label}|">Grundschule, Klasse 3a</p>
-    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
-    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+<main class="event-main school-main school-wide">
+    <div th:replace="~{school/fragments :: header}"></div>
 
     <nav class="week-nav" aria-label="Filter">
         <a class="button button-small" th:classappend="${!showDone} ? '' : 'button-ghost'"
            th:href="@{/school/years/{id}/homework(id=${year.id},subject=${subjectFilter})}">Offen</a>
         <a class="button button-small" th:classappend="${showDone} ? '' : 'button-ghost'"
            th:href="@{/school/years/{id}/homework(id=${year.id},subject=${subjectFilter},done=true)}">Erledigt</a>
-        <a class="button button-ghost button-small" th:href="@{/school/years/{id}/timetable(id=${year.id})}">Stundenplan</a>
         <form method="get" th:action="@{/school/years/{id}/homework(id=${year.id})}" class="inline-form">
             <input type="hidden" name="done" th:value="${showDone}">
             <select name="subject" aria-label="Fach" onchange="this.form.submit()">

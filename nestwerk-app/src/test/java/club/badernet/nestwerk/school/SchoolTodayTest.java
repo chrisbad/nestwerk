@@ -58,14 +58,14 @@ class SchoolTodayTest {
         guest = users.create("gast", "passwort1", Set.of(roles.findByNameIgnoreCase("Benutzer").orElseThrow().getId()));
         lena = members.create("Lena", "#aabbcc", null);
         tom = members.create("Tom", "#ccbbaa", null);
-        lenaYear = school.startYear(school.createProfile(lena.getId(), "BY").getId(), "2026/27", "Grundschule", "3a",
+        lenaYear = school.startYear(school.createProfile(lena.getId(), "BY").getId(), "2026/27", null, "3a",
                 LocalDate.of(2026, 9, 1), LocalDate.of(2027, 7, 31));
-        math = timetable.addSubject(lenaYear.getId(), "Mathe", "#4d74ff", null, admin);
-        mathLesson = timetable.addLesson(lenaYear.getId(), math.getId(), DayOfWeek.MONDAY, LocalTime.of(8, 0),
-                LocalTime.of(8, 45), "R12", WeekKind.EVERY, admin);
-        timetable.addLesson(lenaYear.getId(), math.getId(), DayOfWeek.MONDAY, LocalTime.of(9, 0),
-                LocalTime.of(9, 45), "R12", WeekKind.EVERY, admin);
-        school.startYear(school.createProfile(tom.getId(), null).getId(), "2026/27", "Gymnasium", "5b",
+        math = timetable.addSubject(lenaYear.getId(), "Mathe", "#4d74ff", admin);
+        mathLesson = timetable.addLesson(lenaYear.getId(), LessonInput.timed(math.getId(), DayOfWeek.MONDAY,
+                LocalTime.of(8, 0), LocalTime.of(8, 45), "R12", WeekKind.EVERY), admin);
+        timetable.addLesson(lenaYear.getId(), LessonInput.timed(math.getId(), DayOfWeek.MONDAY, LocalTime.of(9, 0),
+                LocalTime.of(9, 45), "R12", WeekKind.EVERY), admin);
+        school.startYear(school.createProfile(tom.getId(), null).getId(), "2026/27", null, "5b",
                 LocalDate.of(2026, 9, 1), LocalDate.of(2027, 7, 31));
     }
 
@@ -126,11 +126,11 @@ class SchoolTodayTest {
     void cancellationTodayNotifiesEveryoneWithSchoolRight() {
         LocalDate day = LocalDate.now(calendar.zone());
         DayOfWeek weekday = day.getDayOfWeek();
-        SchoolYear current = school.startYear(school.profileOf(lena.getId()).orElseThrow().getId(), "aktuell",
-                "Grundschule", "3a", day.minusMonths(1), day.plusMonths(6));
-        SchoolSubject art = timetable.addSubject(current.getId(), "Kunst", null, null, admin);
-        Lesson lesson = timetable.addLesson(current.getId(), art.getId(), weekday, LocalTime.of(10, 0),
-                LocalTime.of(10, 45), null, WeekKind.EVERY, admin);
+        SchoolYear current = school.startYear(school.profileOf(lena.getId()).orElseThrow().getId(), "aktuell", null,
+                "3a", day.minusMonths(1), day.plusMonths(6));
+        SchoolSubject art = timetable.addSubject(current.getId(), "Kunst", null, admin);
+        Lesson lesson = timetable.addLesson(current.getId(), LessonInput.timed(art.getId(), weekday,
+                LocalTime.of(10, 0), LocalTime.of(10, 45), null, WeekKind.EVERY), admin);
 
         timetable.markLesson(lesson.getId(), day, ChangeKind.CANCELLED, "Lehrerin krank", admin);
 
@@ -143,11 +143,12 @@ class SchoolTodayTest {
     @Test
     void cancellationFarInTheFutureOrSubstitutesStaySilent() {
         LocalDate day = LocalDate.now(calendar.zone());
-        SchoolYear current = school.startYear(school.profileOf(lena.getId()).orElseThrow().getId(), "aktuell",
-                "Grundschule", "3a", day.minusMonths(1), day.plusMonths(6));
-        SchoolSubject art = timetable.addSubject(current.getId(), "Kunst", null, null, admin);
-        Lesson inAWeek = timetable.addLesson(current.getId(), art.getId(), day.plusDays(7).getDayOfWeek(),
-                LocalTime.of(10, 0), LocalTime.of(10, 45), null, WeekKind.EVERY, admin);
+        SchoolYear current = school.startYear(school.profileOf(lena.getId()).orElseThrow().getId(), "aktuell", null,
+                "3a", day.minusMonths(1), day.plusMonths(6));
+        SchoolSubject art = timetable.addSubject(current.getId(), "Kunst", null, admin);
+        Lesson inAWeek = timetable.addLesson(current.getId(), LessonInput.timed(art.getId(),
+                day.plusDays(7).getDayOfWeek(), LocalTime.of(10, 0), LocalTime.of(10, 45), null, WeekKind.EVERY),
+                admin);
 
         timetable.markLesson(inAWeek.getId(), day.plusDays(7), ChangeKind.CANCELLED, null, admin);
         timetable.markLesson(inAWeek.getId(), day.plusDays(7), ChangeKind.SUBSTITUTE, "Vertretung", admin);

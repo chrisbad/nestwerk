@@ -6,6 +6,7 @@ import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberService;
 import club.badernet.nestwerk.role.RoleRepository;
 import club.badernet.nestwerk.school.HolidayService;
+import club.badernet.nestwerk.school.LessonInput;
 import club.badernet.nestwerk.school.SchoolProfile;
 import club.badernet.nestwerk.school.SchoolService;
 import club.badernet.nestwerk.school.SchoolSubject;
@@ -62,11 +63,11 @@ class SchoolToolsTest {
         stranger = users.create("fremd", "passwort1", Set.of());
         lena = members.create("Lena", "#aabbcc", kid.getId());
         SchoolProfile profile = school.createProfile(lena.getId(), "BY");
-        year = school.startYear(profile.getId(), "2026/27", "Grundschule", "3a", LocalDate.of(2026, 9, 1),
+        year = school.startYear(profile.getId(), "2026/27", null, "3a", LocalDate.of(2026, 9, 1),
                 LocalDate.of(2027, 7, 31));
-        math = timetable.addSubject(year.getId(), "Mathe", null, null, admin);
-        timetable.addLesson(year.getId(), math.getId(), DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(8, 45),
-                "R12", WeekKind.EVERY, admin);
+        math = timetable.addSubject(year.getId(), "Mathe", null, admin);
+        timetable.addLesson(year.getId(), LessonInput.timed(math.getId(), DayOfWeek.MONDAY, LocalTime.of(8, 0),
+                LocalTime.of(8, 45), "R12", WeekKind.EVERY), admin);
     }
 
     private static McpTransportContext as(User user) {
@@ -121,7 +122,7 @@ class SchoolToolsTest {
     @Test
     void examsAndHolidays() {
         SchoolTools.ExamItem exam = schoolTools.addSchoolExam(as(admin), year.getId(), "exam", "2026-10-20",
-                math.getId(), "Brüche", 3);
+                math.getId(), "Brüche", 3, null, null, null, null);
         holidays.addManual("BY", "Brückentag", LocalDate.now().plusDays(3), LocalDate.now().plusDays(3), admin);
 
         assertThat(exam.subject()).isEqualTo("Mathe");
@@ -178,5 +179,24 @@ class SchoolToolsTest {
         assertThat(today.getFirst().name()).isEqualTo("Lena");
         assertThat(today.getFirst().schoolHours()).isEqualTo("08:00–08:45");
         assertThat(today.getFirst().homeworkDue()).containsExactly("Seite 12 (2026-10-12)");
+    }
+
+    @Test
+    void appointmentsWithTimeCanBeUpdatedAndDeleted() {
+        SchoolTools.ExamItem evening = schoolTools.addSchoolExam(as(admin), year.getId(), "PARENTS_EVENING",
+                "2026-10-22", null, null, null, "19:30", "21:00", "Aula", List.of(lena.getId()));
+
+        assertThat(evening.start()).isEqualTo("19:30");
+        assertThat(evening.location()).isEqualTo("Aula");
+        assertThat(evening.participantIds()).containsExactly(lena.getId());
+
+        schoolTools.updateSchoolExam(as(admin), evening.examId(), "PARENT_TALK", "2026-10-23", null, "Gespräch",
+                null, "16:00", null, "Raum 3", null);
+        SchoolTools.ExamItem changed = schoolTools.listSchoolExams(as(admin), year.getId()).getFirst();
+        assertThat(changed.kind()).isEqualTo("PARENT_TALK");
+        assertThat(changed.end()).isEqualTo("17:00");
+
+        schoolTools.deleteSchoolExam(as(admin), evening.examId());
+        assertThat(schoolTools.listSchoolExams(as(admin), year.getId())).isEmpty();
     }
 }

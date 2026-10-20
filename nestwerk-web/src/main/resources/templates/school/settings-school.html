@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Schule & Stundenraster')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='school')}"></header>
+<main class="event-main school-main">
+    <div th:replace="~{school/fragments :: settingsHeader('school')}"></div>
+
+    <section class="sheet settings-block">
+        <h2>Schule &amp; Sekretariat</h2>
+        <th:block th:if="${school != null}">
+            <p><strong th:text="${school.name}">Grundschule am Park</strong></p>
+            <p class="muted">
+                <span th:if="${school.phone != null}">Telefon <a th:href="${school.phoneHref()}" th:text="${school.phone}">0911 123</a></span>
+                <span th:if="${school.email != null}">· E-Mail <a th:href="|mailto:${school.email}|" th:text="${school.email}">sekretariat@schule.de</a></span>
+                <span th:if="${school.hasAddress()}" th:text="|· ${school.addressLine()}|">· Parkstraße 1</span>
+            </p>
+            <p class="muted">Telefon, E-Mail und Anschrift des Sekretariats pflegst du im
+                <a th:href="@{/contacts/{id}/edit(id=${school.id})}">Kontakt der Schule</a>.</p>
+        </th:block>
+        <p class="muted" th:if="${school == null}">Diesem Schuljahr ist noch keine Schule zugeordnet. Das Stundenraster
+            gehört zur Schule, damit Geschwister an derselben Schule es teilen.</p>
+
+        <details th:open="${school == null}">
+            <summary th:text="${school == null} ? 'Schule zuordnen' : 'Andere Schule zuordnen'">Schule zuordnen</summary>
+            <form method="post" th:action="@{/school/years/{id}/school(id=${year.id})}" class="slot-row">
+                <select name="schoolContactId" aria-label="Schule">
+                    <option value="">Schule wählen …</option>
+                    <option th:each="s : ${schools}" th:value="${s.id}" th:text="${s.name}"
+                            th:selected="${school != null and s.id == school.id}">Grundschule</option>
+                </select>
+                <th:block th:if="${canCreateContact}">
+                    <span class="muted">oder neu:</span>
+                    <input type="text" name="newSchoolName" maxlength="150" placeholder="Name der Schule" aria-label="Neue Schule">
+                    <input type="tel" name="newSchoolPhone" maxlength="50" placeholder="Telefon Sekretariat" aria-label="Telefon Sekretariat">
+                    <input type="email" name="newSchoolEmail" maxlength="200" placeholder="E-Mail Sekretariat" aria-label="E-Mail Sekretariat">
+                </th:block>
+                <button type="submit" class="button button-small">Speichern</button>
+            </form>
+        </details>
+    </section>
+
+    <section class="sheet settings-block" th:if="${school != null}">
+        <h2>Stundenraster</h2>
+        <p class="muted" th:if="${!gridSaved}">Vorschlag zum Start – Zeiten anpassen und speichern.</p>
+        <p class="muted">Stunden werden in ihrer Reihenfolge durchnummeriert. Leere Zeilen werden ignoriert; zum
+            Entfernen einer Zeile Beginn und Ende leeren. Stunden im Stundenplan übernehmen geänderte Zeiten.</p>
+        <form method="post" th:action="@{/school/years/{id}/grid(id=${year.id})}" class="grid-editor">
+            <div class="grid-editor-row grid-editor-head" aria-hidden="true">
+                <span>Art</span><span>Beginn</span><span>Ende</span><span>Bezeichnung (optional)</span>
+            </div>
+            <div class="grid-editor-row" th:each="r : ${gridRows}">
+                <select name="kind" aria-label="Art">
+                    <option th:each="k : ${periodKinds}" th:value="${k.name()}" th:text="${k.label()}"
+                            th:selected="${k == r.kind}">Stunde</option>
+                </select>
+                <input type="time" name="startsAt" th:value="${r.startsAt}" aria-label="Beginn">
+                <input type="time" name="endsAt" th:value="${r.endsAt}" aria-label="Ende">
+                <input type="text" name="label" maxlength="40" th:value="${r.label}" placeholder="z. B. Mittagspause"
+                       aria-label="Bezeichnung">
+            </div>
+            <div class="form-actions"><button type="submit" class="button">Raster speichern</button></div>
+        </form>
+    </section>
+</main>
+</body>
+</html>

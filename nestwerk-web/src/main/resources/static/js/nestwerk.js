@@ -945,6 +945,27 @@
         });
     }
 
+    /* School: show the fields of an exam or an appointment and preset the participants of the kind */
+    function initSchoolExamForms() {
+        document.querySelectorAll("[data-exam-form]").forEach(form => {
+            const kind = form.querySelector("select[name=kind]");
+            const defaults = JSON.parse(form.dataset.defaults || "{}");
+            const apply = presetMembers => {
+                const exam = kind.selectedOptions[0]?.dataset.exam === "true";
+                form.querySelectorAll("[data-exam-only]").forEach(el => { el.hidden = !exam; });
+                form.querySelectorAll("[data-event-only]").forEach(el => { el.hidden = exam; });
+                if (presetMembers) {
+                    const chosen = (defaults[kind.value] || []).map(String);
+                    form.querySelectorAll("input[name=memberId]").forEach(box => {
+                        box.checked = chosen.includes(box.value);
+                    });
+                }
+            };
+            kind.addEventListener("change", () => apply(true));
+            apply(form.dataset.presetMembers === "true");
+        });
+    }
+
     function initGoalForms() {
         document.querySelectorAll("[data-goal-form]").forEach(form => {
             const kind = form.querySelector("[data-goal-kind]");
@@ -1492,6 +1513,7 @@
         initUpdateRestart();
         initBlockerWarning();
         initGoalForms();
+        initSchoolExamForms();
         initBlockerKindDefaults();
         initIngredientRows();
         initBarcodeScan();

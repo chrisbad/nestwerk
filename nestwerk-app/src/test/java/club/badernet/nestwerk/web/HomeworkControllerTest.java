@@ -57,9 +57,9 @@ class HomeworkControllerTest {
         admin = users.createAdministrator("chef", "passwort1");
         FamilyMember lena = members.create("Lena", "#aabbcc", null);
         SchoolProfile profile = school.createProfile(lena.getId(), null);
-        year = school.startYear(profile.getId(), "2026/27", "Grundschule", "3a", LocalDate.of(2026, 8, 1),
+        year = school.startYear(profile.getId(), "2026/27", null, "3a", LocalDate.of(2026, 8, 1),
                 LocalDate.of(2027, 7, 31));
-        german = timetable.addSubject(year.getId(), "Deutsch", "#e07a3f", null, admin);
+        german = timetable.addSubject(year.getId(), "Deutsch", "#e07a3f", admin);
     }
 
     private static RequestPostProcessor homeworkUser() {
@@ -73,7 +73,7 @@ class HomeworkControllerTest {
 
         mockMvc.perform(get("/school/years/{id}/homework", year.getId()).with(homeworkUser()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Hausaufgaben Lena")))
+                .andExpect(content().string(containsString("Schule Lena")))
                 .andExpect(content().string(containsString("Seite 12 lesen")))
                 .andExpect(content().string(containsString("fällig 10.09.")))
                 .andExpect(content().string(containsString("Neue Hausaufgabe")));

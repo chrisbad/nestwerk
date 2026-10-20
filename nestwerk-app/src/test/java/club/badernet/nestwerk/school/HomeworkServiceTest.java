@@ -48,9 +48,9 @@ class HomeworkServiceTest {
         guest = users.create("gast", "passwort1", Set.of());
         lena = members.create("Lena", "#aabbcc", null);
         SchoolProfile profile = school.createProfile(lena.getId(), null);
-        year = school.startYear(profile.getId(), "2026/27", "Grundschule", "3a", LocalDate.of(2026, 8, 1),
+        year = school.startYear(profile.getId(), "2026/27", null, "3a", LocalDate.of(2026, 8, 1),
                 LocalDate.of(2027, 7, 31));
-        german = timetable.addSubject(year.getId(), "Deutsch", null, null, admin);
+        german = timetable.addSubject(year.getId(), "Deutsch", null, admin);
     }
 
     @Test
@@ -77,7 +77,7 @@ class HomeworkServiceTest {
 
     @Test
     void listsOpenSortedByDueDateAndFiltersBySubject() {
-        SchoolSubject math = timetable.addSubject(year.getId(), "Mathe", null, null, admin);
+        SchoolSubject math = timetable.addSubject(year.getId(), "Mathe", null, admin);
         homework.create(year.getId(), german.getId(), "B", null, LocalDate.of(2026, 9, 12), null, admin);
         homework.create(year.getId(), math.getId(), "A", null, LocalDate.of(2026, 9, 10), null, admin);
         homework.create(year.getId(), null, "C", null, LocalDate.of(2026, 9, 11), null, admin);
@@ -136,7 +136,7 @@ class HomeworkServiceTest {
     void todosOfOtherYearsStayApart() {
         SchoolProfile profile = school.profileOf(lena.getId()).orElseThrow();
         homework.create(year.getId(), null, "Altes Jahr", null, LocalDate.of(2026, 9, 1), null, admin);
-        SchoolYear next = school.startYear(profile.getId(), "2027/28", "Grundschule", "4a", LocalDate.of(2027, 9, 1),
+        SchoolYear next = school.startYear(profile.getId(), "2027/28", null, "4a", LocalDate.of(2027, 9, 1),
                 LocalDate.of(2028, 7, 31));
 
         assertThat(homework.list(next.getId(), null, false, admin)).isEmpty();

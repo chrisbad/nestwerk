@@ -6,6 +6,7 @@ import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberService;
 import club.badernet.nestwerk.role.RoleRepository;
 import club.badernet.nestwerk.school.GradeKind;
+import club.badernet.nestwerk.school.LessonInput;
 import club.badernet.nestwerk.school.GradeService;
 import club.badernet.nestwerk.school.HomeworkService;
 import club.badernet.nestwerk.school.SchoolService;
@@ -64,11 +65,11 @@ class SchoolTabletHomeTest {
         users.create("mama", "passwort1", Set.of(roles.findByNameIgnoreCase("Benutzer").orElseThrow().getId()));
         LocalDate today = LocalDate.now(clock);
         FamilyMember lena = members.create("Lena", "#aabbcc", null);
-        SchoolYear year = school.startYear(school.createProfile(lena.getId(), null).getId(), "aktuell", "Grundschule",
+        SchoolYear year = school.startYear(school.createProfile(lena.getId(), null).getId(), "aktuell", null,
                 "3a", today.minusMonths(1), today.plusMonths(6));
-        SchoolSubject math = timetable.addSubject(year.getId(), "Mathe", "#4d74ff", null, admin);
-        timetable.addLesson(year.getId(), math.getId(), today.getDayOfWeek(), LocalTime.of(8, 0), LocalTime.of(8, 45),
-                "R12", WeekKind.EVERY, admin);
+        SchoolSubject math = timetable.addSubject(year.getId(), "Mathe", "#4d74ff", admin);
+        timetable.addLesson(year.getId(), LessonInput.timed(math.getId(), today.getDayOfWeek(), LocalTime.of(8, 0),
+                LocalTime.of(8, 45), "R12", WeekKind.EVERY), admin);
         homework.create(year.getId(), math.getId(), "Seite 12 lesen", null, today, null, admin);
         grades.add(year.getId(), math.getId(), 1, "2+", 100, GradeKind.WRITTEN, today, "geheime Note", admin);
     }

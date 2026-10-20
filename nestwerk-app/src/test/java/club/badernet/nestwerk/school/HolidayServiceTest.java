@@ -141,11 +141,11 @@ class HolidayServiceTest {
     @Test
     void holidaysTakeTheSchoolDayOutOfTheBlockers() {
         SchoolProfile profile = school.createProfile(lena.getId(), "BY");
-        SchoolYear year = school.startYear(profile.getId(), "2026/27", "Grundschule", "3a",
+        SchoolYear year = school.startYear(profile.getId(), "2026/27", null, "3a",
                 LocalDate.of(2026, 9, 1), LocalDate.of(2027, 7, 31));
-        SchoolSubject math = timetable.addSubject(year.getId(), "Mathe", null, null, admin);
-        timetable.addLesson(year.getId(), math.getId(), DayOfWeek.MONDAY, LocalTime.of(8, 0), LocalTime.of(9, 0), null,
-                WeekKind.EVERY, admin);
+        SchoolSubject math = timetable.addSubject(year.getId(), "Mathe", null, admin);
+        timetable.addLesson(year.getId(), LessonInput.timed(math.getId(), DayOfWeek.MONDAY, LocalTime.of(8, 0),
+                LocalTime.of(9, 0), null, WeekKind.EVERY), admin);
         assertThat(blockerOn(LocalDate.of(2026, 11, 2))).isPresent();
 
         when(client.fetch(eq("BY"), any(), any())).thenReturn(List.of(

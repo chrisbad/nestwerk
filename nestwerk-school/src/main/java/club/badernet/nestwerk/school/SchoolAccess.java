@@ -4,19 +4,37 @@ import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberService;
 import club.badernet.nestwerk.security.PermissionCatalog;
 import club.badernet.nestwerk.user.User;
+import club.badernet.nestwerk.user.UserRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
-/** Prüft die Schulrechte eines Benutzers über seine Rollen. */
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/** Checks the school permissions of a user via their roles. */
 @Component
 public class SchoolAccess {
 
     private final PermissionCatalog permissions;
     private final FamilyMemberService members;
+    private final UserRepository users;
 
-    public SchoolAccess(PermissionCatalog permissions, FamilyMemberService members) {
+    public SchoolAccess(PermissionCatalog permissions, FamilyMemberService members, UserRepository users) {
         this.permissions = permissions;
         this.members = members;
+        this.users = users;
+    }
+
+    /** Parents in terms of the school module: members whose login may edit school data. */
+    @Transactional(readOnly = true)
+    public Set<Long> parentMemberIds() {
+        return members.findAll().stream()
+                .filter(m -> m.getUserId() != null)
+                .filter(m -> users.findById(m.getUserId()).filter(User::isEnabled)
+                        .map(u -> has(u, SchoolPermission.SCHOOL_EDIT)).orElse(false))
+                .map(FamilyMember::getId)
+                .collect(Collectors.toSet());
     }
 
     public boolean has(User user, SchoolPermission permission) {
@@ -29,7 +47,7 @@ public class SchoolAccess {
         }
     }
 
-    /** Noten sehen: mit {@code SCHOOL_GRADES} alle, mit {@code SCHOOL_GRADES_OWN} nur die des eigenen Mitglieds. */
+    /** Viewing grades: all with {@code SCHOOL_GRADES}, only the own member's with {@code SCHOOL_GRADES_OWN}. */
     public boolean mayViewGrades(User user, Long memberId) {
         if (has(user, SchoolPermission.SCHOOL_GRADES)) {
             return true;

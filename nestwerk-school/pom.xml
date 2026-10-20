@@ -31,5 +31,9 @@
             <groupId>club.badernet</groupId>
             <artifactId>nestwerk-attachment</artifactId>
         </dependency>
+        <dependency>
+            <groupId>club.badernet</groupId>
+            <artifactId>nestwerk-contact</artifactId>
+        </dependency>
     </dependencies>
 </project>

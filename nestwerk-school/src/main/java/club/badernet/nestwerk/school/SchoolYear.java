@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 
 import java.time.LocalDate;
 
-/** Ein Schuljahr eines Kindes mit Schule und Klasse; Fächer, Stundenplan und Noten hängen daran. */
+/** A school year of a child with school and class; subjects, timetable and grades belong to it. */
 @Entity
 @Table(name = "school_year")
 public class SchoolYear {
@@ -24,8 +24,9 @@ public class SchoolYear {
     @Column(nullable = false, length = 30)
     private String label;
 
-    @Column(nullable = false, length = 150)
-    private String school;
+    /** Contact of the school (office); {@code null} while no school is assigned. */
+    @Column(name = "school_contact_id")
+    private Long schoolContactId;
 
     @Column(name = "class_name", nullable = false, length = 30)
     private String className;
@@ -39,22 +40,22 @@ public class SchoolYear {
     @Column(nullable = false)
     private boolean active;
 
-    /** Montag einer A-Woche; leer = der Stundenplan kennt keine A/B-Wochen. */
+    /** Monday of an A week; {@code null} = the timetable has no A/B weeks. */
     @Column(name = "week_a_start")
     private LocalDate weekAStart;
 
     protected SchoolYear() {
     }
 
-    public SchoolYear(Long profileId, String label, String school, String className, LocalDate startsOn,
+    public SchoolYear(Long profileId, String label, Long schoolContactId, String className, LocalDate startsOn,
                       LocalDate endsOn) {
         this.profileId = profileId;
-        change(label, school, className, startsOn, endsOn);
+        change(label, schoolContactId, className, startsOn, endsOn);
     }
 
-    public void change(String label, String school, String className, LocalDate startsOn, LocalDate endsOn) {
+    public void change(String label, Long schoolContactId, String className, LocalDate startsOn, LocalDate endsOn) {
         this.label = label;
-        this.school = school;
+        this.schoolContactId = schoolContactId;
         this.className = className;
         this.startsOn = startsOn;
         this.endsOn = endsOn;
@@ -80,8 +81,8 @@ public class SchoolYear {
         return label;
     }
 
-    public String getSchool() {
-        return school;
+    public Long getSchoolContactId() {
+        return schoolContactId;
     }
 
     public String getClassName() {

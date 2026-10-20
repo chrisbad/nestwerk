@@ -3,6 +3,7 @@ package club.badernet.nestwerk.ai.tools;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
 import club.badernet.nestwerk.school.ChangeKind;
+import club.badernet.nestwerk.school.ExamInput;
 import club.badernet.nestwerk.school.ExamKind;
 import club.badernet.nestwerk.school.ExamService;
 import club.badernet.nestwerk.school.GradeKind;
@@ -11,6 +12,7 @@ import club.badernet.nestwerk.school.HolidayService;
 import club.badernet.nestwerk.school.HomeworkService;
 import club.badernet.nestwerk.school.LetterService;
 import club.badernet.nestwerk.school.SchoolAccess;
+import club.badernet.nestwerk.school.SchoolContacts;
 import club.badernet.nestwerk.school.SchoolDays;
 import club.badernet.nestwerk.school.SchoolExam;
 import club.badernet.nestwerk.school.SchoolPermission;
@@ -31,13 +33,15 @@ import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Schule: Stundenplan, Hausaufgaben, Klassenarbeiten, Ferien, Noten und Elternbriefe. Wie in der Weboberfläche gelten
- * die Schulrechte; Noten sieht nur, wer {@code SCHOOL_GRADES} hat oder mit {@code SCHOOL_GRADES_OWN} das eigene Kind.
+ * School: timetable, homework, exams and appointments, holidays, grades and letters. The school permissions apply as
+ * in the web UI; grades are only visible with {@code SCHOOL_GRADES} or, with {@code SCHOOL_GRADES_OWN}, for the own
+ * child. The structure of the timetable is handled by {@link SchoolPlanTools}.
  */
 @Component
 public class SchoolTools {
@@ -46,8 +50,8 @@ public class SchoolTools {
                             String className, String state) {
     }
 
-    public record LessonItem(Long lessonId, String subject, String start, String end, String room, String weekKind,
-                             String change, String note) {
+    public record LessonItem(Long lessonId, String subject, Integer periodFrom, Integer periodTo, String start,
+                             String end, String room, String weekKind, String change, String note) {
     }
 
     public record DayItem(LocalDate date, String weekday, String free, List<LessonItem> lessons) {
@@ -57,7 +61,8 @@ public class SchoolTools {
                                boolean recurring) {
     }
 
-    public record ExamItem(Long examId, String kind, String subject, String title, LocalDate day, int studyDays) {
+    public record ExamItem(Long examId, String kind, String subject, String title, LocalDate day, int studyDays,
+                           String start, String end, String location, List<Long> participantIds) {
     }
 
     public record HolidayItem(String name, LocalDate from, LocalDate to, String source) {
@@ -94,11 +99,13 @@ public class SchoolTools {
     private final SchoolDays days;
     private final FamilyMemberRepository members;
     private final Clock clock;
+    private final SchoolContacts contacts;
 
     public SchoolTools(Tools tools, SchoolService school, SchoolAccess access, TimetableService timetable,
                        HomeworkService homework, ExamService exams, HolidayService holidays, GradeService grades,
                        LetterService letters, SchoolToday today, SchoolDays days, FamilyMemberRepository members,
-                       Clock clock) {
+                       Clock clock, SchoolContacts contacts) {
+        this.contacts = contacts;
         this.days = days;
         this.tools = tools;
         this.school = school;
@@ -114,7 +121,7 @@ public class SchoolTools {
         this.clock = clock;
     }
 
-    // --- Lesen -----------------------------------------------------------------------------
+    // --- Reading ---------------------------------------------------------------------------
 
     @McpTool(name = "list_school_children", description = "Listet die Kinder mit Schulprofil und aktivem Schuljahr "
             + "(yearId wird für die anderen Schul-Tools gebraucht).",
@@ -128,7 +135,9 @@ public class SchoolTools {
                 SchoolYear year = school.activeYear(p.getId()).orElse(null);
                 return new ChildItem(p.getMemberId(), byId.get(p.getMemberId()).getName(),
                         year == null ? null : year.getId(), year == null ? null : year.getLabel(),
-                        year == null ? null : year.getSchool(), year == null ? null : year.getClassName(),
+                        year == null ? null : contacts.get(year.getSchoolContactId()).map(c -> c.getName())
+                                .orElse(null),
+                        year == null ? null : year.getClassName(),
                         p.getState());
             }).toList();
         });
@@ -176,8 +185,9 @@ public class SchoolTools {
                 }
                 result.add(new DayItem(d, d.getDayOfWeek().name(), free.get(d), entries.stream()
                         .map(e -> new LessonItem(e.lesson().getId(), e.subject().getName(),
+                                e.lesson().getPeriodFrom(), e.lesson().getPeriodTo(),
                                 e.lesson().getStartsAt().toString(), e.lesson().getEndsAt().toString(),
-                                e.lesson().getRoom(), e.lesson().getWeekKind().name(),
+                                e.room(), e.lesson().getWeekKind().name(),
                                 e.change() == null ? null : e.change().getKind().name(),
                                 e.change() == null ? null : e.change().getNote())).toList()));
             }
@@ -201,8 +211,8 @@ public class SchoolTools {
         });
     }
 
-    @McpTool(name = "list_school_exams", description = "Klassenarbeiten, Tests, Elternabende und Ausflüge eines "
-            + "Schuljahrs.",
+    @McpTool(name = "list_school_exams", description = "Klassenarbeiten, Tests und Schultermine (Elternabend, "
+            + "Elterngespräch, Ausflug …) eines Schuljahrs mit Uhrzeit, Ort und Teilnehmenden (Mitglieds-IDs).",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
     public List<ExamItem> listSchoolExams(McpTransportContext context,
                                           @McpToolParam(description = "Schuljahr-ID") Long yearId) {
@@ -261,7 +271,7 @@ public class SchoolTools {
         });
     }
 
-    // --- Schreiben -------------------------------------------------------------------------
+    // --- Writing ---------------------------------------------------------------------------
 
     @McpTool(name = "add_homework", description = "Legt eine Hausaufgabe als ToDo für das Kind an. repeat: NONE, "
             + "SCHOOLDAYS (jeden Schultag) oder WEEKLY.",
@@ -293,13 +303,14 @@ public class SchoolTools {
         });
     }
 
-    @McpTool(name = "mark_lesson", description = "Lässt eine Stunde an einem Tag ausfallen (CANCELLED) oder markiert "
-            + "eine Vertretung (SUBSTITUTE). Die Stunden-ID steht in get_timetable.",
+    @McpTool(name = "mark_lesson", description = "Lässt eine Stunde an einem Tag ausfallen (CANCELLED), markiert "
+            + "eine Vertretung (SUBSTITUTE) oder einen Raumwechsel (ROOM, neuer Raum in note). Die Stunden-ID steht in "
+            + "get_timetable; schneller per Fach oder Stunde geht report_lesson_change.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
     public String markLesson(McpTransportContext context,
                              @McpToolParam(description = "Stunden-ID") Long lessonId,
                              @McpToolParam(description = "Tag JJJJ-MM-TT") String date,
-                             @McpToolParam(description = "CANCELLED oder SUBSTITUTE") String kind,
+                             @McpToolParam(description = "CANCELLED, SUBSTITUTE oder ROOM") String kind,
                              @McpToolParam(description = "Hinweis", required = false) String note) {
         return tools.write(context, user -> {
             timetable.markLesson(Tools.required(lessonId, "lessonId"),
@@ -309,24 +320,63 @@ public class SchoolTools {
         });
     }
 
-    @McpTool(name = "add_school_exam", description = "Trägt eine Klassenarbeit, einen Test, Elternabend oder Ausflug "
-            + "ein (kind EXAM, TEST, PARENTS_EVENING, TRIP oder OTHER); steht auch im Kalender.",
+    @McpTool(name = "add_school_exam", description = "Trägt eine Klassenarbeit, einen Test oder einen Schultermin "
+            + "ein (kind EXAM, TEST, PARENTS_EVENING, PARENT_TALK, TRIP oder OTHER); steht auch im Kalender. Ohne "
+            + "Uhrzeit ganztägig. Ohne participantIds: das Kind bzw. bei Elternabend und Elterngespräch die Eltern.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
     public ExamItem addSchoolExam(McpTransportContext context,
                                   @McpToolParam(description = "Schuljahr-ID") Long yearId,
-                                  @McpToolParam(description = "EXAM, TEST, PARENTS_EVENING, TRIP oder OTHER")
-                                  String kind,
+                                  @McpToolParam(description = "EXAM, TEST, PARENTS_EVENING, PARENT_TALK, TRIP oder "
+                                          + "OTHER") String kind,
                                   @McpToolParam(description = "Tag JJJJ-MM-TT") String day,
                                   @McpToolParam(description = "Fach-ID", required = false) Long subjectId,
                                   @McpToolParam(description = "Thema", required = false) String title,
                                   @McpToolParam(description = "Lernerinnerung so viele Tage vorher (Standard 0)",
-                                          required = false) Integer studyDays) {
+                                          required = false) Integer studyDays,
+                                  @McpToolParam(description = "Beginn HH:MM", required = false) String startTime,
+                                  @McpToolParam(description = "Ende HH:MM", required = false) String endTime,
+                                  @McpToolParam(description = "Ort", required = false) String location,
+                                  @McpToolParam(description = "Mitglieds-IDs der Teilnehmenden (list_members)",
+                                          required = false) List<Long> participantIds) {
         return tools.write(context, user -> {
-            SchoolExam exam = exams.create(Tools.required(yearId, "yearId"), subjectId,
-                    Tools.required(Tools.enumValue(ExamKind.class, kind, "kind"), "kind"), title,
-                    Tools.required(Tools.date(day, "day"), "day"), studyDays == null ? 0 : studyDays, user);
-            return examItem(exam, timetable.subjects(yearId).stream()
-                    .collect(Collectors.toMap(s -> s.getId(), s -> s.getName())));
+            SchoolExam exam = exams.create(Tools.required(yearId, "yearId"), examInput(subjectId, kind, title, day,
+                    studyDays, startTime, endTime, location, participantIds), user);
+            return examItem(exam, subjectNames(yearId));
+        });
+    }
+
+    @McpTool(name = "update_school_exam", description = "Ändert eine Klassenarbeit oder einen Schultermin (alle "
+            + "Angaben wie bei add_school_exam; examId aus list_school_exams). Der Kalendertermin wird angepasst.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public String updateSchoolExam(McpTransportContext context,
+                                   @McpToolParam(description = "Termin-ID") Long examId,
+                                   @McpToolParam(description = "EXAM, TEST, PARENTS_EVENING, PARENT_TALK, TRIP oder "
+                                           + "OTHER") String kind,
+                                   @McpToolParam(description = "Tag JJJJ-MM-TT") String day,
+                                   @McpToolParam(description = "Fach-ID", required = false) Long subjectId,
+                                   @McpToolParam(description = "Thema", required = false) String title,
+                                   @McpToolParam(description = "Lernerinnerung Tage vorher", required = false)
+                                   Integer studyDays,
+                                   @McpToolParam(description = "Beginn HH:MM", required = false) String startTime,
+                                   @McpToolParam(description = "Ende HH:MM", required = false) String endTime,
+                                   @McpToolParam(description = "Ort", required = false) String location,
+                                   @McpToolParam(description = "Mitglieds-IDs der Teilnehmenden", required = false)
+                                   List<Long> participantIds) {
+        return tools.write(context, user -> {
+            exams.update(Tools.required(examId, "examId"), examInput(subjectId, kind, title, day, studyDays,
+                    startTime, endTime, location, participantIds), user);
+            return "Gespeichert.";
+        });
+    }
+
+    @McpTool(name = "delete_school_exam", description = "Löscht eine Klassenarbeit oder einen Schultermin samt "
+            + "Kalendertermin.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false))
+    public String deleteSchoolExam(McpTransportContext context,
+                                   @McpToolParam(description = "Termin-ID") Long examId) {
+        return tools.write(context, user -> {
+            exams.delete(Tools.required(examId, "examId"), user);
+            return "Gelöscht.";
         });
     }
 
@@ -400,7 +450,7 @@ public class SchoolTools {
         });
     }
 
-    // --- Hilfen ----------------------------------------------------------------------------
+    // --- Helpers ---------------------------------------------------------------------------
 
     private SchoolYear year(Long id) {
         return school.year(Tools.required(id, "yearId"))
@@ -414,7 +464,22 @@ public class SchoolTools {
 
     private static ExamItem examItem(SchoolExam e, Map<Long, String> subjects) {
         return new ExamItem(e.getId(), e.getKind().name(), e.getSubjectId() == null ? null
-                : subjects.get(e.getSubjectId()), e.getTitle(), e.getDay(), e.getStudyDays());
+                : subjects.get(e.getSubjectId()), e.getTitle(), e.getDay(), e.getStudyDays(),
+                e.getStartsAt() == null ? null : e.getStartsAt().toString(),
+                e.getEndsAt() == null ? null : e.getEndsAt().toString(), e.getLocation(),
+                e.getMemberIds().stream().sorted().toList());
+    }
+
+    private static ExamInput examInput(Long subjectId, String kind, String title, String day, Integer studyDays,
+                                       String startTime, String endTime, String location, List<Long> participantIds) {
+        return new ExamInput(subjectId, Tools.required(Tools.enumValue(ExamKind.class, kind, "kind"), "kind"), title,
+                Tools.required(Tools.date(day, "day"), "day"), studyDays == null ? 0 : studyDays,
+                Tools.time(startTime, "startTime"), Tools.time(endTime, "endTime"), location,
+                participantIds == null ? null : new HashSet<>(participantIds));
+    }
+
+    private Map<Long, String> subjectNames(Long yearId) {
+        return timetable.subjects(yearId).stream().collect(Collectors.toMap(s -> s.getId(), s -> s.getName()));
     }
 
     private static String rule(String repeat) {

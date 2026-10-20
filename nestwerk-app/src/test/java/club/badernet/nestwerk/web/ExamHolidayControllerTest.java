@@ -63,7 +63,7 @@ class ExamHolidayControllerTest {
         admin = users.createAdministrator("chef", "passwort1");
         FamilyMember lena = members.create("Lena", "#aabbcc", null);
         SchoolProfile profile = school.createProfile(lena.getId(), "BY");
-        year = school.startYear(profile.getId(), "2026/27", "Grundschule", "3a", LocalDate.of(2026, 8, 1),
+        year = school.startYear(profile.getId(), "2026/27", null, "3a", LocalDate.of(2026, 8, 1),
                 LocalDate.of(2027, 7, 31));
     }
 
@@ -87,8 +87,8 @@ class ExamHolidayControllerTest {
         mockMvc.perform(get("/school/years/{id}/exams", year.getId()).with(viewer()))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Bruchrechnen")))
-                .andExpect(content().string(containsString("Lernen ab 3 Tagen vorher")))
-                .andExpect(content().string(containsString("Im Kalender")));
+                .andExpect(content().string(containsString("lernen ab 3 Tagen vorher")))
+                .andExpect(content().string(containsString(">Kalender<")));
     }
 
     @Test

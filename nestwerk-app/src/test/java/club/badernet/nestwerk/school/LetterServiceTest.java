@@ -55,7 +55,7 @@ class LetterServiceTest {
         parent = users.create("mama", "passwort1", Set.of(roles.findByNameIgnoreCase("Benutzer").orElseThrow().getId()));
         lena = members.create("Lena", "#aabbcc", null);
         SchoolProfile profile = school.createProfile(lena.getId(), null);
-        year = school.startYear(profile.getId(), "2026/27", "Grundschule", "3a", LocalDate.of(2026, 8, 1),
+        year = school.startYear(profile.getId(), "2026/27", null, "3a", LocalDate.of(2026, 8, 1),
                 LocalDate.of(2027, 7, 31));
     }
 
@@ -157,7 +157,7 @@ class LetterServiceTest {
     void noReminderWhenTheYearIsNotActive() {
         letters.create(year.getId(), "Zoo", DUE, null, admin);
         SchoolProfile profile = school.profileOf(lena.getId()).orElseThrow();
-        school.startYear(profile.getId(), "2027/28", "Grundschule", "4a", LocalDate.of(2027, 9, 1),
+        school.startYear(profile.getId(), "2027/28", null, "4a", LocalDate.of(2027, 9, 1),
                 LocalDate.of(2028, 7, 31));
 
         assertThat(reminder.run(DUE.minusDays(1))).isZero();

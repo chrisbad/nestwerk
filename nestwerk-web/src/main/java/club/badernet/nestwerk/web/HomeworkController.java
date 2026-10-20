@@ -1,19 +1,15 @@
 package club.badernet.nestwerk.web;
 
-import club.badernet.nestwerk.member.FamilyMember;
-import club.badernet.nestwerk.member.FamilyMemberService;
 import club.badernet.nestwerk.school.HomeworkService;
 import club.badernet.nestwerk.school.SchoolAccess;
 import club.badernet.nestwerk.school.SchoolPermission;
-import club.badernet.nestwerk.school.SchoolProfile;
-import club.badernet.nestwerk.school.SchoolService;
 import club.badernet.nestwerk.school.SchoolYear;
 import club.badernet.nestwerk.school.TimetableService;
 import club.badernet.nestwerk.security.CurrentUser;
 import club.badernet.nestwerk.settings.CalendarSettings;
 import club.badernet.nestwerk.todo.TodoNotFoundException;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -23,7 +19,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
@@ -45,36 +40,29 @@ public class HomeworkController {
         REPEATS.put("WEEKLY", new String[] {"Jede Woche", "FREQ=WEEKLY"});
     }
 
-    private final SchoolService school;
     private final HomeworkService homework;
     private final TimetableService timetable;
     private final SchoolAccess access;
-    private final FamilyMemberService members;
     private final CurrentUser currentUser;
     private final CalendarSettings calendarSettings;
+    private final SchoolHeader header;
 
-    public HomeworkController(SchoolService school, HomeworkService homework, TimetableService timetable,
-                              SchoolAccess access, FamilyMemberService members, CurrentUser currentUser,
-                              CalendarSettings calendarSettings) {
-        this.school = school;
+    public HomeworkController(HomeworkService homework, TimetableService timetable, SchoolAccess access,
+                              CurrentUser currentUser, CalendarSettings calendarSettings, SchoolHeader header) {
         this.homework = homework;
         this.timetable = timetable;
         this.access = access;
-        this.members = members;
         this.currentUser = currentUser;
         this.calendarSettings = calendarSettings;
+        this.header = header;
     }
 
     @GetMapping("/years/{yearId}/homework")
     String page(@PathVariable Long yearId, @RequestParam(required = false) Long subject,
-                @RequestParam(defaultValue = "false") boolean done, Model model) {
-        SchoolYear year = school.year(yearId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        SchoolProfile profile = school.profile(year.getProfileId()).orElseThrow();
-        FamilyMember member = members.findAll().stream().filter(m -> m.getId().equals(profile.getMemberId()))
-                .findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+                @RequestParam(defaultValue = "false") boolean done, HttpSession session, Model model) {
+        SchoolYear year = header.year(yearId);
+        header.prepare(model, year, "homework", session);
         var user = currentUser.require();
-        model.addAttribute("year", year);
-        model.addAttribute("member", member);
         model.addAttribute("items", homework.list(yearId, subject, done, user));
         model.addAttribute("subjects", timetable.subjects(yearId));
         model.addAttribute("subjectFilter", subject);

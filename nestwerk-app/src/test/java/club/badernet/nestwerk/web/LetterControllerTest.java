@@ -60,7 +60,7 @@ class LetterControllerTest {
         users.create("mama", "passwort1", java.util.Set.of(roles.findByNameIgnoreCase("Benutzer").orElseThrow().getId()));
         FamilyMember lena = members.create("Lena", "#aabbcc", null);
         SchoolProfile profile = school.createProfile(lena.getId(), null);
-        year = school.startYear(profile.getId(), "2026/27", "Grundschule", "3a", LocalDate.of(2026, 8, 1),
+        year = school.startYear(profile.getId(), "2026/27", null, "3a", LocalDate.of(2026, 8, 1),
                 LocalDate.of(2027, 7, 31));
     }
 
@@ -87,7 +87,7 @@ class LetterControllerTest {
 
         mockMvc.perform(get("/school/years/{id}/letters", year.getId()).with(viewer()))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("Elternbriefe Lena")))
+                .andExpect(content().string(containsString("Schule Lena")))
                 .andExpect(content().string(containsString("Ausflug Zoo")))
                 .andExpect(content().string(containsString("zoo.txt")))
                 .andExpect(content().string(containsString("Frist 20.10.2026")))

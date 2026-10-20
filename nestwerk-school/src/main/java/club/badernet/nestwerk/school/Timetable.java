@@ -10,10 +10,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/** Rechnet das Wochenraster eines Schuljahrs auf einzelne Tage um (A/B-Wochen, Ausfall, Vertretung). */
+/** Resolves the weekly timetable of a school year to single days (A/B weeks, cancellations, substitutions). */
 public final class Timetable {
 
-    /** Eine Stunde an einem Tag mit ihrer Abweichung (oder {@code null}). */
+    /** A lesson on a day with its change (or {@code null}). */
     public record Entry(Lesson lesson, SchoolSubject subject, LessonChange change) {
 
         public boolean cancelled() {
@@ -23,16 +23,25 @@ public final class Timetable {
         public boolean substituted() {
             return change != null && change.getKind() == ChangeKind.SUBSTITUTE;
         }
+
+        public boolean roomChanged() {
+            return change != null && change.getKind() == ChangeKind.ROOM && change.getNote() != null;
+        }
+
+        /** Room on this day: the new one from the note on a room change, otherwise the usual one. */
+        public String room() {
+            return roomChanged() ? change.getNote() : lesson.getRoom();
+        }
     }
 
-    /** Erste Stunde bis Ende der letzten Stunde eines Schultags. */
+    /** First lesson to end of the last lesson of a school day. */
     public record Span(LocalTime start, LocalTime end) {
     }
 
     private Timetable() {
     }
 
-    /** {@code A} oder {@code B} für den Tag; {@code null}, wenn der Stundenplan keine A/B-Wochen kennt. */
+    /** {@code A} or {@code B} for the day; {@code null} if the timetable has no A/B weeks. */
     public static WeekKind weekKind(LocalDate day, LocalDate weekAStart) {
         if (weekAStart == null) {
             return null;
@@ -43,7 +52,7 @@ public final class Timetable {
         return Math.floorMod(weeks, 2L) == 0 ? WeekKind.A : WeekKind.B;
     }
 
-    /** Alle Stunden des Tages nach Beginn sortiert, auch ausfallende (mit {@link Entry#cancelled()}). */
+    /** All lessons of the day ordered by start, cancelled ones included (see {@link Entry#cancelled()}). */
     public static List<Entry> day(LocalDate day, SchoolYear year, List<Lesson> lessons,
                                   Map<Long, SchoolSubject> subjects, Map<Long, LessonChange> changes) {
         if (day.isBefore(year.getStartsOn()) || day.isAfter(year.getEndsOn())) {
@@ -59,7 +68,7 @@ public final class Timetable {
                 .toList();
     }
 
-    /** Zeitraum, in dem das Kind in der Schule ist; leer, wenn alles ausfällt oder nichts angesetzt ist. */
+    /** Time span the child is at school; empty if everything is cancelled or nothing is scheduled. */
     public static Optional<Span> span(List<Entry> entries) {
         List<Entry> held = entries.stream().filter(e -> !e.cancelled()).toList();
         if (held.isEmpty()) {

@@ -7,6 +7,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -35,6 +36,28 @@ public class ContactService {
         return users.findByUsername(username)
                 .map(u -> !acl.grantedRelations(u, TYPE, "VIEW").isEmpty())
                 .orElse(false);
+    }
+
+    /**
+     * Contacts by id without an ACL check, for modules that show contacts linked to their own records (e.g. the
+     * teachers of a school subject); those modules apply their own permissions.
+     */
+    @Transactional(readOnly = true)
+    public List<Contact> findLinked(Collection<Long> ids) {
+        return contacts.findAllById(ids);
+    }
+
+    /** All contacts of a category (case-insensitive) without an ACL check, see {@link #findLinked}. */
+    @Transactional(readOnly = true)
+    public List<Contact> findLinkedByCategory(String category) {
+        return contacts.findAllByOrderByNameAsc().stream()
+                .filter(c -> category.equalsIgnoreCase(c.getCategory()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public boolean exists(Long id) {
+        return contacts.existsById(id);
     }
 
     @Transactional(readOnly = true)

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Kopf aller Schulseiten: Kinder, Schule mit Sekretariat, Reiter und Einstellungsmenü -->
+<div th:fragment="header" class="school-head">
+    <div class="school-head-top">
+        <nav class="child-chips" aria-label="Kind wählen" th:if="${children.size() > 1}">
+            <a th:each="c : ${children}" class="child-chip" th:href="@{/school(child=${c.memberId})}"
+               th:aria-current="${c.memberId == member.id} ? 'page'" th:style="|--member-color: ${c.color}|">
+                <span class="child-dot" aria-hidden="true"></span><span th:text="${c.name}">Lena</span>
+            </a>
+        </nav>
+        <h1 class="school-title" th:if="${children.size() <= 1}" th:text="|Schule ${member.name}|">Schule Lena</h1>
+        <div class="menu school-gear" data-menu th:if="${headerEdit or headerSettings}">
+            <button type="button" class="icon-button" aria-expanded="false" aria-haspopup="true"
+                    title="Einstellungen" aria-label="Einstellungen" data-menu-toggle>
+                <svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22" fill="none" stroke="currentColor"
+                     stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+                </svg>
+            </button>
+            <div class="menu-panel" hidden data-menu-panel>
+                <p class="menu-label">Einstellungen</p>
+                <a class="menu-item" th:href="@{/school/settings/years(year=${year.id})}">Kinder &amp; Schuljahre</a>
+                <a class="menu-item" th:if="${headerEdit}" th:href="@{/school/settings/school(year=${year.id})}">Schule &amp; Stundenraster</a>
+                <a class="menu-item" th:if="${headerEdit}" th:href="@{/school/settings/subjects(year=${year.id})}">Fächer &amp; Lehrkräfte</a>
+                <a class="menu-item" th:if="${headerEdit}" th:href="@{/school/settings/lessons(year=${year.id})}">Stunden &amp; A/B-Wochen</a>
+                <a class="menu-item" th:href="@{/school/holidays}">Ferien</a>
+            </div>
+        </div>
+    </div>
+    <p class="school-line">
+        <span th:if="${office != null}" th:text="${office.name}">Grundschule am Park</span>
+        <span th:text="|Klasse ${year.className}|">Klasse 3a</span>
+        <span th:text="|Schuljahr ${year.label}|">Schuljahr 2026/27</span>
+        <span class="badge badge-warn" th:if="${!year.active}">früheres Schuljahr</span>
+        <span class="school-office" th:if="${office != null and (office.phone != null or office.email != null)}">
+            Sekretariat
+            <a th:if="${office.phone != null}" th:href="${office.phoneHref}" th:text="${office.phone}">0911 123</a>
+            <a th:if="${office.email != null}" th:href="|mailto:${office.email}|" th:text="${office.email}">sekretariat@schule.de</a>
+        </span>
+        <a class="muted" th:if="${office != null and office.linkable}"
+           th:href="@{/contacts/{id}(id=${office.contactId})}">Kontakt</a>
+    </p>
+    <nav class="school-tabs" aria-label="Schule">
+        <a th:href="@{/school/years/{id}/timetable(id=${year.id})}" th:aria-current="${tab == 'timetable'} ? 'page'">Stundenplan</a>
+        <a th:href="@{/school/years/{id}/homework(id=${year.id})}" th:aria-current="${tab == 'homework'} ? 'page'">Hausaufgaben</a>
+        <a th:href="@{/school/years/{id}/exams(id=${year.id})}" th:aria-current="${tab == 'exams'} ? 'page'">Klassenarbeiten &amp; Termine</a>
+        <a th:href="@{/school/years/{id}/letters(id=${year.id})}" th:aria-current="${tab == 'letters'} ? 'page'">Elternbriefe</a>
+        <a th:if="${gradesVisible}" th:href="@{/school/years/{id}/grades(id=${year.id})}" th:aria-current="${tab == 'grades'} ? 'page'">Noten</a>
+    </nav>
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+</div>
+
+<!-- Eine Stunde im Stundenplan; Klick öffnet das Mini-Menü für Ausfall, Vertretung und Raumwechsel -->
+<div th:fragment="lessonCell(c)" class="menu tt-cell" data-menu
+     th:classappend="${c.entry.cancelled()} ? 'tt-cancelled' : (${c.entry.change != null} ? 'tt-changed')"
+     th:style="|--subject-color: ${c.entry.subject.color}|">
+    <button type="button" class="tt-cell-button" aria-expanded="false" aria-haspopup="true" data-menu-toggle>
+        <strong class="tt-subject" th:text="${c.entry.subject.name}">Mathe</strong>
+        <span class="tt-meta">
+            <span th:if="${c.entry.room() != null}" th:classappend="${c.entry.roomChanged()} ? 'tt-hint'"
+                  th:text="${c.entry.room()}">R 12</span>
+            <span th:if="${!c.teachers.isEmpty()}" th:text="${c.teacherNames()}">Weber</span>
+        </span>
+        <span class="tt-flag" th:if="${c.entry.change != null}" th:text="${c.entry.change.kind.label()}">Entfällt</span>
+    </button>
+    <div class="menu-panel tt-panel" hidden data-menu-panel>
+        <p class="menu-label">
+            <strong th:text="${c.entry.subject.name}">Mathe</strong><br>
+            <span th:text="|${#temporals.format(c.date, 'EEEE, dd.MM.')} · ${c.times()}|">Montag, 19.10. · 08:00–08:45</span>
+            <span th:if="${c.entry.lesson.room != null}" th:text="| · Raum ${c.entry.lesson.room}|"></span>
+        </p>
+        <p class="tt-change-note" th:if="${c.entry.change != null}"
+           th:text="${c.entry.change.kind.label()} + (${c.entry.change.note != null} ? ': ' + ${c.entry.change.note} : '')">Vertretung: Herr Kaya</p>
+        <th:block th:each="t : ${c.teachers}">
+            <a class="menu-item" th:if="${t.email != null}" th:href="|mailto:${t.email}|"
+               th:text="|✉ ${t.name}|">✉ Frau Weber</a>
+            <span class="menu-item tt-static" th:if="${t.email == null}" th:text="${t.name}">Frau Weber</span>
+        </th:block>
+        <th:block th:if="${canEdit}">
+            <th:block th:if="${c.entry.change == null}">
+                <form method="post" th:action="@{/school/lessons/{id}/changes(id=${c.entry.lesson.id})}">
+                    <input type="hidden" name="yearId" th:value="${year.id}">
+                    <input type="hidden" name="week" th:value="${monday}">
+                    <input type="hidden" name="day" th:value="${c.date}">
+                    <input type="hidden" name="kind" value="CANCELLED">
+                    <button type="submit" class="menu-item tt-cancel-button">Entfällt</button>
+                </form>
+                <form method="post" th:action="@{/school/lessons/{id}/changes(id=${c.entry.lesson.id})}" class="tt-inline">
+                    <input type="hidden" name="yearId" th:value="${year.id}">
+                    <input type="hidden" name="week" th:value="${monday}">
+                    <input type="hidden" name="day" th:value="${c.date}">
+                    <input type="hidden" name="kind" value="SUBSTITUTE">
+                    <input type="text" name="note" maxlength="200" placeholder="Hinweis, z. B. Herr Kaya" aria-label="Hinweis zur Vertretung">
+                    <button type="submit" class="button button-ghost button-small">Vertretung</button>
+                </form>
+                <form method="post" th:action="@{/school/lessons/{id}/changes(id=${c.entry.lesson.id})}" class="tt-inline">
+                    <input type="hidden" name="yearId" th:value="${year.id}">
+                    <input type="hidden" name="week" th:value="${monday}">
+                    <input type="hidden" name="day" th:value="${c.date}">
+                    <input type="hidden" name="kind" value="ROOM">
+                    <input type="text" name="note" maxlength="30" required placeholder="Neuer Raum" aria-label="Neuer Raum">
+                    <button type="submit" class="button button-ghost button-small">Raumwechsel</button>
+                </form>
+            </th:block>
+            <form method="post" th:if="${c.entry.change != null}"
+                  th:action="@{/school/changes/{id}/delete(id=${c.entry.change.id})}">
+                <input type="hidden" name="yearId" th:value="${year.id}">
+                <input type="hidden" name="week" th:value="${monday}">
+                <button type="submit" class="menu-item">Wieder normal</button>
+            </form>
+        </th:block>
+    </div>
+</div>
+
+<!-- Kopf der Einstellungsseiten -->
+<div th:fragment="settingsHeader(tab)" class="school-head">
+    <p><a th:href="${year != null} ? @{/school/years/{id}/timetable(id=${year.id})} : @{/school}">← Zurück zum Stundenplan</a></p>
+    <h1>Schule einstellen</h1>
+    <nav class="school-tabs" aria-label="Einstellungen">
+        <a th:href="@{/school/settings/years(year=${year?.id})}" th:aria-current="${tab == 'years'} ? 'page'">Kinder &amp; Schuljahre</a>
+        <a th:if="${year != null and canEdit}" th:href="@{/school/settings/school(year=${year.id})}" th:aria-current="${tab == 'school'} ? 'page'">Schule &amp; Stundenraster</a>
+        <a th:if="${year != null and canEdit}" th:href="@{/school/settings/subjects(year=${year.id})}" th:aria-current="${tab == 'subjects'} ? 'page'">Fächer &amp; Lehrkräfte</a>
+        <a th:if="${year != null and canEdit}" th:href="@{/school/settings/lessons(year=${year.id})}" th:aria-current="${tab == 'lessons'} ? 'page'">Stunden &amp; A/B-Wochen</a>
+        <a th:href="@{/school/holidays}">Ferien</a>
+    </nav>
+    <p class="muted" th:if="${year != null and member != null}"
+       th:text="|${member.name} · Klasse ${year.className} · Schuljahr ${year.label}|">Lena · Klasse 3a · Schuljahr 2026/27</p>
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+</div>
+</body>
+</html>

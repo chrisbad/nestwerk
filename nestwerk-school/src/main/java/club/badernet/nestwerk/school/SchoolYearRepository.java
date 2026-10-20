@@ -10,4 +10,6 @@ public interface SchoolYearRepository extends JpaRepository<SchoolYear, Long> {
     List<SchoolYear> findAllByProfileIdOrderByStartsOnDesc(Long profileId);
 
     Optional<SchoolYear> findByProfileIdAndActiveTrue(Long profileId);
+
+    List<SchoolYear> findAllBySchoolContactId(Long schoolContactId);
 }

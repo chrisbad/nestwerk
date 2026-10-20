@@ -21,6 +21,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Set;
 
@@ -56,9 +57,9 @@ class ExamServiceTest {
         parent = users.create("mama", "passwort1", Set.of(roles.findByNameIgnoreCase("Benutzer").orElseThrow().getId()));
         lena = members.create("Lena", "#aabbcc", null);
         SchoolProfile profile = school.createProfile(lena.getId(), null);
-        year = school.startYear(profile.getId(), "2026/27", "Grundschule", "3a", LocalDate.of(2026, 8, 1),
+        year = school.startYear(profile.getId(), "2026/27", null, "3a", LocalDate.of(2026, 8, 1),
                 LocalDate.of(2027, 7, 31));
-        math = timetable.addSubject(year.getId(), "Mathe", null, null, admin);
+        math = timetable.addSubject(year.getId(), "Mathe", null, admin);
     }
 
     @Test
@@ -145,8 +146,44 @@ class ExamServiceTest {
         assertThat(reminder.run(EXAM_DAY)).isPositive();
 
         SchoolProfile profile = school.profileOf(lena.getId()).orElseThrow();
-        school.startYear(profile.getId(), "2027/28", "Grundschule", "4a", LocalDate.of(2027, 9, 1),
+        school.startYear(profile.getId(), "2027/28", null, "4a", LocalDate.of(2027, 9, 1),
                 LocalDate.of(2028, 7, 31));
         assertThat(reminder.run(EXAM_DAY.minusDays(1))).isZero();
+    }
+
+    @Test
+    void appointmentsWithTimeLocationAndChosenParticipants() {
+        FamilyMember mama = members.create("Mama", "#ff0000", parent.getId());
+        SchoolExam evening = exams.create(year.getId(), new ExamInput(null, ExamKind.PARENTS_EVENING, null, EXAM_DAY,
+                0, LocalTime.of(19, 30), null, "Aula", Set.of(mama.getId(), lena.getId())), admin);
+
+        CalendarEvent event = calendar.get(evening.getEventId(), admin);
+        assertThat(event.isAllDay()).isFalse();
+        assertThat(event.getLocation()).isEqualTo("Aula");
+        assertThat(evening.getEndsAt()).isEqualTo(LocalTime.of(20, 30));
+        assertThat(event.getMemberIds()).containsExactlyInAnyOrder(mama.getId(), lena.getId());
+    }
+
+    @Test
+    void parentsEveningsDefaultToTheParents() {
+        FamilyMember papa = members.create("Papa", "#00ff00", admin.getId());
+
+        SchoolExam evening = exams.create(year.getId(), null, ExamKind.PARENTS_EVENING, null, EXAM_DAY, 0, admin);
+        SchoolExam trip = exams.create(year.getId(), null, ExamKind.TRIP, "Zoo", EXAM_DAY, 0, admin);
+
+        assertThat(evening.getMemberIds()).containsExactly(papa.getId());
+        assertThat(trip.getMemberIds()).containsExactly(lena.getId());
+        assertThat(ExamKind.PARENT_TALK.forParents()).isTrue();
+        assertThat(ExamKind.TEST.isExam()).isTrue();
+    }
+
+    @Test
+    void rejectsAnEndWithoutStartAndUnknownParticipants() {
+        assertThatThrownBy(() -> exams.create(year.getId(), new ExamInput(null, ExamKind.OTHER, null, EXAM_DAY, 0,
+                null, LocalTime.of(10, 0), null, null), admin))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("ganztägig");
+        assertThatThrownBy(() -> exams.create(year.getId(), new ExamInput(null, ExamKind.OTHER, null, EXAM_DAY, 0,
+                null, null, null, Set.of(999_999L)), admin))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Teilnehmende");
     }
 }

@@ -2,19 +2,15 @@ package club.badernet.nestwerk.web;
 
 import club.badernet.nestwerk.attachment.AttachmentOwner;
 import club.badernet.nestwerk.attachment.AttachmentService;
-import club.badernet.nestwerk.member.FamilyMember;
-import club.badernet.nestwerk.member.FamilyMemberService;
 import club.badernet.nestwerk.school.LetterService;
 import club.badernet.nestwerk.school.SchoolAccess;
 import club.badernet.nestwerk.school.SchoolLetter;
 import club.badernet.nestwerk.school.SchoolPermission;
-import club.badernet.nestwerk.school.SchoolProfile;
-import club.badernet.nestwerk.school.SchoolService;
 import club.badernet.nestwerk.school.SchoolYear;
 import club.badernet.nestwerk.security.CurrentUser;
 import club.badernet.nestwerk.settings.CalendarSettings;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -25,7 +21,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
@@ -37,34 +32,27 @@ import java.util.List;
 @PreAuthorize("hasAuthority('SCHOOL_VIEW')")
 public class LetterController {
 
-    private final SchoolService school;
     private final LetterService letters;
     private final AttachmentService attachments;
     private final SchoolAccess access;
-    private final FamilyMemberService members;
     private final CurrentUser currentUser;
     private final CalendarSettings calendarSettings;
+    private final SchoolHeader header;
 
-    public LetterController(SchoolService school, LetterService letters, AttachmentService attachments,
-                            SchoolAccess access, FamilyMemberService members, CurrentUser currentUser,
-                            CalendarSettings calendarSettings) {
-        this.school = school;
+    public LetterController(LetterService letters, AttachmentService attachments, SchoolAccess access,
+                            CurrentUser currentUser, CalendarSettings calendarSettings, SchoolHeader header) {
         this.letters = letters;
         this.attachments = attachments;
         this.access = access;
-        this.members = members;
         this.currentUser = currentUser;
         this.calendarSettings = calendarSettings;
+        this.header = header;
     }
 
     @GetMapping("/years/{yearId}/letters")
-    String page(@PathVariable Long yearId, Model model) {
-        SchoolYear year = school.year(yearId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        SchoolProfile profile = school.profile(year.getProfileId()).orElseThrow();
-        FamilyMember member = members.findAll().stream().filter(m -> m.getId().equals(profile.getMemberId()))
-                .findFirst().orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        model.addAttribute("year", year);
-        model.addAttribute("member", member);
+    String page(@PathVariable Long yearId, HttpSession session, Model model) {
+        SchoolYear year = header.year(yearId);
+        header.prepare(model, year, "letters", session);
         model.addAttribute("items", letters.list(yearId));
         model.addAttribute("today", LocalDate.now(calendarSettings.zone()));
         model.addAttribute("canEdit", access.has(currentUser.require(), SchoolPermission.SCHOOL_EDIT));

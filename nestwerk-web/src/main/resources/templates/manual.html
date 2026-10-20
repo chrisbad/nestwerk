@@ -347,23 +347,45 @@
 
             <section id="schule" class="sheet manual-section" sec:authorize="hasAuthority('SCHOOL_VIEW')">
                 <h2>Schule</h2>
-                <p>Stundenplan, Hausaufgaben, Klassenarbeiten, Ferien, Noten und Elternbriefe für jedes Schulkind.</p>
+                <p>Stundenplan, Hausaufgaben, Klassenarbeiten, Termine, Ferien, Noten und Elternbriefe für jedes
+                    Schulkind. „Schule“ öffnet direkt den Stundenplan der aktuellen Woche; ab Samstag ist die nächste
+                    Woche zu sehen. Bei mehreren Kindern wechselt man oben über die Namen, darunter liegen die Reiter
+                    Stundenplan, Hausaufgaben, Klassenarbeiten &amp; Termine, Elternbriefe und Noten.</p>
                 <ul>
-                    <li><strong>Schulprofil und Schuljahr:</strong> Unter „Schule“ legt man für ein Familienmitglied ein
-                        Profil mit Bundesland an und beginnt ein Schuljahr (Schule, Klasse, Zeitraum). Ein neues Schuljahr
-                        ersetzt das aktive; das alte bleibt mit allen Daten erhalten und lässt sich wieder aktivieren.</li>
-                    <li><strong>Stundenplan:</strong> Fächer und Stunden im Wochenraster. Wechselt der Plan alle zwei
-                        Wochen, gibt man eine A-Woche an und ordnet Stunden der A- oder B-Woche zu. Unter
-                        „Ausfall / Vertretung“ markiert man einzelne Stunden; ausfallende Stunden kürzen den Schultag und
-                        werden allen gemeldet. Die Schulzeit erscheint im Kalender als Band (Art „Schule“).</li>
+                    <li><strong>Einstellungen (Zahnrad):</strong> Das Zahnrad oben rechts führt zu „Kinder &amp;
+                        Schuljahre“, „Schule &amp; Stundenraster“, „Fächer &amp; Lehrkräfte“, „Stunden &amp; A/B-Wochen“
+                        und „Ferien“. Ein neues Schuljahr ersetzt das aktive; das alte bleibt mit allen Daten erhalten
+                        und lässt sich wieder aktivieren.</li>
+                    <li><strong>Schule und Sekretariat:</strong> Die Schule ist ein Kontakt der Kategorie „Schule“ mit
+                        Telefon, E-Mail und Anschrift des Sekretariats. Man wählt sie beim Schuljahr aus oder legt sie dort
+                        gleich an; Geschwister an derselben Schule teilen sie. Telefon und E-Mail stehen über dem
+                        Stundenplan.</li>
+                    <li><strong>Stundenraster:</strong> Unter „Schule &amp; Stundenraster“ trägt man die Zeiten der
+                        Stunden und Pausen der Schule ein. Der Stundenplan zeigt dann je Stunde eine Zeile und die Pausen
+                        als schmale Streifen. Ändert die Schule ihre Zeiten, ziehen alle Stunden nach.</li>
+                    <li><strong>Fächer und Lehrkräfte:</strong> Jedes Fach kann mehrere Lehrkräfte haben. Sie sind
+                        Kontakte der Kategorie „Lehrkraft“ und lassen sich mit Name und E-Mail direkt am Fach anlegen.
+                        Im Stundenplan öffnet ein Klick auf die Stunde eine Mail an die Lehrkraft.</li>
+                    <li><strong>Stunden:</strong> Eine Stunde liegt im Raster (z. B. 3.–4. Stunde für eine Doppelstunde)
+                        oder hat eine freie Uhrzeit, etwa eine AG am Nachmittag. Ein Klick auf ein leeres Feld im
+                        Stundenplan trägt dort eine Stunde ein. Wechselt der Plan alle zwei Wochen, gibt man eine A-Woche
+                        an und ordnet Stunden der A- oder B-Woche zu.</li>
+                    <li><strong>Ausfall mit einem Klick:</strong> Ein Klick auf eine Stunde öffnet ein kleines Menü:
+                        „Entfällt“ trägt den Ausfall sofort ein, dazu gibt es Vertretung (mit Hinweis), Raumwechsel und
+                        „Wieder normal“. Ausfallende Stunden kürzen den Schultag, werden allen gemeldet und stehen als
+                        Hinweis im Familienkalender, z. B. „Lena · frei ab 11:15“.</li>
                     <li><strong>Hausaufgaben:</strong> sind ToDos, die dem Kind zugewiesen sind. Sie lassen sich einmalig,
                         an jedem Schultag oder wöchentlich wiederholen. Erledigen und Wiederöffnen geht in der Liste
                         oder im ToDo selbst.</li>
-                    <li><strong>Klassenarbeiten und Termine:</strong> Klassenarbeit, Test, Elternabend oder Ausflug mit
-                        Datum. Sie stehen auch im Familienkalender; Nestwerk erinnert am Lerntag (einstellbar) und am Vortag.</li>
+                    <li><strong>Klassenarbeiten und Termine:</strong> Beides steht in einem Reiter und ist optisch
+                        getrennt: Klassenarbeiten und Tests mit Fachfarbe, Termine wie Elternabend, Elterngespräch oder
+                        Ausflug gestrichelt. Termine haben auf Wunsch Uhrzeit und Ort. Alles steht auch im
+                        Familienkalender – Klassenarbeiten beim Kind, Elternabende und -gespräche bei den Eltern; die
+                        Teilnehmenden lassen sich je Eintrag ändern. Nestwerk erinnert am Lerntag (einstellbar) und am
+                        Vortag.</li>
                     <li><strong>Ferien:</strong> Nestwerk holt die Schulferien des Bundeslands einmal täglich von
-                        openholidaysapi.org. An Ferientagen und Feiertagen entfällt die Schulzeit. Eigene freie Tage
-                        trägt man unter „Schulferien ansehen“ ein.</li>
+                        openholidaysapi.org. An Ferientagen und Feiertagen entfällt die Schulzeit, und die Ferien stehen
+                        als ganztägiges Band im Familienkalender. Eigene freie Tage trägt man unter „Ferien“ ein.</li>
                     <li><strong>Noten:</strong> Noten von 1 bis 6 mit Tendenz (2+ ist 1,7, 2- ist 2,3), je Fach und
                         Halbjahr, mündlich oder schriftlich, einfach oder doppelt gewichtet. Nestwerk zeigt den
                         Durchschnitt und einen kleinen Verlauf; die Zeugnisnote trägt man getrennt ein. Wer das Recht
