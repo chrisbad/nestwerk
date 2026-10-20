@@ -16,7 +16,7 @@ public interface ChoreTaskRepository extends JpaRepository<ChoreTask, Long> {
 
     List<ChoreTask> findAllByChoreIdAndStatus(Long choreId, ChoreTaskStatus status);
 
-    List<ChoreTask> findAllByDueOnBetween(LocalDate from, LocalDate to);
+    List<ChoreTask> findAllByDueOnBetweenAndStatusNot(LocalDate from, LocalDate to, ChoreTaskStatus status);
 
     List<ChoreTask> findAllByStatusAndDueOnBefore(ChoreTaskStatus status, LocalDate day);
 

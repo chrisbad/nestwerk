@@ -321,8 +321,9 @@ public class HouseholdController {
     /* --- Aufgaben ---------------------------------------------------------- */
 
     @GetMapping("/tasks/{id}")
-    String task(@PathVariable Long id, Model model) {
+    String task(@PathVariable Long id, @RequestParam(required = false) String back, Model model) {
         User viewer = requireModule();
+        model.addAttribute("returnTo", TodoController.safeBack(back, null));
         ChoreTask task = tasks.get(id, viewer);
         HouseholdViews.Context ctx = views.context(viewer);
         model.addAttribute("task", task);

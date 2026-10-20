@@ -23,6 +23,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Builds the model of the time grid views (day, three days, week). */
 @Component
@@ -49,15 +51,18 @@ public class TimeGridPage {
         this.zone = settings.zone();
     }
 
-    /** Adds days, all-day lanes and everything the toolbar and legend need. */
-    public void fill(Model model, List<LocalDate> days, String view, User viewer) {
+    /**
+     * Adds days, all-day lanes and everything the toolbar and legend need. Split by person, every day gets one column
+     * per family member and one for "Alle"; an entry appears in the column of each of its members.
+     */
+    public void fill(Model model, List<LocalDate> days, String view, GridSplit split, User viewer) {
         pageData.addCommon(model, view, viewer);
         Map<Long, FamilyMember> people = pageData.memberById();
         Map<Long, EventCategory> categories = pageData.categoryById(viewer);
         LocalDate first = days.getFirst();
         LocalDate last = days.getLast();
 
-        List<GridEntry.Event> timed = new ArrayList<>();
+        List<GridEntry> timed = new ArrayList<>();
         List<GridEntry> allDay = new ArrayList<>();
         for (Occurrence o : distinct(pageData.occurrences(days, viewer).values())) {
             GridEntry.Event entry = event(o, people, categories, viewer);
@@ -68,24 +73,27 @@ public class TimeGridPage {
             }
         }
         pageData.addTodos(model, first, last, viewer).values()
-                .forEach(list -> list.forEach(t -> allDay.add(new GridEntry.DueTodo(t))));
-        List<GridEntry> gridTimed = new ArrayList<>(timed);
+                .forEach(list -> list.forEach(t -> allDay.add(new GridEntry.DueTodo(t, pageData.canEdit(t, viewer)))));
         pageData.addChores(model, first, last, viewer).values()
-                .forEach(list -> list.forEach(c -> gridTimed.add(new GridEntry.Chore(c))));
+                .forEach(list -> list.forEach(c -> timed.add(new GridEntry.Chore(c))));
 
-        Map<LocalDate, List<TimeGridLayout.Placed<GridEntry>>> placed = TimeGridLayout.layout(gridTimed, days,
-                this::start, this::end);
+        List<GridPerson> columns = split == GridSplit.BY_PERSON ? persons(people) : List.of(GridPerson.ALL);
+        List<Map<LocalDate, List<TimeGridLayout.Placed<GridEntry>>>> placed = columns.stream()
+                .map(person -> TimeGridLayout.layout(of(person, split, timed, people), days, this::start, this::end))
+                .toList();
         Map<LocalDate, List<GridDay.GridZone>> zonesByDay = zones(days, viewer);
         Map<LocalDate, List<BlockerBands.Band>> bandsByDay = bands.between(first, last, viewer);
         LocalDate today = pageData.today();
         List<GridDay> gridDays = days.stream().map(d -> new GridDay(d, d.equals(today), isWeekend(d),
-                placed.get(d), bandsByDay.getOrDefault(d, List.of()), zonesByDay.get(d))).toList();
-        List<TimeGridLayout.Lane<GridEntry>> lanes = TimeGridLayout.lanes(allDay, days, this::firstDay,
-                this::lastDay);
+                bandsByDay.getOrDefault(d, List.of()), dayColumns(d, columns, split, placed,
+                        zonesByDay.getOrDefault(d, List.of())))).toList();
+        List<AllDayItem> items = allDayItems(allDay, days, columns, split, people);
 
         model.addAttribute("gridDays", gridDays);
-        model.addAttribute("allDayLanes", lanes);
-        model.addAttribute("laneCount", lanes.stream().mapToInt(l -> l.lane() + 1).max().orElse(0));
+        model.addAttribute("persons", columns);
+        model.addAttribute("splitByPerson", split == GridSplit.BY_PERSON);
+        model.addAttribute("allDayLanes", items);
+        model.addAttribute("laneCount", items.stream().mapToInt(l -> l.lane() + 1).max().orElse(0));
         ZonedDateTime now = ZonedDateTime.now(zone);
         model.addAttribute("nowMinute", now.getHour() * 60 + now.getMinute());
         model.addAttribute("slotFine", SlotSize.FINE.minutes());
@@ -96,6 +104,66 @@ public class TimeGridPage {
         model.addAttribute("allCategories", List.copyOf(categories.values()));
         model.addAttribute("first", first);
         model.addAttribute("last", last);
+    }
+
+    private static List<GridPerson> persons(Map<Long, FamilyMember> people) {
+        List<GridPerson> result = new ArrayList<>();
+        people.values().forEach(m -> result.add(new GridPerson(m.getId(), m.getName(), m.getColor())));
+        result.add(GridPerson.ALL);
+        return List.copyOf(result);
+    }
+
+    /** The entries shown in the column of {@code person}; unknown members count as none. */
+    private static List<GridEntry> of(GridPerson person, GridSplit split, List<GridEntry> entries,
+                                      Map<Long, FamilyMember> people) {
+        if (split == GridSplit.NONE) {
+            return entries;
+        }
+        return entries.stream().filter(e -> {
+            Set<Long> known = e.memberIds().stream().filter(people::containsKey).collect(Collectors.toSet());
+            return person.isAll() ? known.isEmpty() : known.contains(person.memberId());
+        }).toList();
+    }
+
+    private static List<GridDay.Column> dayColumns(LocalDate day, List<GridPerson> columns, GridSplit split,
+                                                   List<Map<LocalDate, List<TimeGridLayout.Placed<GridEntry>>>> placed,
+                                                   List<GridDay.GridZone> zones) {
+        List<GridDay.Column> result = new ArrayList<>();
+        for (int i = 0; i < columns.size(); i++) {
+            Long member = columns.get(i).memberId();
+            List<GridDay.GridZone> own = split == GridSplit.NONE ? zones
+                    : zones.stream().filter(z -> z.memberId().equals(member)).toList();
+            result.add(new GridDay.Column(member, placed.get(i).getOrDefault(day, List.of()), own));
+        }
+        return List.copyOf(result);
+    }
+
+    /**
+     * All-day entries in rows. Split by person, the columns of one person are not next to each other, so an entry
+     * spanning several days is shown once per day in that person's column.
+     */
+    private List<AllDayItem> allDayItems(List<GridEntry> allDay, List<LocalDate> days, List<GridPerson> columns,
+                                         GridSplit split, Map<Long, FamilyMember> people) {
+        List<AllDayItem> result = new ArrayList<>();
+        int width = columns.size();
+        for (int p = 0; p < width; p++) {
+            Long member = columns.get(p).memberId();
+            for (TimeGridLayout.Lane<GridEntry> lane : TimeGridLayout.lanes(of(columns.get(p), split, allDay, people),
+                    days, this::firstDay, this::lastDay)) {
+                if (split == GridSplit.NONE) {
+                    result.add(new AllDayItem(lane.entry(), lane.firstColumn(), lane.span(), lane.lane(),
+                            lane.continuesBefore(), lane.continuesAfter(), null));
+                    continue;
+                }
+                int lastDay = lane.firstColumn() + lane.span() - 1;
+                for (int d = lane.firstColumn(); d <= lastDay; d++) {
+                    result.add(new AllDayItem(lane.entry(), d * width + p, 1, lane.lane(),
+                            d > lane.firstColumn() || lane.continuesBefore(), d < lastDay || lane.continuesAfter(),
+                            member));
+                }
+            }
+        }
+        return List.copyOf(result);
     }
 
     private GridEntry.Event event(Occurrence o, Map<Long, FamilyMember> people, Map<Long, EventCategory> categories,

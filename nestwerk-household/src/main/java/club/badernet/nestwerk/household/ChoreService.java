@@ -108,6 +108,8 @@ public class ChoreService {
             throw new IllegalArgumentException(
                     "Für diese Hausarbeit gibt es schon Gutschriften. Du kannst sie deaktivieren, aber nicht löschen.");
         }
+        // loaded tasks would otherwise still point to the deleted chore
+        tasks.deleteAll(tasks.findAllByChoreId(id));
         chores.delete(chore);
     }
 

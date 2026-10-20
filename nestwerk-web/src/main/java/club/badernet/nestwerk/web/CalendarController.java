@@ -6,7 +6,6 @@ import club.badernet.nestwerk.blocker.Conflict;
 import club.badernet.nestwerk.blocker.TimeRange;
 import club.badernet.nestwerk.calendar.CalendarEvent;
 import club.badernet.nestwerk.calendar.CalendarEventService;
-import club.badernet.nestwerk.calendar.CalendarGrid;
 import club.badernet.nestwerk.calendar.EventCategoryService;
 import club.badernet.nestwerk.settings.CalendarSettings;
 import club.badernet.nestwerk.calendar.DayCell;
@@ -60,7 +59,6 @@ import java.util.stream.Collectors;
 @PreAuthorize("hasAuthority('CALENDAR_VIEW')")
 public class CalendarController {
 
-    private static final int AGENDA_DAYS = 60;
     private static final DateTimeFormatter ALTERNATIVE = DateTimeFormatter.ofPattern("EE d.M. HH:mm", Locale.GERMAN);
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
 
@@ -102,8 +100,9 @@ public class CalendarController {
     @GetMapping("/month")
     String month(@RequestParam(required = false) String date, Model model) {
         User viewer = currentUser.require();
-        YearMonth month = YearMonth.from(pageData.parseDate(date));
-        List<LocalDate> days = CalendarGrid.monthDays(month);
+        LocalDate focus = pageData.parseDate(date);
+        YearMonth month = YearMonth.from(focus);
+        List<LocalDate> days = CalendarView.MONTH.days(focus);
         Map<LocalDate, List<Occurrence>> byDay = pageData.occurrences(days, viewer);
         LocalDate today = pageData.today();
 
@@ -120,8 +119,9 @@ public class CalendarController {
         pageData.addChores(model, days.getFirst(), days.getLast(), viewer);
         pageData.addTodos(model, days.getFirst(), days.getLast(), viewer);
         model.addAttribute("month", month);
-        model.addAttribute("prev", month.minusMonths(1).atDay(1));
-        model.addAttribute("next", month.plusMonths(1).atDay(1));
+        model.addAttribute("focus", focus);
+        model.addAttribute("prev", CalendarView.MONTH.previous(focus));
+        model.addAttribute("next", CalendarView.MONTH.next(focus));
         pageData.addCommon(model, "month", viewer);
         return "calendar/month";
     }
@@ -130,7 +130,7 @@ public class CalendarController {
     String agenda(@RequestParam(required = false) String from, Model model) {
         User viewer = currentUser.require();
         LocalDate start = pageData.parseDate(from);
-        List<LocalDate> days = start.datesUntil(start.plusDays(AGENDA_DAYS)).toList();
+        List<LocalDate> days = CalendarView.AGENDA.days(start);
         Map<LocalDate, List<Occurrence>> byDay = pageData.occurrences(days, viewer);
         Map<LocalDate, List<Todo>> todos = pageData.addTodos(model, days.getFirst(), days.getLast(), viewer);
         Map<LocalDate, List<Occurrence>> nonEmpty = new LinkedHashMap<>();
@@ -141,8 +141,9 @@ public class CalendarController {
         });
         model.addAttribute("agenda", nonEmpty);
         model.addAttribute("from", start);
-        model.addAttribute("prev", start.minusDays(AGENDA_DAYS));
-        model.addAttribute("next", start.plusDays(AGENDA_DAYS));
+        model.addAttribute("focus", start);
+        model.addAttribute("prev", CalendarView.AGENDA.previous(start));
+        model.addAttribute("next", CalendarView.AGENDA.next(start));
         pageData.addCommon(model, "agenda", viewer);
         return "calendar/agenda";
     }
@@ -151,7 +152,9 @@ public class CalendarController {
     String newForm(@RequestParam(required = false) String date,
                    @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime start,
                    @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime end,
-                   @RequestParam(required = false) Long todo, Model model) {
+                   @RequestParam(required = false) Long todo, @RequestParam(required = false) String back,
+                   Model model) {
+        model.addAttribute("back", TodoController.safeBack(back, null));
         EventForm form = EventForm.forNew(pageData.parseDate(date));
         if (start != null && end != null && end.isAfter(start)) {
             form.setStartTime(start);
@@ -175,7 +178,9 @@ public class CalendarController {
     }
 
     @PostMapping("/events")
-    String create(@ModelAttribute("form") EventForm form, Model model, RedirectAttributes redirect) {
+    String create(@ModelAttribute("form") EventForm form, @RequestParam(required = false) String back, Model model,
+                  RedirectAttributes redirect) {
+        model.addAttribute("back", TodoController.safeBack(back, null));
         try {
             User actor = currentUser.require();
             Todo fromTodo = form.getTodoId() == null ? null : linkableTodo(form.getTodoId(), actor);
@@ -190,7 +195,7 @@ public class CalendarController {
                 todoLinks.link(fromTodo.getId(), created.getId());
             }
             redirect.addFlashAttribute("success", "Termin '" + created.getTitle() + "' wurde angelegt.");
-            return "redirect:/calendar/month?date=" + form.getStartDate();
+            return backTo(back, form.getStartDate());
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", e.getMessage());
             model.addAttribute("action", "/calendar/events");
@@ -201,7 +206,9 @@ public class CalendarController {
     }
 
     @GetMapping("/events/{id}")
-    String edit(@PathVariable Long id, @RequestParam(required = false) Instant occurrence, Model model) {
+    String edit(@PathVariable Long id, @RequestParam(required = false) Instant occurrence,
+                @RequestParam(required = false) String back, Model model) {
+        model.addAttribute("back", TodoController.safeBack(back, null));
         User viewer = currentUser.require();
         CalendarEvent event = events.get(id, viewer);
         model.addAttribute("form", EventForm.from(event));
@@ -232,7 +239,8 @@ public class CalendarController {
 
     @PostMapping("/events/{id}")
     String update(@PathVariable Long id, @ModelAttribute("form") EventForm form,
-                  Model model, RedirectAttributes redirect) {
+                  @RequestParam(required = false) String back, Model model, RedirectAttributes redirect) {
+        model.addAttribute("back", TodoController.safeBack(back, null));
         User actor = currentUser.require();
         try {
             if (warnAboutBlockers(form, id, actor, model)) {
@@ -240,7 +248,7 @@ public class CalendarController {
             }
             events.update(id, form.toInput(), actor);
             redirect.addFlashAttribute("success", "Termin wurde gespeichert.");
-            return "redirect:/calendar/month?date=" + form.getStartDate();
+            return backTo(back, form.getStartDate());
         } catch (IllegalArgumentException e) {
             CalendarEvent event = events.get(id, actor);
             if (!(e instanceof BlockerWarning)) {
@@ -275,22 +283,23 @@ public class CalendarController {
     }
 
     @PostMapping("/events/{id}/delete")
-    String delete(@PathVariable Long id, RedirectAttributes redirect) {
+    String delete(@PathVariable Long id, @RequestParam(required = false) String back,
+                  RedirectAttributes redirect) {
         events.delete(id, currentUser.require());
         redirect.addFlashAttribute("success", "Termin wurde gelöscht.");
-        return "redirect:/calendar/month";
+        return backTo(back, null);
     }
 
     @PostMapping("/events/{id}/occurrence/cancel")
     String cancelOccurrence(@PathVariable Long id, @RequestParam Instant recurrenceId,
-                            RedirectAttributes redirect) {
+                            @RequestParam(required = false) String back, RedirectAttributes redirect) {
         try {
             events.cancelOccurrence(id, recurrenceId, currentUser.require());
             redirect.addFlashAttribute("success", "Das Vorkommen wurde abgesagt.");
         } catch (IllegalArgumentException e) {
             redirect.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/calendar/month";
+        return backTo(back, null);
     }
 
     @PostMapping("/events/{id}/occurrence")
@@ -300,7 +309,7 @@ public class CalendarController {
                               @RequestParam(required = false) String location,
                               @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
                               @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
-                              RedirectAttributes redirect) {
+                              @RequestParam(required = false) String back, RedirectAttributes redirect) {
         try {
             events.overrideOccurrence(id, recurrenceId,
                     new OccurrenceInput(title, description, location, start, end),
@@ -309,7 +318,7 @@ public class CalendarController {
         } catch (IllegalArgumentException e) {
             redirect.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/calendar/month";
+        return backTo(back, start.toLocalDate());
     }
 
     /** A free time offered as suggestion in the form. */
@@ -351,6 +360,12 @@ public class CalendarController {
                 }).toList();
         model.addAttribute("alternatives", alternatives);
         return true;
+    }
+
+    /** Back to the calendar view the user came from, otherwise to the month of {@code date}. */
+    private static String backTo(String back, LocalDate date) {
+        return "redirect:" + TodoController.safeBack(back, date == null ? "/calendar/month"
+                : "/calendar/month?date=" + date);
     }
 
     private Occurrence seriesStart(CalendarEvent event) {

@@ -277,18 +277,51 @@ public class HouseholdTools {
         });
     }
 
-    @McpTool(name = "reschedule_chore_task", description = "Plant eine offene Aufgabe zu einer anderen Uhrzeit am "
-            + "selben Tag ein (wie Verschieben im Kalender). Die automatische Planung behält diese Uhrzeit, solange die "
-            + "zuständige Person da ist.",
+    @McpTool(name = "reschedule_chore_task", description = "Plant eine offene Aufgabe zu einer anderen Uhrzeit und "
+            + "wahlweise an einem anderen Tag ein (wie Verschieben im Kalender). Ohne date bleibt der Tag. Die "
+            + "automatische Planung behält Tag und Uhrzeit, solange die zuständige Person da ist.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
                     idempotentHint = true))
     public ChoreTaskItem rescheduleChoreTask(McpTransportContext context,
                                              @McpToolParam(description = "ID der Aufgabe (taskId)") Long taskId,
-                                             @McpToolParam(description = "Neue Uhrzeit HH:MM") String time) {
+                                             @McpToolParam(description = "Neue Uhrzeit HH:MM") String time,
+                                             @McpToolParam(description = "Neuer Tag JJJJ-MM-TT, nicht in der "
+                                                     + "Vergangenheit", required = false) String date) {
         return tools.write(context, user -> {
             Long id = Tools.required(taskId, "taskId");
-            tasks.reschedule(id, Tools.required(Tools.time(time, "time"), "time"), user);
+            LocalDate day = Tools.date(date, "date");
+            tasks.reschedule(id, day == null ? tasks.get(id, user).getDueOn() : day,
+                    Tools.required(Tools.time(time, "time"), "time"), user);
             return item(tasks.get(id, user), names());
+        });
+    }
+
+    @McpTool(name = "cancel_chore_task", description = "Löscht eine offene Aufgabe nur für ihren Termin: sie entfällt "
+            + "und wird nicht neu geplant; die Hausarbeit und ihre anderen Termine bleiben. Bei INTERVAL ist die "
+            + "nächste Aufgabe intervalDays nach diesem Termin fällig.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public ChoreTaskItem cancelChoreTask(McpTransportContext context,
+                                         @McpToolParam(description = "ID der Aufgabe (taskId) aus list_chore_tasks")
+                                         Long taskId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(taskId, "taskId");
+            tasks.cancel(id, user);
+            return item(tasks.get(id, user), names());
+        });
+    }
+
+    @McpTool(name = "delete_chore", description = "Löscht eine Hausarbeit samt aller Aufgaben endgültig. Gibt es "
+            + "schon Gutschriften, ist das nicht möglich; dann set_chore_active mit active=false verwenden.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteChore(McpTransportContext context,
+                              @McpToolParam(description = "ID der Hausarbeit (choreId) aus list_chores") Long choreId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(choreId, "choreId");
+            String title = chores.get(id, user).getTitle();
+            chores.delete(id, user);
+            return "Hausarbeit „" + title + "“ wurde gelöscht.";
         });
     }
 

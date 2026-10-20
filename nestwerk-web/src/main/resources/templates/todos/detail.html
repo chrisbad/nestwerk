@@ -4,9 +4,9 @@
 <body>
 <header th:replace="~{fragments/layout :: nav(active='todos')}"></header>
 <main class="todo-detail-page">
-    <a class="back-link" th:href="@{/todos}">
+    <a class="back-link" th:href="${returnTo} ?: @{/todos}">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
-        Zu den ToDos
+        <span th:text="${returnTo != null} ? 'Zurück' : 'Zu den ToDos'">Zu den ToDos</span>
     </a>
 
     <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
@@ -155,7 +155,7 @@
                                     <button type="submit" class="button button-small">Speichern</button>
                                 </form>
                             </details>
-                            <form th:if="${item.canDelete()}" method="post"
+                            <form data-confirm-tone="danger" th:if="${item.canDelete()}" method="post"
                                   th:action="@{/todos/{id}/comments/{c}/delete(id=${todo.id}, c=${item.commentId()})}"
                                   data-confirm="Kommentar löschen?">
                                 <button type="submit" class="link-button">Löschen</button>
@@ -306,7 +306,7 @@
         </aside>
     </div>
 
-    <form class="danger-zone" th:if="${canDelete}" th:action="@{/todos/{id}/delete(id=${todo.id})}" method="post"
+    <form data-confirm-tone="danger" class="danger-zone" th:if="${canDelete}" th:action="@{/todos/{id}/delete(id=${todo.id})}" method="post"
           th:attr="data-confirm=${descendantCount > 0} ? |„${todo.title}“ samt ${descendantCount} Unteraufgabe(n) löschen?| : |„${todo.title}“ löschen?|">
         <button type="submit" class="button button-danger">ToDo löschen</button>
     </form>

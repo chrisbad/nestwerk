@@ -6,11 +6,11 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * A planned chore in the calendar of the responsible person, {@code minutes} long from {@code start}.
- * {@code movable}: the viewer may plan it at another time.
+ * A planned chore in the calendar of the responsible person ({@code memberId}), {@code minutes} long from
+ * {@code start}. {@code movable}: the viewer may plan it at another time or give it to someone else.
  */
 public record CalendarChore(Long id, String title, LocalDate day, LocalTime start, int minutes, String color,
-                            boolean movable) {
+                            boolean movable, Long memberId) {
 
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
 

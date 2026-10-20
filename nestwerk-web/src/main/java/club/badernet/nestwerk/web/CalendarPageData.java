@@ -89,6 +89,11 @@ public class CalendarPageData {
         return todos;
     }
 
+    /** May the viewer change the to-do (e.g. move it to another day in the calendar)? */
+    public boolean canEdit(Todo todo, User viewer) {
+        return todoAccess.can(viewer, "EDIT", todo);
+    }
+
     /** Open chores with a planned time if the viewer may use the household plan. */
     public Map<LocalDate, List<CalendarChore>> addChores(Model model, LocalDate from, LocalDate to, User viewer) {
         Map<LocalDate, List<CalendarChore>> byDay = new LinkedHashMap<>();
@@ -102,7 +107,8 @@ public class CalendarPageData {
                 byDay.computeIfAbsent(t.getDueOn(), d -> new ArrayList<>()).add(new CalendarChore(t.getId(),
                         t.getChore().getTitle() + (who == null ? "" : " · " + who.getName()), t.getDueOn(),
                         t.getPlannedAt(), Math.max(MIN_CHORE_MINUTES, t.getChore().getMinutesMedium()),
-                        who == null ? null : who.getColor(), householdAccess.can(viewer, "ASSIGN", t)));
+                        who == null ? null : who.getColor(), householdAccess.can(viewer, "ASSIGN", t),
+                        t.getAssigneeMemberId()));
             }
         }
         model.addAttribute("choresByDay", byDay);

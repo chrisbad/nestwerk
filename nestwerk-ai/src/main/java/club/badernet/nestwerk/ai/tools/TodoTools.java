@@ -206,6 +206,20 @@ public class TodoTools {
         });
     }
 
+    @McpTool(name = "delete_todo", description = "Löscht ein ToDo endgültig samt Unteraufgaben, Kommentaren und "
+            + "Anhängen. Nur nach Rückfrage benutzen; zum Verwerfen ohne Löschen set_todo_status mit DISCARDED.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true,
+                    openWorldHint = false, idempotentHint = false))
+    public String deleteTodo(McpTransportContext context,
+                             @McpToolParam(description = "ID des ToDos aus list_todos") Long todoId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(todoId, "todoId");
+            String title = todos.get(id, user).getTitle();
+            todos.delete(id, user);
+            return "ToDo „" + title + "“ wurde gelöscht.";
+        });
+    }
+
     @McpTool(name = "check_todo", description = "Hakt ein ToDo ab. Bei „jeder einzeln“ (EACH) nur den eigenen "
             + "Teil; erledigt ist es, wenn alle abgehakt haben.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false,

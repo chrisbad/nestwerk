@@ -4,7 +4,8 @@
 <body>
 
 <!-- Toolbar: title, paging, choice of view, grid snapping, new event -->
-<div th:fragment="toolbar(title, view, date, prevUrl, todayUrl, nextUrl)" class="cal-toolbar">
+<div th:fragment="toolbar(title, view, date, prevUrl, todayUrl, nextUrl)" class="cal-toolbar"
+     th:with="here=${view == 'agenda'} ? @{/calendar/agenda(from=${date})} : @{/calendar/{v}(v=${view}, date=${date})}">
     <div class="cal-title">
         <h1 th:text="${title}">Oktober 2026</h1>
         <div class="cal-step" hx-boost="true" hx-target="#calendar" hx-select="#calendar" hx-swap="outerHTML">
@@ -29,13 +30,30 @@
             <button type="button" data-slot-choice="coarse" aria-pressed="true"
                     th:title="|Grob: rastet auf ${slotCoarse} Minuten ein|">Grob</button>
             <button type="button" data-slot-choice="fine" aria-pressed="false"
-                    th:title="|Fein: rastet auf ${slotFine} Minuten ein und zeigt mehr Platz pro Stunde|">Fein</button>
+                    th:title="|Fein: rastet auf ${slotFine} Minuten ein|">Fein</button>
         </div>
+        <div class="segmented segmented-zoom" role="group" aria-label="Zoom" th:if="${gridDays != null or view == 'month'}">
+            <button type="button" data-zoom-step="-1" title="Verkleinern (Strg + Mausrad)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4M8 11h6"/></svg>
+                <span class="visually-hidden">Verkleinern</span>
+            </button>
+            <span class="zoom-level" data-zoom-label aria-live="polite">100 %</span>
+            <button type="button" data-zoom-step="1" title="Vergrößern (Strg + Mausrad)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4M8 11h6M11 8v6"/></svg>
+                <span class="visually-hidden">Vergrößern</span>
+            </button>
+        </div>
+        <button type="button" class="button button-ghost button-small cal-split-toggle" th:if="${gridDays != null}"
+                data-split-toggle th:attr="aria-pressed=${splitByPerson}"
+                title="Für jede Person eine eigene Spalte – Einträge lassen sich zwischen Personen ziehen">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M3 19c0-3 2.2-5 5-5s5 2 5 5M13.5 19c.2-2.6 1.6-4.2 3.5-4.2S20.8 16.4 21 19"/></svg>
+            Nach Personen
+        </button>
         <nav class="segmented" aria-label="Ansicht" hx-boost="true" hx-target="#calendar" hx-select="#calendar" hx-swap="outerHTML">
-            <a th:href="@{/calendar/month(date=${date})}" th:aria-current="${view == 'month'} ? 'page'">Monat</a>
-            <a class="segment-week" th:href="@{/calendar/week(date=${date})}" th:aria-current="${view == 'week'} ? 'page'">Woche</a>
-            <a th:href="@{/calendar/days3(date=${date})}" th:aria-current="${view == 'days3'} ? 'page'">3 Tage</a>
             <a th:href="@{/calendar/day(date=${date})}" th:aria-current="${view == 'day'} ? 'page'">Tag</a>
+            <a th:href="@{/calendar/days3(date=${date})}" th:aria-current="${view == 'days3'} ? 'page'">3 Tage</a>
+            <a class="segment-week" th:href="@{/calendar/week(date=${date})}" th:aria-current="${view == 'week'} ? 'page'">Woche</a>
+            <a th:href="@{/calendar/month(date=${date})}" th:aria-current="${view == 'month'} ? 'page'">Monat</a>
             <a th:href="@{/calendar/agenda(from=${date})}" th:aria-current="${view == 'agenda'} ? 'page'">Agenda</a>
         </nav>
         <!-- plain links: the toolbar is replaced by htmx when paging -->
@@ -43,13 +61,18 @@
            title="Alle sichtbaren Termine als iCal-Datei herunterladen">Export</a>
         <a class="button button-ghost button-small" th:href="@{/import/calendar}"
            sec:authorize="hasAuthority('CALENDAR_EVENT_CREATE')" title="Termine aus einer iCal-Datei übernehmen">Import</a>
-        <a class="button" th:href="@{/calendar/events/new(date=${date})}"
+        <a class="button" th:href="@{/calendar/events/new(date=${date}, back=${here})}"
            sec:authorize="hasAuthority('CALENDAR_EVENT_CREATE')">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
             Termin
         </a>
     </div>
 </div>
+
+<!-- Dialog of a tapped entry (event, chore or to-do); its content is loaded on tap -->
+<dialog th:fragment="sheetDialog" id="calendar-sheet" class="dialog" aria-label="Eintrag">
+    <div data-sheet-body></div>
+</dialog>
 
 <!-- Blocker and school bands of a day -->
 <ul th:fragment="bands(list, compact)" class="bands" th:classappend="${compact} ? 'bands-compact'"
@@ -80,6 +103,7 @@
 
 <!-- A due to-do as all-day entry with check mark -->
 <a th:fragment="todo(t)" class="occ occ-allday occ-todo" th:href="@{/todos/{id}(id=${t.id})}"
+   th:attr="data-sheet-url=@{/calendar/todos/{id}/sheet(id=${t.id})}"
    th:classappend="'occ-todo-' + ${#strings.toLowerCase(t.priority.name())}" th:title="${t.title}">
     <span class="occ-title">
         <svg class="occ-lock" viewBox="0 0 24 24" role="img" aria-label="ToDo">
@@ -91,6 +115,7 @@
 
 <!-- A planned chore; colour of the responsible person -->
 <a th:fragment="chore(c)" class="occ occ-chore" th:href="@{/household/tasks/{id}(id=${c.id})}"
+   th:attr="data-sheet-url=@{/calendar/chores/{id}/sheet(id=${c.id})}"
    th:style="${c.color != null} ? |--occ-color: ${c.color}|" th:title="|${c.time} ${c.title}|">
     <span class="occ-time" th:text="${c.time}">18:30–18:55</span>
     <span class="occ-title">
@@ -111,6 +136,7 @@
    th:title="${o.allDay} ? ${o.title} : |${#temporals.format(o.start, 'HH:mm')} ${o.title}|"
    th:href="@{/calendar/events/{id}(id=${o.eventId}, occurrence=${o.recurring} ? ${o.recurrenceId} : null)}"
    th:attr="data-event-id=${o.eventId}, data-start=${#temporals.format(o.start, 'yyyy-MM-dd')},
+            data-sheet-url=@{/calendar/events/{id}/sheet(id=${o.eventId}, occurrence=${o.recurring} ? ${o.recurrenceId} : null)},
             data-movable=${!o.recurring and #authorization.expression('hasAnyAuthority(''CALENDAR_EVENT_EDIT_OWN'', ''CALENDAR_EVENT_EDIT_ALL'')')} ? 'true' : null">
     <span class="occ-time" th:unless="${o.allDay}" th:text="${#temporals.format(o.start, 'HH:mm')}">10:00</span>
     <span class="occ-title">

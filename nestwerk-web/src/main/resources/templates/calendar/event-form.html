@@ -5,7 +5,7 @@
 <body>
 <header th:replace="~{fragments/layout :: nav(active='calendar')}"></header>
 <main class="event-main">
-    <a class="back-link" th:href="@{/calendar/month(date=${form.startDate})}">
+    <a class="back-link" th:href="${back} ?: @{/calendar/month(date=${form.startDate})}">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
         Zum Kalender
     </a>
@@ -18,6 +18,7 @@
         <p class="muted" th:if="${occurrence != null}"
            th:text="${#temporals.format(occurrence.start, 'EEEE, d. MMMM yyyy')}">Datum</p>
         <form th:if="${occurrence != null}" th:action="@{/calendar/events/{id}/occurrence(id=${event.id})}" method="post">
+        <input type="hidden" name="back" th:value="${back}" th:if="${back != null}">
             <input type="hidden" name="recurrenceId" th:value="${occurrenceId}">
             <div class="field">
                 <label for="occ-title">Titel</label>
@@ -45,6 +46,7 @@
         </form>
         <form class="danger-zone" th:action="@{/calendar/events/{id}/occurrence/cancel(id=${event.id})}" method="post"
               data-confirm="Dieses Vorkommen absagen?" data-confirm-label="Absagen">
+        <input type="hidden" name="back" th:value="${back}" th:if="${back != null}">
             <input type="hidden" name="recurrenceId" th:value="${occurrenceId}">
             <button type="submit" class="button button-ghost">Dieses Vorkommen absagen</button>
         </form>
@@ -59,6 +61,7 @@
     </p>
 
     <form class="sheet event-form" th:action="@{${action}}" method="post" th:object="${form}" data-event-form>
+        <input type="hidden" name="back" th:value="${back}" th:if="${back != null}">
         <input type="hidden" th:field="*{todoId}" th:if="${isNew}">
         <h2 class="series-heading" th:if="${occurrenceId != null and canEdit}">Ganze Serie</h2>
         <fieldset class="event-fields" th:disabled="${!isNew and !canEdit}">
@@ -165,16 +168,17 @@
         </div>
 
         <div class="form-actions" th:if="${isNew or canEdit}">
-            <a class="button button-ghost" th:href="@{/calendar/month(date=${form.startDate})}">Abbrechen</a>
+            <a class="button button-ghost" th:href="${back} ?: @{/calendar/month(date=${form.startDate})}">Abbrechen</a>
             <button type="submit" class="button" th:if="${blockerWarnings != null}" data-blocker-submit>Trotzdem speichern</button>
             <button type="submit" class="button" th:unless="${blockerWarnings != null}" th:text="${isNew} ? 'Termin anlegen' : (${recurring} ? 'Ganze Serie speichern' : 'Änderungen speichern')">Speichern</button>
         </div>
     </form>
 
 
-    <form class="danger-zone" th:if="${!isNew and canDelete}"
+    <form data-confirm-tone="danger" class="danger-zone" th:if="${!isNew and canDelete}"
           th:action="@{/calendar/events/{id}/delete(id=${event.id})}" method="post"
           th:attr="data-confirm=${recurring} ? |Die ganze Serie „${event.title}“ löschen?| : |„${event.title}“ löschen?|">
+        <input type="hidden" name="back" th:value="${back}" th:if="${back != null}">
         <button type="submit" class="button button-danger" th:text="${recurring} ? 'Ganze Serie löschen' : 'Termin löschen'">Termin löschen</button>
     </form>
 </main>

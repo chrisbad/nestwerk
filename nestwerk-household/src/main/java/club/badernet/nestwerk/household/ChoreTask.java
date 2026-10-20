@@ -118,6 +118,17 @@ public class ChoreTask {
         this.plannedManually = true;
     }
 
+    /** Moves the open task to another day and time by hand; the slot key keeps the date the plan gave it. */
+    void moveManually(LocalDate day, LocalTime at) {
+        this.dueOn = day;
+        planManually(at);
+    }
+
+    /** Drops the open task for its date; planning keeps it as a placeholder and does not create it again. */
+    void cancel() {
+        this.status = ChoreTaskStatus.CANCELLED;
+    }
+
     /** Bucht die Aufgabe und verschiebt sie auf den Zeitpunkt der Durchführung. */
     void complete(Instant performedAt, LocalDate day, LocalTime time, ChoreEffort effort, Instant bookedAt,
                   Long userId) {
@@ -154,6 +165,10 @@ public class ChoreTask {
 
     public boolean isOpen() {
         return status == ChoreTaskStatus.OPEN;
+    }
+
+    public boolean isCancelled() {
+        return status == ChoreTaskStatus.CANCELLED;
     }
 
     public boolean isOverdue(LocalDate today) {
