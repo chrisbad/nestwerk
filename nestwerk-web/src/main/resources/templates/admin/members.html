@@ -83,7 +83,7 @@
         </div>
         <button type="submit" class="button button-ghost">PIN speichern</button>
     </form>
-    <form class="dialog-section dialog-section-last" th:action="@{/admin/members/{id}/delete(id=${m.id})}" method="post"
+    <form data-confirm-tone="danger" class="dialog-section dialog-section-last" th:action="@{/admin/members/{id}/delete(id=${m.id})}" method="post"
           th:attr="data-confirm=|„${m.name}“ löschen?|">
         <p class="muted">Zugewiesene Termine bleiben erhalten.</p>
         <button type="submit" class="button button-danger">Mitglied löschen</button>

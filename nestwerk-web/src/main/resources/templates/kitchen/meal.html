@@ -42,7 +42,7 @@
         </div>
     </form>
 
-    <form class="danger-zone" th:if="${canPlan}" method="post"
+    <form data-confirm-label="Aus dem Plan nehmen" data-confirm-tone="danger" class="danger-zone" th:if="${canPlan}" method="post"
           th:action="@{/kitchen/plan/meals/{id}/delete(id=${meal.id})}" data-confirm="Aus dem Plan nehmen?">
         <button type="submit" class="button button-danger">Aus dem Plan nehmen</button>
     </form>

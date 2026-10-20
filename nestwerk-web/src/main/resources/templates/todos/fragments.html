@@ -87,7 +87,7 @@
                 <a th:href="@{/attachments/{id}(id=${a.id})}" th:text="${a.filename}" target="_blank" rel="noopener">datei.pdf</a>
                 <span class="muted" th:text="${a.sizeLabel()}">1,2 MB</span>
             </span>
-            <form method="post" th:action="@{/attachments/{id}/delete(id=${a.id})}"
+            <form data-confirm-tone="danger" method="post" th:action="@{/attachments/{id}/delete(id=${a.id})}"
                   th:attr="data-confirm=|„${a.filename}“ löschen?|">
                 <input type="hidden" name="back" th:value="${back}">
                 <button type="submit" class="icon-button" title="Anhang löschen">

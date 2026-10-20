@@ -62,7 +62,7 @@
             <button type="submit" class="button">Speichern</button>
         </div>
     </form>
-    <form class="dialog-section dialog-section-last" th:action="@{/calendar/categories/{id}/delete(id=${c.id})}"
+    <form data-confirm-tone="danger" class="dialog-section dialog-section-last" th:action="@{/calendar/categories/{id}/delete(id=${c.id})}"
           method="post" th:attr="data-confirm=|Kategorie „${c.name}“ löschen?|">
         <p class="muted">Die Termine bleiben erhalten, nur ohne Kategorie.</p>
         <button type="submit" class="button button-danger">Kategorie löschen</button>

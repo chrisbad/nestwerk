@@ -47,7 +47,7 @@
                 geht ein Update nur dort.</span>
         </div>
 
-        <form method="post" th:action="@{/admin/updates/start}" th:if="${update != null}"
+        <form data-confirm-label="Aktualisieren" method="post" th:action="@{/admin/updates/start}" th:if="${update != null}"
               th:attr="data-confirm=|Nestwerk auf ${update.version} aktualisieren? Nestwerk ist dabei etwa eine Minute nicht erreichbar.|">
             <button type="submit" class="button" th:disabled="${!updaterInstalled or open != null}">
                 Jetzt aktualisieren</button>

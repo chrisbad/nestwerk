@@ -143,7 +143,7 @@
         <form th:unless="${chore.active}" method="post" th:action="@{/household/chores/{id}/activate(id=${chore.id})}">
             <button type="submit" class="button button-ghost">Wieder aktivieren</button>
         </form>
-        <form method="post" th:action="@{/household/chores/{id}/delete(id=${chore.id})}"
+        <form data-confirm-tone="danger" method="post" th:action="@{/household/chores/{id}/delete(id=${chore.id})}"
               th:attr="data-confirm=|Hausarbeit „${chore.title}“ löschen?|">
             <button type="submit" class="button button-danger">Hausarbeit löschen</button>
         </form>

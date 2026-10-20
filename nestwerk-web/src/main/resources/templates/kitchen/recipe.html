@@ -80,7 +80,7 @@
         </form>
     </section>
 
-    <form class="danger-zone" th:if="${canEdit}" method="post"
+    <form data-confirm-tone="danger" class="danger-zone" th:if="${canEdit}" method="post"
           th:action="@{/kitchen/recipes/{id}/delete(id=${recipe.id})}" data-confirm="Dieses Rezept löschen?">
         <button type="submit" class="button button-danger">Löschen</button>
     </form>

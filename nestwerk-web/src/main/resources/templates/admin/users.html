@@ -111,7 +111,7 @@
                   th:attr="data-confirm=${user.enabled} ? |„${user.username}“ deaktivieren?| : null,data-confirm-label=${user.enabled} ? 'Deaktivieren' : null">
                 <input type="hidden" name="enabled" th:value="${!user.enabled}">
                 <p class="muted" th:text="${user.enabled} ? 'Deaktivierte Benutzer können sich nicht mehr anmelden.' : 'Dieser Benutzer kann sich derzeit nicht anmelden.'">Hinweis</p>
-                <button type="submit" class="button" th:classappend="${user.enabled} ? 'button-danger' : ''"
+                <button type="submit" class="button" th:classappend="${user.enabled} ? 'button-ghost' : ''"
                         th:text="${user.enabled} ? 'Deaktivieren' : 'Aktivieren'">Deaktivieren</button>
             </form>
         </dialog>

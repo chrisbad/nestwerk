@@ -29,7 +29,7 @@
             <button type="submit" class="button button-ghost button-small">Liste wählen</button>
         </form>
         <p class="muted" th:if="${bringConnected and bringListName != null}" th:text="|Aktive Liste: ${bringListName}|"></p>
-        <form method="post" th:action="@{/kitchen/settings/bring/disconnect}" th:if="${bringConnected}"
+        <form data-confirm-label="Trennen" method="post" th:action="@{/kitchen/settings/bring/disconnect}" th:if="${bringConnected}"
               data-confirm="Verbindung zu Bring! trennen?">
             <button type="submit" class="button button-ghost button-small">Trennen</button>
         </form>
@@ -62,7 +62,7 @@
             <button type="submit" class="button button-ghost button-small">Speichern</button>
             <button type="submit" class="button button-ghost button-small" th:form="|slot-delete-${s.id}|">Löschen</button>
         </form>
-        <form th:each="s : ${slots}" th:id="|slot-delete-${s.id}|" method="post" hidden
+        <form data-confirm-tone="danger" th:each="s : ${slots}" th:id="|slot-delete-${s.id}|" method="post" hidden
               th:action="@{/kitchen/settings/slots/{id}/delete(id=${s.id})}"
               data-confirm="Mahlzeit samt geplanter Einträge löschen?"></form>
         <form class="slot-row" method="post" th:action="@{/kitchen/settings/slots}">

@@ -46,9 +46,9 @@
                         <form method="post" th:action="@{/admin/devices/{id}/pair(id=${d.id})}">
                             <button type="submit" class="button button-ghost button-small">Neuer Code</button>
                         </form>
-                        <form method="post" th:if="${d.active or d.pairing}" th:action="@{/admin/devices/{id}/revoke(id=${d.id})}"
+                        <form data-confirm-label="Abmelden" method="post" th:if="${d.active or d.pairing}" th:action="@{/admin/devices/{id}/revoke(id=${d.id})}"
                               th:attr="data-confirm=|„${d.name}“ abmelden? Das Tablet zeigt danach nichts mehr an.|">
-                            <button type="submit" class="button button-danger button-small">Abmelden</button>
+                            <button type="submit" class="button button-ghost button-small">Abmelden</button>
                         </form>
                     </span>
                 </div>

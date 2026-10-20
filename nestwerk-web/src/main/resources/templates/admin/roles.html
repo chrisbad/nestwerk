@@ -117,7 +117,7 @@
                     </div>
                 </form>
 
-                <form class="danger-zone" th:unless="${role.systemRole or !grantable.containsAll(@permissionCatalog.effective(role))}"
+                <form data-confirm-tone="danger" class="danger-zone" th:unless="${role.systemRole or !grantable.containsAll(@permissionCatalog.effective(role))}"
                       th:action="@{/admin/roles/{id}/delete(id=${role.id})}" method="post"
                       th:attr="data-confirm=|Rolle „${role.name}“ löschen?|">
                     <button type="submit" class="button button-danger">Rolle löschen</button>

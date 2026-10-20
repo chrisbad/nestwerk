@@ -56,7 +56,7 @@
                     <strong th:text="${g.label}">Freie Abende</strong>
                     <span th:text="|${g.text} diese Woche|">2 von 3 diese Woche</span>
                 </div>
-                <form method="post" th:if="${p.canEditGoals}" th:action="@{/times/goals/{id}/delete(id=${g.id})}"
+                <form data-confirm-tone="danger" method="post" th:if="${p.canEditGoals}" th:action="@{/times/goals/{id}/delete(id=${g.id})}"
                       th:attr="data-confirm=|Ruhe-Ziel „${g.label}“ löschen?|">
                     <button type="submit" class="icon-button" title="Löschen">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
