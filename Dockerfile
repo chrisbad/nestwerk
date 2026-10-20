@@ -15,6 +15,7 @@ COPY nestwerk-todo/pom.xml nestwerk-todo/pom.xml
 COPY nestwerk-household/pom.xml nestwerk-household/pom.xml
 COPY nestwerk-kitchen/pom.xml nestwerk-kitchen/pom.xml
 COPY nestwerk-attachment/pom.xml nestwerk-attachment/pom.xml
+COPY nestwerk-school/pom.xml nestwerk-school/pom.xml
 COPY nestwerk-transfer/pom.xml nestwerk-transfer/pom.xml
 COPY nestwerk-maintenance/pom.xml nestwerk-maintenance/pom.xml
 COPY nestwerk-web/pom.xml nestwerk-web/pom.xml
@@ -31,6 +32,7 @@ COPY nestwerk-todo/src nestwerk-todo/src
 COPY nestwerk-household/src nestwerk-household/src
 COPY nestwerk-kitchen/src nestwerk-kitchen/src
 COPY nestwerk-attachment/src nestwerk-attachment/src
+COPY nestwerk-school/src nestwerk-school/src
 COPY nestwerk-transfer/src nestwerk-transfer/src
 COPY nestwerk-maintenance/src nestwerk-maintenance/src
 COPY nestwerk-web/src nestwerk-web/src
