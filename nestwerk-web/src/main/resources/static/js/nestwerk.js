@@ -128,12 +128,15 @@
         const dialog = document.getElementById("confirm-dialog");
         if (!dialog) return;
         const ok = dialog.querySelector("[data-confirm-ok]");
-        const defaultLabel = ok.textContent;
         let onConfirm = null;
+        // red and "Löschen" only for real deletions; everything else is confirmed with its own neutral label
         const ask = (form, proceed) => {
             onConfirm = proceed;
+            const danger = form.dataset.confirmTone === "danger";
             dialog.querySelector("[data-confirm-text]").textContent = form.dataset.confirm;
-            ok.textContent = form.dataset.confirmLabel || defaultLabel;
+            dialog.querySelector("[data-confirm-danger-note]").hidden = !danger;
+            ok.classList.toggle("button-danger", danger);
+            ok.textContent = form.dataset.confirmLabel || (danger ? "Löschen" : "Bestätigen");
             dialog.showModal();
             ok.focus();
         };
@@ -357,6 +360,11 @@
             if (endDate.value && endDate.value < startDate.value) endDate.value = startDate.value;
         });
 
+        setUpRepeat(form);
+    }
+
+    /** Preset choice of the repeat rule with a free RRULE field for "custom". */
+    function setUpRepeat(form) {
         const select = form.querySelector("[data-repeat-select]");
         const input = form.querySelector("[data-rrule-input]");
         const hint = form.querySelector("[data-rrule-hint]");
@@ -418,7 +426,12 @@
 
     function initChoreForm() {
         const form = document.querySelector("[data-chore-form]");
-        if (!form) return;
+        if (form) setUpChoreForm(form);
+    }
+
+    /** Sections per kind and the order of members for "reihum"; also used for the chore form in calendar dialogs. */
+    function setUpChoreForm(form) {
+        setUpRepeat(form);
         const sections = form.querySelectorAll("[data-kind-section]");
         const syncKind = () => {
             const kind = form.querySelector("[data-chore-kind]:checked")?.value;
@@ -427,7 +440,7 @@
         form.querySelectorAll("[data-chore-kind]").forEach(r => r.addEventListener("change", syncKind));
         syncKind();
 
-        // Reihenfolge für „reihum“: in der Reihenfolge des Antippens
+        // order for "reihum": in the order the members are tapped
         const picker = form.querySelector("[data-member-picker]");
         if (!picker) return;
         const boxes = [...picker.querySelectorAll("[data-member-order]")];
@@ -446,11 +459,13 @@
         render();
         form.addEventListener("submit", () => {
             boxes.forEach(b => b.removeAttribute("name"));
+            form.querySelectorAll("[data-member-order-value]").forEach(hidden => hidden.remove());
             order.forEach(id => {
                 const hidden = document.createElement("input");
                 hidden.type = "hidden";
                 hidden.name = "memberIds";
                 hidden.value = id;
+                hidden.dataset.memberOrderValue = "";
                 form.appendChild(hidden);
             });
         });
@@ -1318,7 +1333,7 @@
         document.addEventListener("touchstart", event => {
             const area = event.target.closest("[data-swipe-area]");
             if (!area || event.touches.length !== 1 || sortableActive
-                || event.target.closest(".todo-row, .chore-chip, .board, .segmented, input, textarea, select, dialog")) {
+                || event.target.closest(".todo-row, .chore-chip, .board, .segmented, input, textarea, select, dialog, .can-scroll-x")) {
                 s = null;
                 return;
             }
@@ -1482,7 +1497,9 @@
     }
 
     /* Helpers shared with calendar-grid.js */
-    window.Nestwerk = Object.freeze({ showToast, haptic, reloadCalendar, markDragged, closeDialog, reducedMotion });
+    window.Nestwerk = Object.freeze({
+        showToast, haptic, reloadCalendar, markDragged, closeDialog, reducedMotion, setUpChoreForm
+    });
 
     document.addEventListener("DOMContentLoaded", () => {
         initTheme();

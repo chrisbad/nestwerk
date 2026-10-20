@@ -74,7 +74,7 @@
                             <input type="text" name="amount" inputmode="decimal" required placeholder="Entnehmen" aria-label="Menge entnehmen">
                             <button type="submit" class="button button-ghost button-small">Entnehmen</button>
                         </form>
-                        <form method="post" th:action="@{/kitchen/pantry/{id}/delete(id=${i.id})}"
+                        <form data-confirm-label="Entfernen" data-confirm-tone="danger" method="post" th:action="@{/kitchen/pantry/{id}/delete(id=${i.id})}"
                               data-confirm="Posten aus dem Vorrat entfernen?">
                             <button type="submit" class="button button-ghost button-small">Entfernen</button>
                         </form>

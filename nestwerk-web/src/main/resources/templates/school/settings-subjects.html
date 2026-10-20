@@ -47,7 +47,7 @@
                     </form>
                     <p class="muted" th:if="${!canCreateContact}">Neue Lehrkräfte legt an, wer Kontakte anlegen darf.</p>
                 </details>
-                <form method="post" th:action="@{/school/subjects/{id}/delete(id=${s.id})}"
+                <form data-confirm-tone="danger" method="post" th:action="@{/school/subjects/{id}/delete(id=${s.id})}"
                       data-confirm="Fach mit allen Stunden löschen?" class="inline-form">
                     <input type="hidden" name="yearId" th:value="${year.id}">
                     <button type="submit" class="button button-ghost button-small">Löschen</button>

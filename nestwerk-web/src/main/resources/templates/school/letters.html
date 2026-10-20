@@ -25,7 +25,7 @@
                     th:classappend="${i.letter.signed} ? 'button-ghost'"
                     th:text="${i.letter.signed} ? 'Unterschrift zurücknehmen' : '✓ Unterschrieben'">✓ Unterschrieben</button>
         </form>
-        <form method="post" th:action="@{/school/letters/{id}/delete(id=${i.letter.id})}" th:if="${canEdit}"
+        <form data-confirm-tone="danger" method="post" th:action="@{/school/letters/{id}/delete(id=${i.letter.id})}" th:if="${canEdit}"
               data-confirm="Brief samt Anhängen löschen?" class="inline-form">
             <button type="submit" class="button button-ghost button-small">Löschen</button>
         </form>

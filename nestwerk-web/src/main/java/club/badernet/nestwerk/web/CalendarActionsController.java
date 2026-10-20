@@ -4,20 +4,11 @@ import club.badernet.nestwerk.blocker.BlockerStrength;
 import club.badernet.nestwerk.blocker.Conflict;
 import club.badernet.nestwerk.calendar.CalendarEvent;
 import club.badernet.nestwerk.calendar.CalendarEventService;
-import club.badernet.nestwerk.calendar.CategoryNotFoundException;
-import club.badernet.nestwerk.calendar.EventNotFoundException;
 import club.badernet.nestwerk.calendar.TimeChange;
-import club.badernet.nestwerk.household.ChoreConflictException;
-import club.badernet.nestwerk.household.ChoreNotFoundException;
-import club.badernet.nestwerk.household.ChoreTaskService;
 import club.badernet.nestwerk.security.CurrentUser;
 import club.badernet.nestwerk.user.User;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,8 +20,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * Actions of the time grid, called by its touch and mouse gestures. Every action goes through the domain services
@@ -40,14 +31,6 @@ import java.util.List;
 @RequestMapping("/calendar/actions")
 @PreAuthorize("hasAuthority('CALENDAR_VIEW')")
 public class CalendarActionsController {
-
-    /** Answer of an action: message for a toast, warnings of blockers and the affected event, if any. */
-    public record ActionResult(String message, List<String> warnings, Long eventId) {
-
-        static ActionResult of(String message) {
-            return new ActionResult(message, List.of(), null);
-        }
-    }
 
     /** What a change applies to: a single event, one occurrence of a series or the whole series. */
     public enum Scope { SINGLE, OCCURRENCE, SERIES }
@@ -59,19 +42,24 @@ public class CalendarActionsController {
                             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
                             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
 
+        /** Only the person changes (dragged sideways into another person's column at the same time). */
+        boolean isEmpty() {
+            return start == null && startDate == null;
+        }
+
         TimeChange change() {
             return Boolean.TRUE.equals(allDay) ? new TimeChange.AllDay(startDate, endDate)
                     : new TimeChange.Timed(start, end);
         }
     }
 
+    private static final String PERSON_CHANGED = "Die Person wurde geändert.";
+
     private final CalendarEventService events;
-    private final ChoreTaskService chores;
     private final CurrentUser currentUser;
 
-    public CalendarActionsController(CalendarEventService events, ChoreTaskService chores, CurrentUser currentUser) {
+    public CalendarActionsController(CalendarEventService events, CurrentUser currentUser) {
         this.events = events;
-        this.chores = chores;
         this.currentUser = currentUser;
     }
 
@@ -84,18 +72,30 @@ public class CalendarActionsController {
         return new ActionResult("Termin „" + created.getTitle() + "“ wurde angelegt.", warnings, created.getId());
     }
 
+    /**
+     * New times from dragging or resizing. With {@code fromMember}/{@code toMember} the event was dragged into another
+     * person's column: that person takes the place of the other one in the same step (empty: column "Alle").
+     */
     @PostMapping("/events/{id}/reschedule")
     ActionResult reschedule(@PathVariable Long id, @RequestParam Scope scope,
                             @RequestParam(required = false) Instant recurrenceId,
+                            @RequestParam(required = false) Long fromMember,
+                            @RequestParam(required = false) Long toMember,
                             @ModelAttribute TimesForm times) {
         User actor = currentUser.require();
-        List<Conflict> found = switch (scope) {
+        Supplier<List<Conflict>> timeChange = () -> times.isEmpty() ? List.of() : switch (scope) {
             case SINGLE -> events.reschedule(id, times.change(), actor);
             case OCCURRENCE -> events.rescheduleOccurrence(id, requireOccurrence(recurrenceId), times.change(), actor);
             case SERIES -> rescheduleSeries(id, times.change(), actor);
         };
-        return new ActionResult(scope == Scope.SERIES ? "Die Serie wurde verschoben." : "Termin wurde verschoben.",
-                warnings(found), id);
+        MemberSwap swap = new MemberSwap(fromMember, toMember);
+        List<Conflict> found = swap.changesSomething()
+                ? events.moveToMember(id, swap.from(), swap.to(), timeChange, actor)
+                : timeChange.get();
+        String moved = scope == Scope.SERIES ? "Die Serie wurde verschoben." : "Termin wurde verschoben.";
+        String message = times.isEmpty() ? PERSON_CHANGED
+                : swap.changesSomething() ? moved + " " + PERSON_CHANGED : moved;
+        return new ActionResult(message, warnings(found), id);
     }
 
     /**
@@ -145,29 +145,6 @@ public class CalendarActionsController {
     ActionResult cancelOccurrence(@PathVariable Long id, @RequestParam Instant recurrenceId) {
         events.cancelOccurrence(id, recurrenceId, currentUser.require());
         return ActionResult.of("Das Vorkommen wurde abgesagt.");
-    }
-
-    /** Plans a chore at another time of its day. */
-    @PostMapping("/chores/{id}/reschedule")
-    ActionResult rescheduleChore(@PathVariable Long id,
-                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime start) {
-        chores.reschedule(id, start, currentUser.require());
-        return ActionResult.of("Hausarbeit wurde verschoben.");
-    }
-
-    @ExceptionHandler({IllegalArgumentException.class, ChoreConflictException.class})
-    ResponseEntity<ActionResult> invalid(RuntimeException e) {
-        return ResponseEntity.badRequest().body(ActionResult.of(e.getMessage()));
-    }
-
-    @ExceptionHandler(AccessDeniedException.class)
-    ResponseEntity<ActionResult> denied() {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ActionResult.of("Das darfst du hier nicht ändern."));
-    }
-
-    @ExceptionHandler({EventNotFoundException.class, CategoryNotFoundException.class, ChoreNotFoundException.class})
-    ResponseEntity<ActionResult> missing(RuntimeException e) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ActionResult.of(e.getMessage()));
     }
 
     private ActionResult save(Long id, EventForm form, User actor, String message) {

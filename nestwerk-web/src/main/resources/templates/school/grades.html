@@ -32,7 +32,7 @@
                 <span class="muted" th:text="${#temporals.format(g.day, 'dd.MM.yyyy')}">10.09.2026</span>
                 <span class="badge" th:if="${g.weight != 100}" th:text="|${g.weight / 100.0}x|">2x</span>
                 <span class="muted" th:if="${g.note != null}" th:text="${g.note}"></span>
-                <form method="post" th:action="@{/school/grades/{id}/delete(id=${g.id})}" th:if="${canEdit}"
+                <form data-confirm-tone="danger" method="post" th:action="@{/school/grades/{id}/delete(id=${g.id})}" th:if="${canEdit}"
                       data-confirm="Note löschen?" class="inline-form">
                     <input type="hidden" name="yearId" th:value="${year.id}">
                     <input type="hidden" name="term" th:value="${term}">

@@ -113,7 +113,7 @@
         </div>
     </form>
 
-    <form class="danger-zone" th:if="${blockerId != null}" method="post"
+    <form data-confirm-tone="danger" class="danger-zone" th:if="${blockerId != null}" method="post"
           th:action="@{/times/{id}/delete(id=${blockerId})}" data-confirm="Diese Zeit löschen?">
         <button type="submit" class="button button-danger">Löschen</button>
     </form>

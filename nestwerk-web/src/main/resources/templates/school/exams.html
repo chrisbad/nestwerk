@@ -103,7 +103,7 @@
                 <a th:if="${e.eventId != null}" th:href="@{/calendar/events/{id}(id=${e.eventId})}" class="muted">Kalender</a>
                 <a th:if="${canEdit}" th:href="@{/school/years/{id}/exams(id=${year.id},edit=${e.id})} + '#exam-form'"
                    class="button button-ghost button-small">Bearbeiten</a>
-                <form method="post" th:action="@{/school/exams/{id}/delete(id=${e.id})}" th:if="${canEdit}"
+                <form data-confirm-tone="danger" method="post" th:action="@{/school/exams/{id}/delete(id=${e.id})}" th:if="${canEdit}"
                       data-confirm="Eintrag löschen? Der Kalendertermin wird mit gelöscht." class="inline-form">
                     <input type="hidden" name="yearId" th:value="${year.id}">
                     <button type="submit" class="button button-ghost button-small">Löschen</button>

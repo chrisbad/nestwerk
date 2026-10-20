@@ -41,7 +41,7 @@
         </div>
     </form>
 
-    <form class="danger-zone" th:if="${foodId != null}" method="post"
+    <form data-confirm-tone="danger" class="danger-zone" th:if="${foodId != null}" method="post"
           th:action="@{/kitchen/foods/{id}/delete(id=${foodId})}" data-confirm="Dieses Lebensmittel löschen? Rezepte behalten die Zutat ohne Nährwerte.">
         <button type="submit" class="button button-danger">Löschen</button>
     </form>

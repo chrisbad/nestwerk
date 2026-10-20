@@ -76,7 +76,7 @@
             </fieldset>
         </div>
         <div class="dialog-foot">
-            <a class="button button-ghost" th:href="${detailsUrl}">Alle Details</a>
+            <a class="button button-ghost" th:href="${detailsUrl}" data-keep-back>Alle Details</a>
             <button type="submit" class="button" th:if="${canEdit}">Speichern</button>
         </div>
     </form>
@@ -88,7 +88,7 @@
             <input type="hidden" name="recurrenceId" th:value="${occurrenceId}">
             <button type="submit" class="button button-ghost">Dieses Vorkommen absagen</button>
         </form>
-        <form th:if="${canDelete}" method="post" data-grid-form="delete"
+        <form data-confirm-tone="danger" th:if="${canDelete}" method="post" data-grid-form="delete"
               th:action="@{/calendar/actions/events/{id}/delete(id=${event.id})}"
               th:attr="data-confirm=${recurring} ? |Die ganze Serie „${event.title}“ löschen?| : |„${event.title}“ löschen?|">
             <button type="submit" class="button button-danger"

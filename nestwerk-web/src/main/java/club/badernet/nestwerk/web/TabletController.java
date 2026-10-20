@@ -120,7 +120,7 @@ public class TabletController {
         Map<Long, FamilyMember> byId = new LinkedHashMap<>();
         all.forEach(m -> byId.put(m.getId(), m));
         List<ChoreTask> open = tasks.findAllByStatusAndDueOnLessThanEqual(ChoreTaskStatus.OPEN, today.plusDays(1));
-        List<ChoreTask> doneToday = tasks.findAllByDueOnBetween(today, today).stream().filter(t -> !t.isOpen()).toList();
+        List<ChoreTask> doneToday = tasks.findAllByDueOnBetweenAndStatusNot(today, today, ChoreTaskStatus.CANCELLED).stream().filter(t -> !t.isOpen()).toList();
         List<ChoreTask> shown = new ArrayList<>(open);
         shown.addAll(doneToday);
         shown.sort(Comparator.comparing(ChoreTask::getDueOn)

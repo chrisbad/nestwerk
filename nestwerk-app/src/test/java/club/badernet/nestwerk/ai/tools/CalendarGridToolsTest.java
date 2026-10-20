@@ -33,7 +33,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** MCP tools for categories, rescheduling and deleting events and rescheduling chores. */
+/** MCP tools for categories, rescheduling and deleting events, planning and dropping chores and deleting to-dos. */
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = "nestwerk.admin.password=test-admin-pw")
 @Transactional
@@ -42,6 +42,7 @@ class CalendarGridToolsTest {
     @Autowired CalendarTools calendarTools;
     @Autowired EventCategoryTools categoryTools;
     @Autowired HouseholdTools householdTools;
+    @Autowired TodoTools todoTools;
     @Autowired CalendarEventRepository repository;
     @Autowired ChoreService chores;
     @Autowired ChoreTaskRepository tasks;
@@ -164,10 +165,71 @@ class CalendarGridToolsTest {
         entityManager.flush();
         Long taskId = tasks.findAllByChoreId(chore.getId()).getFirst().getId();
 
-        HouseholdTools.ChoreTaskItem item = householdTools.rescheduleChoreTask(as(admin), taskId, "19:45");
+        HouseholdTools.ChoreTaskItem item = householdTools.rescheduleChoreTask(as(admin), taskId, "19:45", null);
 
         assertThat(item.plannedAt()).isEqualTo("19:45");
-        assertThatThrownBy(() -> householdTools.rescheduleChoreTask(as(admin), taskId, "spät"))
+        assertThatThrownBy(() -> householdTools.rescheduleChoreTask(as(admin), taskId, "spät", null))
                 .isInstanceOf(Tools.ToolException.class);
+    }
+
+    private Long plannedTask(int days) {
+        FamilyMember lena = members.save(new FamilyMember("Lena", "#00aa00", null));
+        Chore chore = chores.create(new ChoreInput("Müll", null, null, 10, 10, 10, ChoreKind.RECURRING,
+                "FREQ=DAILY;COUNT=" + days, LocalDate.now(clock), null, null, Distribution.FIXED,
+                List.of(lena.getId())), admin);
+        entityManager.flush();
+        return tasks.findAllByChoreId(chore.getId()).stream().map(t -> t.getId()).sorted().toList().getFirst();
+    }
+
+    @Test
+    void choreTaskCanBeMovedToAnotherDay() {
+        Long taskId = plannedTask(1);
+        LocalDate later = LocalDate.now(clock).plusDays(2);
+
+        HouseholdTools.ChoreTaskItem item = householdTools.rescheduleChoreTask(as(admin), taskId, "08:15",
+                later.toString());
+
+        assertThat(item.dueOn()).isEqualTo(later);
+        assertThat(item.plannedAt()).isEqualTo("08:15");
+        assertThatThrownBy(() -> householdTools.rescheduleChoreTask(as(admin), taskId, "08:15",
+                LocalDate.now(clock).minusDays(1).toString())).isInstanceOf(Tools.ToolException.class);
+    }
+
+    @Test
+    void choreTaskCanBeCancelledForItsDateOnly() {
+        Long taskId = plannedTask(2);
+
+        HouseholdTools.ChoreTaskItem item = householdTools.cancelChoreTask(as(admin), taskId);
+
+        assertThat(item.status()).isEqualTo("CANCELLED");
+        assertThat(householdTools.listChoreTasks(as(admin), null, null))
+                .extracting(HouseholdTools.ChoreTaskItem::taskId).doesNotContain(taskId).hasSize(1);
+        assertThatThrownBy(() -> householdTools.cancelChoreTask(as(parent), taskId))
+                .isInstanceOf(Tools.ToolException.class);
+    }
+
+    @Test
+    void choreCanBeDeletedWithItsTasks() {
+        Long taskId = plannedTask(2);
+        Long choreId = tasks.findById(taskId).orElseThrow().getChore().getId();
+
+        assertThatThrownBy(() -> householdTools.deleteChore(as(parent), choreId))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThat(householdTools.deleteChore(as(admin), choreId)).contains("Müll");
+        entityManager.flush();
+        assertThat(tasks.findAllByChoreId(choreId)).isEmpty();
+    }
+
+    @Test
+    void todoCanBeDeletedByItsCreatorOnly() {
+        TodoTools.TodoDetail created = todoTools.createTodo(as(admin), "Keller entrümpeln", null, null, null, null,
+                null, null, null, null, null, null, null, null);
+        User reader = userService.create("leser", "passwort1",
+                Set.of(roleService.create("Nur Kalender", null, Set.of("CALENDAR_VIEW")).getId()));
+
+        assertThatThrownBy(() -> todoTools.deleteTodo(as(reader), created.todo().id()))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThat(todoTools.deleteTodo(as(admin), created.todo().id())).contains("Keller entrümpeln");
+        assertThat(todoTools.listTodos(as(admin), null, null, null, null, null, "keller", null)).isEmpty();
     }
 }

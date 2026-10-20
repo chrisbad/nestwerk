@@ -3422,11 +3422,13 @@ html { scroll-behavior: smooth; }
 
 .cal-main-grid { max-width: 92rem; }
 [data-time-grid] {
-    --hour-px: 56;
+    --hour-px: calc(56 * var(--zoom, 1));
+    --text-scale: clamp(0.9, var(--zoom, 1), 1.35);
     --axis-w: 3.4rem;
+    --col-min: 0rem;
     --minor-lines: 2;
 }
-[data-time-grid][data-slot="fine"] { --hour-px: 112; --minor-lines: 4; }
+[data-time-grid][data-slot="fine"] { --minor-lines: 4; }
 .tgrid { --hour-height: calc(var(--hour-px) * 1px); }
 
 .cal-legend-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1.5rem; margin: 0 0 1rem; }
@@ -3454,14 +3456,42 @@ html { scroll-behavior: smooth; }
     border: 1px solid var(--line);
     border-radius: var(--radius-sheet);
     background: var(--card-sheen), var(--surface);
+    overflow: clip;
     user-select: none;
     -webkit-user-select: none;
 }
-.tgrid-head, .tgrid-allday, .tgrid-body {
-    display: grid;
-    grid-template-columns: var(--axis-w) repeat(var(--days), minmax(0, 1fr));
+/* Head, all-day row and hours scroll together: the head sticks to the top, the hour axis to the left. Zoomed in,
+   the grid grows wider than the screen and scrolls sideways. */
+.tgrid-sizer {
+    width: max(100%, calc(var(--axis-w) + (100% - var(--axis-w)) * var(--zoom, 1)),
+        calc(var(--axis-w) + var(--columns) * var(--col-min)));
 }
-.tgrid-head, .tgrid-allday { padding-right: var(--scrollbar-w, 0px); }
+.tgrid-split { --col-min: 3.6rem; }
+.tgrid-top { position: sticky; top: 0; z-index: 6; background: var(--surface); }
+.tgrid-head, .tgrid-people, .tgrid-allday, .tgrid-body {
+    display: grid;
+    grid-template-columns: var(--axis-w) repeat(var(--columns), minmax(0, 1fr));
+}
+.tgrid-corner, .tgrid-axis-label, .tgrid-axis { position: sticky; left: 0; z-index: 4; background: var(--surface); }
+.tgrid-dayhead { grid-column: span var(--people); }
+.tgrid-people { border-bottom: 1px solid var(--line); }
+.tgrid-person {
+    min-width: 0;
+    padding: 0.3rem 0.25rem 0.35rem;
+    border-left: 1px solid var(--line);
+    border-top: 3px solid var(--member-color, var(--line));
+    color: var(--ink);
+    font-size: calc(0.72rem * var(--text-scale));
+    font-weight: 650;
+    line-height: 1.2;
+    text-align: center;
+}
+/* long names are shortened deliberately; the full name is in the title */
+.tgrid-person-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tgrid-person.is-all { color: var(--ink-soft); font-weight: 600; }
+.tgrid-split .tgrid-col.is-day-start, .tgrid-split .tgrid-allday-cell.is-day-start {
+    border-left: 2px solid color-mix(in srgb, var(--ink-soft) 45%, transparent);
+}
 
 /* Kopf mit Wochentag, Datum und Bändern */
 .tgrid-head { border-bottom: 1px solid var(--line); }
@@ -3519,7 +3549,7 @@ html { scroll-behavior: smooth; }
     height: 100%;
     padding: 0.25rem 0.5rem;
 }
-.tgrid-lane-item .occ-title span { white-space: normal; overflow-wrap: anywhere; }
+.tgrid-lane-item .occ-title span { white-space: normal; overflow-wrap: break-word; hyphens: auto; min-width: 0; }
 .tgrid-lane-item > .occ.continues-before { border-top-left-radius: 2px; border-bottom-left-radius: 2px; }
 .tgrid-lane-item > .occ.continues-after { border-top-right-radius: 2px; border-bottom-right-radius: 2px; }
 .tgrid-ghost-lane { grid-row: 1; z-index: 4; pointer-events: none; }
@@ -3527,13 +3557,14 @@ html { scroll-behavior: smooth; }
 /* Stundenraster */
 .tgrid-scroll {
     height: max(24rem, calc(100dvh - var(--grid-top, 18rem) - 1.25rem));
-    overflow-y: auto;
+    overflow: auto;
     overscroll-behavior: contain;
+    touch-action: pan-x pan-y;
     border-radius: 0 0 var(--radius-sheet) var(--radius-sheet);
     scrollbar-width: thin;
 }
 .tgrid-body { position: relative; height: calc(24 * var(--hour-height)); }
-.tgrid-axis { position: relative; }
+.tgrid-axis { position: sticky; }
 .tgrid-hour {
     position: absolute;
     right: 0.45rem;
@@ -3594,23 +3625,24 @@ html { scroll-behavior: smooth; }
     overflow: hidden;
     border-radius: 9px;
     background: color-mix(in srgb, var(--occ-color) 26%, var(--surface-2));
-    font-size: 0.8rem;
+    font-size: calc(0.8rem * var(--text-scale));
     line-height: 1.25;
     -webkit-touch-callout: none;
     touch-action: auto;
 }
 .tgrid-event:hover { transform: none; z-index: 2; }
-.tgrid-event .occ-time { font-size: 0.72rem; font-weight: 600; }
+.tgrid-event .occ-time { font-size: calc(0.72rem * var(--text-scale)); font-weight: 600; }
 .tgrid-event .occ-title { display: flex; align-items: flex-start; font-weight: 650; }
 .tgrid-event .occ-title span {
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: max(1, round(down, calc((var(--dur) * var(--hour-px) / 60 - 22) / 17), 1));
+    -webkit-line-clamp: max(1, round(down, calc((var(--dur) * var(--hour-px) / 60 - 22 * var(--text-scale))
+        / (17 * var(--text-scale))), 1));
     white-space: normal;
     overflow: hidden;
     overflow-wrap: anywhere;
 }
-.tgrid-event .occ-place { color: var(--ink-soft); font-size: 0.72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tgrid-event .occ-place { color: var(--ink-soft); font-size: calc(0.72rem * var(--text-scale)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tgrid-event .occ-members { position: absolute; right: 0.35rem; bottom: 0.3rem; margin: 0; }
 .tgrid-event.is-short { flex-direction: row; align-items: center; gap: 0.35rem; padding-top: 0; padding-bottom: 0; }
 .tgrid-event.is-short .occ-title { min-width: 0; }
@@ -3811,7 +3843,7 @@ form.is-allday [data-time-field] { display: none; }
 
 /* Enge Spalten mit mehreren gleichzeitigen Terminen: nur Startzeit, kompakter Text mit Silbentrennung */
 .tgrid-event .occ-time { white-space: nowrap; }
-.tgrid-event.is-narrow { padding: 0.15rem 0.2rem 0.2rem 0.4rem; font-size: 0.72rem; }
+.tgrid-event.is-narrow { padding: 0.15rem 0.2rem 0.2rem 0.4rem; font-size: calc(0.72rem * var(--text-scale)); }
 .tgrid-event.is-narrow .occ-time-end, .tgrid-event.is-narrow .occ-place, .tgrid-event.is-narrow .occ-members { display: none; }
 .tgrid-event.is-narrow .occ-title span { hyphens: auto; overflow-wrap: normal; word-break: normal; }
 .tgrid-event.is-short.is-narrow .occ-time { display: none; }
@@ -3829,3 +3861,100 @@ form.is-allday [data-time-field] { display: none; }
     .cal-main-grid .cal-actions a[href*="/export/"], .cal-main-grid .cal-actions a[href*="/import/"] { display: none; }
     .cal-main-grid .cal-legend-row { gap: 0.25rem 1rem; font-size: 0.8rem; }
 }
+
+/* --- Kalender: Zoom, Personen-Spalten, Fokus-Tag und Dialoge der Einträge ---------------------------------- */
+
+.segmented-zoom { display: inline-flex; align-items: center; }
+.segmented-zoom button { display: inline-grid; place-items: center; padding: 0.4rem 0.6rem; }
+.segmented-zoom button:disabled { opacity: 0.4; cursor: default; }
+.segmented-zoom svg, .cal-split-toggle svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.zoom-level {
+    min-width: 3.6rem;
+    padding: 0 0.2rem;
+    color: var(--ink-soft);
+    font-size: var(--step--1);
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    white-space: nowrap;
+}
+.cal-split-toggle[aria-pressed="true"] { background: var(--grad-violet); color: #fff; box-shadow: var(--glow-violet); }
+
+/* Monat: der Zoom gibt den Tagen mehr Platz und den Einträgen größere Schrift */
+.month { touch-action: pan-x pan-y; }
+[data-zoomable] .month .day { min-height: calc(7.25rem * var(--zoom, 1)); }
+[data-zoomable] .month .occ { font-size: calc(var(--step--1) * clamp(0.9, var(--zoom, 1), 1.5)); }
+.day.is-focus { box-shadow: inset 0 0 0 2px var(--moss); }
+.tgrid-dayhead.is-focus .tgrid-weekday { color: var(--moss); }
+.tgrid-dayhead.is-focus .day-num { box-shadow: 0 0 0 2px var(--moss); }
+
+.tgrid-ghost-group { display: contents; }
+
+/* Dialoge der Einträge: Reiter und Abstände */
+.sheet-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin: 0 1.5rem;
+    padding: 0.25rem;
+    border-radius: var(--radius-field);
+    background: color-mix(in srgb, var(--ink-soft) 10%, transparent);
+}
+.sheet-tabs [role="tab"] {
+    flex: 1 1 auto;
+    padding: 0.5rem 1rem;
+    border: 0;
+    border-radius: calc(var(--radius-field) - 4px);
+    background: transparent;
+    color: var(--ink-soft);
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+}
+.sheet-tabs [role="tab"][aria-selected="true"] { background: var(--grad-violet); color: #fff; box-shadow: var(--glow-violet); }
+.sheet-tabs [role="tab"]:focus-visible { outline: 3px solid var(--honey); outline-offset: 2px; }
+.grid-sheet-content .dialog-section h3 { margin: 0 0 0.75rem; font-size: var(--step-0); }
+.grid-sheet-content .dialog-section > * + * { margin-top: 1rem; }
+.grid-sheet-content [data-chore-form] .dialog-body { display: grid; gap: 1rem; }
+.grid-sheet-content [data-chore-form] .event-fields { margin: 0; }
+.sheet-facts { margin: 0; }
+.notice-inline {
+    display: inline-block;
+    margin-left: 0.4rem;
+    padding: 0.05rem 0.5rem;
+    border-radius: 999px;
+    background: var(--brick-soft);
+    color: var(--brick);
+    font-size: var(--step--1);
+    font-weight: 650;
+}
+.segmented-status { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.segmented-status button {
+    flex: 1 1 auto;
+    padding: 0.5rem 0.9rem;
+    border: 0;
+    border-radius: calc(var(--radius-field) - 4px);
+    background: transparent;
+    color: var(--ink-soft);
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+}
+.segmented-status button[aria-pressed="true"] { background: var(--grad-violet); color: #fff; box-shadow: var(--glow-violet); }
+
+@media (max-width: 40rem) {
+    .tgrid-split { --col-min: 4.2rem; }
+    .sheet-tabs { margin: 0 1rem; }
+    .zoom-level { min-width: 3rem; }
+}
+.tgrid-split .tgrid-col:not(.is-day-start) .tgrid-now::before { display: none; }
+/* narrow person columns: the to-do icon gives its room to the title */
+.tgrid-split .tgrid-lane-item .occ-title .occ-lock { display: none; }

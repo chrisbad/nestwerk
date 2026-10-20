@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Dialog of a planned chore in the calendar: tab "Termin" for this date, tab "Hausarbeit" for the whole chore -->
+<div th:fragment="chore" class="grid-sheet-content"
+     th:with="choreTab=${canEditChore or canDeleteChore}">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="dialog-head">
+        <h2 th:text="${chore.title}">Bad putzen</h2>
+        <button type="button" class="icon-button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            <span class="visually-hidden">Schließen</span>
+        </button>
+    </div>
+
+    <div class="sheet-tabs" role="tablist" aria-label="Bereich" data-tabs th:if="${choreTab}">
+        <button type="button" role="tab" id="chore-tab-task" aria-controls="chore-panel-task" aria-selected="true"
+                data-tab="task">Termin</button>
+        <button type="button" role="tab" id="chore-tab-chore" aria-controls="chore-panel-chore" aria-selected="false"
+                tabindex="-1" data-tab="chore">Hausarbeit</button>
+    </div>
+
+    <section id="chore-panel-task" role="tabpanel" aria-labelledby="chore-tab-task" data-tab-panel="task">
+        <div class="dialog-body">
+            <dl class="event-facts sheet-facts">
+                <dt>Wann</dt>
+                <dd>
+                    <span th:text="${#temporals.format(task.dueOn, 'EEEE, d. MMMM')}">Montag, 13. Oktober</span><span
+                        th:if="${time != null}" th:text="|, ${#temporals.format(time, 'HH:mm')} Uhr|">, 18:30 Uhr</span>
+                </dd>
+                <dt>Zuständig</dt>
+                <dd>
+                    <span class="member-chip" th:if="${c.assignee != null}" th:style="|--member-color: ${c.assignee.color}|"
+                          th:text="${c.assignee.name}">Lena</span>
+                    <span th:if="${c.assignee == null}">Offen – wer mag, nimmt sie</span>
+                </dd>
+                <dt>Status</dt>
+                <dd>
+                    <span th:text="${c.done} ? 'Erledigt' : 'Offen'">Offen</span>
+                    <span class="notice-inline" th:if="${c.overdue}">überfällig</span>
+                </dd>
+            </dl>
+            <p class="event-notes" th:if="${chore.description != null}" th:text="${chore.description}">Notiz</p>
+        </div>
+
+        <form class="dialog-section" th:if="${canComplete}" method="post" data-grid-form="chore-complete"
+              th:action="@{/calendar/actions/chores/{id}/complete(id=${task.id})}">
+            <h3>Erledigt?</h3>
+            <div class="field" th:if="${completeAny or ownMember == null}">
+                <label for="sheet-doer">Erledigt von</label>
+                <select id="sheet-doer" name="doer" class="input">
+                    <option th:each="m : ${allMembers}" th:value="${m.id}" th:text="${m.name}"
+                            th:selected="${ownMember != null} ? ${m.id == ownMember} : ${m.id == task.assigneeMemberId}">Lena</option>
+                </select>
+            </div>
+            <div th:replace="~{household/fragments :: book-fields('sheet-task', ${chore.minutesEasy}, ${chore.minutesMedium}, ${chore.minutesHard})}"></div>
+            <fieldset th:replace="~{household/fragments :: helper-fields}"></fieldset>
+            <div class="form-actions">
+                <button type="submit" class="button">Abhaken und buchen</button>
+            </div>
+        </form>
+
+        <form class="dialog-section" th:if="${c.canUndo}" method="post" data-grid-form="chore-undo"
+              th:action="@{/calendar/actions/chores/{id}/undo(id=${task.id})}">
+            <p class="hint">Die Gutschriften werden entfernt und die Hausarbeit ist wieder offen.</p>
+            <div class="form-actions">
+                <button type="submit" class="button button-ghost">Erledigung zurücknehmen</button>
+            </div>
+        </form>
+
+        <form class="dialog-section" th:if="${canAssign}" method="post" data-grid-form="chore-update"
+              th:action="@{/calendar/actions/chores/{id}/update(id=${task.id})}">
+            <h3>Planen</h3>
+            <div class="field-row">
+                <div class="field">
+                    <label for="sheet-chore-date">Tag</label>
+                    <input id="sheet-chore-date" class="input" type="date" name="date" th:value="${task.dueOn}"
+                           th:attr="min=${today}" required>
+                </div>
+                <div class="field">
+                    <label for="sheet-chore-time">Uhrzeit</label>
+                    <input id="sheet-chore-time" class="input" type="time" name="start"
+                           th:value="${time == null ? '' : #temporals.format(time, 'HH:mm')}" required>
+                </div>
+            </div>
+            <div class="field">
+                <label for="sheet-chore-member">Zuständig</label>
+                <select id="sheet-chore-member" name="member" class="input">
+                    <option value="" th:if="${assignAny}" th:selected="${task.assigneeMemberId == null}">Offen (niemand)</option>
+                    <option th:each="m : ${allMembers}"
+                            th:if="${assignAny or chore.memberIds.contains(m.id) or m.id == ownMember or m.id == task.assigneeMemberId}"
+                            th:value="${m.id}" th:text="${m.name}" th:selected="${m.id == task.assigneeMemberId}">Lena</option>
+                </select>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="button">Speichern</button>
+            </div>
+        </form>
+
+        <div class="dialog-foot">
+            <a class="button button-ghost" th:href="@{/household/tasks/{id}(id=${task.id})}" data-keep-back>Alle Details</a>
+        </div>
+
+        <div class="dialog-section dialog-section-last sheet-danger" th:if="${canCancel}">
+            <form method="post" data-grid-form="chore-cancel" data-confirm-tone="danger"
+                  th:action="@{/calendar/actions/chores/{id}/cancel(id=${task.id})}"
+                  th:attr="data-confirm=|Diesen Termin von „${chore.title}“ löschen? Die Hausarbeit und ihre anderen Termine bleiben.|">
+                <button type="submit" class="button button-danger">Diesen Termin löschen</button>
+            </form>
+        </div>
+    </section>
+
+    <section id="chore-panel-chore" role="tabpanel" aria-labelledby="chore-tab-chore" data-tab-panel="chore" hidden
+             th:if="${choreTab}">
+        <form th:if="${canEditChore}" class="event-form" method="post" th:object="${form}"
+              th:action="@{/calendar/actions/chores/templates/{id}/update(id=${chore.id})}"
+              data-grid-form="chore-template" data-chore-form>
+            <div class="dialog-body">
+                <p class="hint">Änderungen gelten für die ganze Hausarbeit; die kommenden Termine werden neu geplant.</p>
+                <th:block th:replace="~{household/fragments :: chore-fields}"></th:block>
+            </div>
+            <div class="dialog-foot">
+                <a class="button button-ghost" th:href="@{/household/chores/{id}(id=${chore.id})}" data-keep-back>Zur Hausarbeit</a>
+                <button type="submit" class="button">Änderungen speichern</button>
+            </div>
+        </form>
+
+        <div class="dialog-section dialog-section-last sheet-danger" th:if="${canDeleteChore}">
+            <form method="post" data-grid-form="chore-delete" data-confirm-tone="danger"
+                  th:action="@{/calendar/actions/chores/templates/{id}/delete(id=${chore.id})}"
+                  th:attr="data-confirm=|Die ganze Hausarbeit „${chore.title}“ mit allen offenen Terminen löschen?|">
+                <button type="submit" class="button button-danger">Ganze Hausarbeit löschen</button>
+            </form>
+        </div>
+    </section>
+</div>
+
+</body>
+</html>

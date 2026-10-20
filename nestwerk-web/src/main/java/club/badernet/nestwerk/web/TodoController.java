@@ -234,8 +234,10 @@ public class TodoController {
             java.time.format.DateTimeFormatter.ofPattern("d. MMM yyyy, HH:mm", java.util.Locale.GERMANY);
 
     @GetMapping("/{id}")
-    String detail(@PathVariable Long id, @RequestParam(required = false) String timeline, Model model) {
+    String detail(@PathVariable Long id, @RequestParam(required = false) String timeline,
+                  @RequestParam(required = false) String back, Model model) {
         User viewer = requireModule();
+        model.addAttribute("returnTo", safeBack(back, null));
         Todo todo = todos.get(id, viewer);
         TodoViews.Labels labels = views.labels(viewer);
         model.addAttribute("todo", todo);

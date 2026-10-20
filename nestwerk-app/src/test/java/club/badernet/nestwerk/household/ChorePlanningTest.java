@@ -77,7 +77,7 @@ class ChorePlanningTest {
                 lena.getId()), admin);
         ChoreTask task = tasksOf(c).getLast();
 
-        taskService.reschedule(task.getId(), LocalTime.of(20, 15), admin);
+        taskService.reschedule(task.getId(), task.getDueOn(), LocalTime.of(20, 15), admin);
         planner.reassignAbsent(today);
 
         assertThat(task.getPlannedAt()).isEqualTo(LocalTime.of(20, 15));
@@ -96,10 +96,10 @@ class ChorePlanningTest {
                 lena.getId()), admin);
         ChoreTask task = tasksOf(c).getFirst();
 
-        assertThatThrownBy(() -> taskService.reschedule(task.getId(), null, admin))
+        assertThatThrownBy(() -> taskService.reschedule(task.getId(), task.getDueOn(), null, admin))
                 .isInstanceOf(IllegalArgumentException.class);
         taskService.complete(task.getId(), admin, lena.getId(), Set.of(), ChoreTaskService.Booking.now());
-        assertThatThrownBy(() -> taskService.reschedule(task.getId(), LocalTime.of(9, 0), admin))
+        assertThatThrownBy(() -> taskService.reschedule(task.getId(), task.getDueOn(), LocalTime.of(9, 0), admin))
                 .isInstanceOf(ChoreConflictException.class);
     }
 
@@ -255,5 +255,69 @@ class ChorePlanningTest {
 
         assertThat(tasksOf(c)).singleElement().satisfies(t -> assertThat(t.isOpen()).isFalse());
         assertThat(chores.get(c.getId(), admin).isActive()).isFalse();
+    }
+
+    @Test
+    void rescheduleMovesTaskToAnotherDayAndPlanningDoesNotDoubleIt() {
+        Chore c = chores.create(input(ChoreKind.RECURRING, "FREQ=DAILY;COUNT=2", null, Distribution.FIXED,
+                lena.getId()), admin);
+        ChoreTask first = tasksOf(c).getFirst();
+
+        taskService.reschedule(first.getId(), today.plusDays(3), LocalTime.of(17, 30), admin);
+        planner.plan(c, today);
+
+        assertThat(tasksOf(c)).hasSize(2);
+        assertThat(first.getDueOn()).isEqualTo(today.plusDays(3));
+        assertThat(first.getPlannedAt()).isEqualTo(LocalTime.of(17, 30));
+        assertThat(first.isPlannedManually()).isTrue();
+    }
+
+    @Test
+    void rescheduleRefusesDaysInThePast() {
+        Chore c = chores.create(input(ChoreKind.RECURRING, "FREQ=DAILY;COUNT=1", null, Distribution.FIXED,
+                lena.getId()), admin);
+        ChoreTask task = tasksOf(c).getFirst();
+
+        assertThatThrownBy(() -> taskService.reschedule(task.getId(), today.minusDays(1), LocalTime.of(9, 0), admin))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Vergangenheit");
+    }
+
+    @Test
+    void cancelledTaskIsNotPlannedAgainAndNotListed() {
+        Chore c = chores.create(input(ChoreKind.RECURRING, "FREQ=DAILY;COUNT=2", null, Distribution.FIXED,
+                lena.getId()), admin);
+        ChoreTask first = tasksOf(c).getFirst();
+
+        taskService.cancel(first.getId(), admin);
+        planner.plan(c, today);
+
+        assertThat(tasksOf(c)).hasSize(2);
+        assertThat(first.isCancelled()).isTrue();
+        assertThat(taskService.between(admin, today, today.plusDays(1)))
+                .extracting(ChoreTask::getId).doesNotContain(first.getId());
+    }
+
+    @Test
+    void cancelNeedsTheRightToEditTheChoreAndAnOpenTask() {
+        Chore c = chores.create(input(ChoreKind.RECURRING, "FREQ=DAILY;COUNT=2", null, Distribution.FIXED,
+                mamaM.getId()), admin);
+        List<ChoreTask> planned = tasksOf(c);
+
+        assertThatThrownBy(() -> taskService.cancel(planned.getFirst().getId(), mama))
+                .isInstanceOf(org.springframework.security.access.AccessDeniedException.class);
+        taskService.complete(planned.getLast().getId(), mama, null, Set.of(), null);
+        assertThatThrownBy(() -> taskService.cancel(planned.getLast().getId(), admin))
+                .isInstanceOf(ChoreConflictException.class);
+    }
+
+    @Test
+    void cancelledIntervalTaskMakesTheNextOneDueIntervalDaysLater() {
+        Chore c = chores.create(input(ChoreKind.INTERVAL, null, 7, Distribution.FIXED, lena.getId()), admin);
+        ChoreTask first = tasksOf(c).getFirst();
+
+        taskService.cancel(first.getId(), admin);
+
+        assertThat(tasksOf(c)).filteredOn(ChoreTask::isOpen).singleElement()
+                .satisfies(t -> assertThat(t.getDueOn()).isEqualTo(today.plusDays(7)));
     }
 }

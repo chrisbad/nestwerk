@@ -62,7 +62,7 @@
         </ul>
     </section>
 
-    <form class="danger-zone" th:if="${canDelete}" th:action="@{/contacts/{id}/delete(id=${contact.id})}" method="post"
+    <form data-confirm-tone="danger" class="danger-zone" th:if="${canDelete}" th:action="@{/contacts/{id}/delete(id=${contact.id})}" method="post"
           th:attr="data-confirm=|Kontakt „${contact.name}“ löschen? Zuweisungen an ToDos werden entfernt.|">
         <button type="submit" class="button button-danger">Kontakt löschen</button>
     </form>

@@ -236,25 +236,56 @@ public class ChoreTaskService {
     }
 
     /**
-     * Plans the open task at another time of its day (e.g. moved in the calendar). Needs the right to reassign it;
+     * Plans the open task on another day and time (e.g. moved in the calendar). Needs the right to reassign it;
      * automatic re-planning keeps the time as long as the assignee stays available.
      */
     @Transactional
-    public void reschedule(Long taskId, LocalTime plannedAt, User actor) {
+    public void reschedule(Long taskId, LocalDate day, LocalTime plannedAt, User actor) {
         ChoreTask task = get(taskId, actor);
         requireOpen(task);
-        if (plannedAt == null) {
-            throw new IllegalArgumentException("Bitte eine Uhrzeit angeben.");
+        if (day == null || plannedAt == null) {
+            throw new IllegalArgumentException("Bitte Tag und Uhrzeit angeben.");
+        }
+        if (day.isBefore(today())) {
+            throw new IllegalArgumentException("Eine Hausarbeit lässt sich nicht in die Vergangenheit verschieben.");
         }
         if (!access.can(actor, "ASSIGN", task)) {
             throw new AccessDeniedException("Keine Berechtigung, diese Hausarbeit zu verschieben");
         }
-        task.planManually(plannedAt);
+        task.moveManually(day, plannedAt);
+    }
+
+    /**
+     * Gives the open task to another member (or nobody) and plans it at the given day and time in one go, e.g. when
+     * it is dragged to another person's column in the calendar. Either both changes happen or none.
+     */
+    @Transactional
+    public void reassignAndReschedule(Long taskId, Long memberId, LocalDate day, LocalTime plannedAt, User actor) {
+        assign(taskId, memberId, actor);
+        reschedule(taskId, day, plannedAt, actor);
+    }
+
+    /**
+     * Drops the open task for its date only; the chore and its other dates stay. Planning does not create the task
+     * again, and for chores due some days after completion the next one is due that many days after this date.
+     */
+    @Transactional
+    public void cancel(Long taskId, User actor) {
+        ChoreTask task = get(taskId, actor);
+        requireOpen(task);
+        if (!access.can(actor, "EDIT", task.getChore())) {
+            throw new AccessDeniedException("Keine Berechtigung, diesen Termin der Hausarbeit zu löschen");
+        }
+        task.cancel();
+        tasks.flush();
+        if (task.getChore().getKind() == ChoreKind.INTERVAL) {
+            planner.plan(task.getChore(), today());
+        }
     }
 
     @Transactional(readOnly = true)
     public List<ChoreTask> between(User viewer, LocalDate from, LocalDate to) {
-        return tasks.findAllByDueOnBetween(from, to).stream()
+        return tasks.findAllByDueOnBetweenAndStatusNot(from, to, ChoreTaskStatus.CANCELLED).stream()
                 .filter(t -> access.can(viewer, "VIEW", t))
                 .sorted(ORDER).toList();
     }
@@ -296,6 +327,9 @@ public class ChoreTaskService {
     }
 
     private static void requireOpen(ChoreTask task) {
+        if (task.isCancelled()) {
+            throw new ChoreConflictException("Dieser Termin der Hausarbeit entfällt.");
+        }
         if (!task.isOpen()) {
             throw new ChoreConflictException("Diese Hausarbeit wurde schon erledigt.");
         }

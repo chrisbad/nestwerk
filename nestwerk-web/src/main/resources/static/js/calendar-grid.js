@@ -1,8 +1,12 @@
-/* Nestwerk – time grid of the calendar: snapping slots and touch/mouse gestures to create, move and resize events. */
+/* Nestwerk – time grid of the calendar: snapping slots, zoom, person columns and touch/mouse gestures to create,
+   move, resize and hand over entries. */
 (() => {
     "use strict";
 
     const SLOT_KEY = "nestwerk-calendar-slot";
+    const ZOOM_KEY = "nestwerk-calendar-zoom";
+    const SPLIT_COOKIE = "nestwerk-calendar-split";
+    const ZOOM_LEVELS = [0.75, 1, 1.5, 2, 3];
     const LONG_PRESS_MS = 300;
     const TOUCH_TOLERANCE_PX = 8;
     const MOUSE_TOLERANCE_PX = 4;
@@ -14,9 +18,11 @@
     const DAY_MINUTES = 1440;
     const CLICK_GUARD_MS = 350;
     const FIRST_HOUR_SHOWN = 7;
+    const YEAR_SECONDS = 31536000;
     const PHONE = "(max-width: 40rem)";
 
     const helpers = () => window.Nestwerk;
+    const calendar = () => window.NestwerkCalendar;
 
     /* --- Local dates ("YYYY-MM-DD") and points in time as day number × 1440 + minute ------------------------------ */
 
@@ -35,7 +41,7 @@
     const snap = (minutes, slot) => Math.round(minutes / slot) * slot;
     const snapDown = (minutes, slot) => Math.floor(minutes / slot) * slot;
 
-    /* --- Snapping and zoom: fine (5 min, more space per hour) or coarse (15 min) ---------------------------------- */
+    /* --- Snapping: fine (5 min) or coarse (15 min); only how times snap, not the size ----------------------------- */
 
     function readSlot() {
         try {
@@ -54,17 +60,16 @@
     const slotMinutes = root => +(root.dataset.slot === "fine" ? root.dataset.slotFine : root.dataset.slotCoarse);
 
     function switchSlot(root, choice) {
-        const scroller = root.querySelector("[data-grid-scroll]");
-        const center = (scroller.scrollTop + scroller.clientHeight / 2) / scroller.scrollHeight;
         try { localStorage.setItem(SLOT_KEY, choice); } catch (e) { /* only for this page */ }
         applySlot(root, choice);
-        scroller.scrollTop = center * scroller.scrollHeight - scroller.clientHeight / 2;
     }
 
     /* --- Geometry ------------------------------------------------------------------------------------------------ */
 
     const columns = root => [...root.querySelectorAll(".tgrid-col")];
     const cells = root => [...root.querySelectorAll(".tgrid-allday-cell")];
+    const scrollerOf = root => root.querySelector("[data-grid-scroll]");
+    const memberOf = element => element?.dataset.member ?? "";
 
     function nearest(elements, x) {
         return elements.find(el => {
@@ -83,78 +88,208 @@
         return y >= box.top && y <= box.bottom;
     }
 
-    const visibleDates = root => columns(root).map(c => c.dataset.date);
+    const visibleDates = root => [...new Set(columns(root).map(c => c.dataset.date))];
 
-    /* --- Server calls -------------------------------------------------------------------------------------------- */
-
-    async function post(url, params) {
-        const token = document.querySelector('meta[name="_csrf"]')?.content;
-        const header = document.querySelector('meta[name="_csrf_header"]')?.content;
-        const headers = { "Accept": "application/json", "Content-Type": "application/x-www-form-urlencoded" };
-        if (token && header) headers[header] = token;
-        const response = await fetch(url, { method: "POST", headers, body: new URLSearchParams(params) });
-        let body = {};
-        try { body = await response.json(); } catch (e) { /* no JSON, e.g. login page */ }
-        if (!response.ok) throw new Error(body.message || "Das hat leider nicht geklappt.");
-        return body;
+    /** The column of a day and person; falls back to the first or last day for days outside the view. */
+    function columnFor(root, date, member) {
+        const all = columns(root);
+        const found = all.find(c => c.dataset.date === date && memberOf(c) === member);
+        if (found) return found;
+        const dates = visibleDates(root);
+        const day = date < dates[0] ? dates[0] : dates.at(-1);
+        return all.find(c => c.dataset.date === day && memberOf(c) === member) || all[0];
     }
 
-    let pendingScroll = null;
+    /* --- Scroll position as the time at the top of the visible hours ---------------------------------------------- */
 
-    /** Reloads the grid; shows the period of {@code date} if that day is not visible. */
-    function reload(root, date) {
-        pendingScroll = root.querySelector("[data-grid-scroll]")?.scrollTop ?? null;
-        if (date && !visibleDates(root).includes(date) && window.htmx) {
-            const url = `/calendar/${root.dataset.view}?date=${date}`;
-            window.htmx.ajax("GET", url, { target: "#calendar", select: "#calendar", swap: "outerHTML" })
-                .then(() => history.replaceState(null, "", url));
-            pendingScroll = null;
-            return;
+    const stickyHeight = root => root.querySelector("[data-grid-top]")?.offsetHeight ?? 0;
+
+    function bodyOffset(root) {
+        const scroller = scrollerOf(root);
+        return root.querySelector(".tgrid-body").getBoundingClientRect().top - scroller.getBoundingClientRect().top
+            + scroller.scrollTop;
+    }
+
+    function topMinute(root) {
+        const scroller = scrollerOf(root);
+        if (!scroller) return null;
+        const body = root.querySelector(".tgrid-body");
+        return (scroller.scrollTop + stickyHeight(root) - bodyOffset(root)) / body.offsetHeight * DAY_MINUTES;
+    }
+
+    function scrollToMinute(root, minute) {
+        const body = root.querySelector(".tgrid-body");
+        scrollerOf(root).scrollTop = bodyOffset(root) + minute / DAY_MINUTES * body.offsetHeight - stickyHeight(root);
+    }
+
+    /** Kept across reloads, paging and switching the view, so the visible hours stay the same. */
+    let keptMinute = null;
+
+    function keepScroll() {
+        const root = document.querySelector("[data-time-grid]");
+        const minute = root ? topMinute(root) : null;
+        if (minute !== null) keptMinute = minute;
+    }
+
+    /* --- Zoom: more space per hour, wider columns and larger text ------------------------------------------------- */
+
+    function readZoom() {
+        try {
+            const stored = +localStorage.getItem(ZOOM_KEY);
+            return ZOOM_LEVELS.includes(stored) ? stored : 1;
+        } catch (e) {
+            return 1;
         }
+    }
+
+    /** Sets the zoom and keeps the time and column under {@code anchor} (a point on screen) where they were. */
+    function applyZoom(area, zoom, anchor) {
+        const grid = area.matches("[data-time-grid]") ? area : null;
+        const scroller = grid && scrollerOf(grid);
+        let before = null;
+        if (scroller && anchor) {
+            const box = scroller.getBoundingClientRect();
+            before = {
+                y: (anchor.y - box.top + scroller.scrollTop) / scroller.scrollHeight,
+                x: (anchor.x - box.left + scroller.scrollLeft) / scroller.scrollWidth,
+                dy: anchor.y - box.top, dx: anchor.x - box.left
+            };
+        }
+        area.style.setProperty("--zoom", String(zoom));
+        area.dataset.zoom = String(zoom);
+        area.querySelectorAll("[data-zoom-label]").forEach(label => {
+            label.textContent = Math.round(zoom * 100) + " %";
+        });
+        area.querySelectorAll("[data-zoom-step]").forEach(button => {
+            const step = +button.dataset.zoomStep;
+            button.disabled = step < 0 ? zoom <= ZOOM_LEVELS[0] : zoom >= ZOOM_LEVELS.at(-1);
+        });
+        if (before) {
+            scroller.scrollTop = before.y * scroller.scrollHeight - before.dy;
+            scroller.scrollLeft = before.x * scroller.scrollWidth - before.dx;
+        }
+        if (grid) markScrollableX(grid);
+    }
+
+    function storeZoom(zoom) {
+        try { localStorage.setItem(ZOOM_KEY, String(zoom)); } catch (e) { /* only for this page */ }
+    }
+
+    function stepZoom(area, step, anchor) {
+        const current = +(area.dataset.zoom || 1);
+        const index = ZOOM_LEVELS.findIndex(level => level >= current - 0.001);
+        const next = ZOOM_LEVELS[Math.max(0, Math.min(ZOOM_LEVELS.length - 1,
+            (index < 0 ? ZOOM_LEVELS.length - 1 : index) + step))];
+        if (next === current) return;
+        applyZoom(area, next, anchor || centerOf(area));
+        storeZoom(next);
+    }
+
+    function centerOf(area) {
+        const box = (scrollerOf(area) || area).getBoundingClientRect();
+        return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+    }
+
+    /** Swiping pages the calendar only while the grid cannot be scrolled sideways itself. */
+    function markScrollableX(root) {
+        const scroller = scrollerOf(root);
+        scroller?.classList.toggle("can-scroll-x", scroller.scrollWidth > scroller.clientWidth + 1);
+    }
+
+    /** Two fingers on the grid or the month: zoom smoothly and snap to the nearest level when letting go. */
+    const pinch = { pointers: new Map(), start: 0, zoom: 1, area: null };
+
+    function pinchDistance() {
+        const [a, b] = [...pinch.pointers.values()];
+        return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function pinchCenter() {
+        const [a, b] = [...pinch.pointers.values()];
+        return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    }
+
+    function onPinchDown(event) {
+        if (event.pointerType !== "touch") return false;
+        const area = event.target.closest("[data-zoomable]");
+        if (!area || event.target.closest("dialog, .cal-toolbar")) return false;
+        pinch.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (pinch.pointers.size !== 2) return false;
+        cancelGesture();
+        if (drag) abort();
+        pinch.area = area;
+        pinch.start = pinchDistance();
+        pinch.zoom = +(area.dataset.zoom || 1);
+        return true;
+    }
+
+    function onPinchMove(event) {
+        if (!pinch.pointers.has(event.pointerId)) return false;
+        pinch.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (pinch.pointers.size !== 2 || !pinch.area || !pinch.start) return false;
+        const zoom = Math.max(ZOOM_LEVELS[0], Math.min(ZOOM_LEVELS.at(-1), pinch.zoom * pinchDistance() / pinch.start));
+        applyZoom(pinch.area, Math.round(zoom * 100) / 100, pinchCenter());
+        return true;
+    }
+
+    function onPinchEnd(event) {
+        if (!pinch.pointers.delete(event.pointerId)) return false;
+        if (!pinch.area || pinch.pointers.size > 0) return pinch.area !== null;
+        const current = +(pinch.area.dataset.zoom || 1);
+        const level = ZOOM_LEVELS.reduce((best, l) => Math.abs(l - current) < Math.abs(best - current) ? l : best);
+        applyZoom(pinch.area, level, centerOf(pinch.area));
+        storeZoom(level);
+        helpers().markDragged();
+        pinch.area = null;
+        pinch.start = 0;
+        return true;
+    }
+
+    function onWheel(event) {
+        if (!event.ctrlKey) return;
+        const area = event.target.closest("[data-zoomable]");
+        if (!area || event.target.closest("dialog")) return;
+        event.preventDefault();
+        stepZoom(area, event.deltaY < 0 ? 1 : -1, { x: event.clientX, y: event.clientY });
+    }
+
+    /* --- One column per person ----------------------------------------------------------------------------------- */
+
+    function toggleSplit(root) {
+        const next = root.dataset.split === "person" ? "none" : "person";
+        document.cookie = `${SPLIT_COOKIE}=${next}; path=/; max-age=${YEAR_SECONDS}; SameSite=Lax`;
+        keepScroll();
         helpers().reloadCalendar();
     }
 
-    /** A toast with "Rückgängig"; warnings of blockers are shown in the same toast. */
-    function report(result, undo) {
-        const warnings = result.warnings || [];
-        const text = warnings.length ? result.message + " Achtung: " + warnings.join(" ") : result.message;
-        const region = document.querySelector("[data-toasts]");
-        if (!region || !undo) {
-            helpers().showToast(text, warnings.length ? "error" : "success");
-            return;
-        }
-        const toast = document.createElement("div");
-        toast.className = "toast toast-action" + (warnings.length ? " toast-warn" : "");
-        toast.setAttribute("role", warnings.length ? "alert" : "status");
-        const message = document.createElement("span");
-        message.textContent = text;
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "toast-undo";
-        button.textContent = "Rückgängig";
-        button.addEventListener("click", async () => {
-            toast.remove();
-            try {
-                await undo();
-                helpers().showToast("Rückgängig gemacht.", "success");
-            } catch (error) {
-                helpers().showToast(error.message, "error");
-            }
-        });
-        toast.append(message, button);
-        region.append(toast);
-        if (warnings.length) helpers().haptic([12, 60, 12]);
-        setTimeout(() => {
-            if (!toast.isConnected || toast.classList.contains("is-dragging")) return;
-            toast.classList.add("is-leaving");
-            toast.addEventListener("animationend", () => toast.remove(), { once: true });
-            setTimeout(() => toast.remove(), 400);
-        }, warnings.length ? 9000 : 6000);
+    const personName = (root, member) => member
+        ? root.querySelector(`.tgrid-col[data-member="${member}"]`)?.dataset.memberName || "?"
+        : "Alle";
+
+    /** Members of the dragged entry after dropping it into another person's column. */
+    function membersAfter(d) {
+        if (d.fromMember === d.toMember) return d.members;
+        const result = d.members.filter(m => m !== d.fromMember);
+        if (d.toMember && !result.includes(d.toMember)) result.push(d.toMember);
+        return result;
     }
 
-    /* --- Dialogs: quick creation, bottom sheet, choice for series ------------------------------------------------ */
+    /* --- Reloading ----------------------------------------------------------------------------------------------- */
 
-    function openQuick(root, range) {
+    /** Reloads the shown period; the calendar never jumps to another period after a change. */
+    function reload() {
+        keepScroll();
+        helpers().reloadCalendar();
+    }
+
+    /** "Jetzt am Do., 29.10." when the changed entry left the shown period. */
+    function outsideNote(root, date) {
+        return date && !visibleDates(root).includes(date) ? " Jetzt am " + dayLabel(date) + "." : "";
+    }
+
+    /* --- Dialogs: quick creation, choice for series -------------------------------------------------------------- */
+
+    function openQuick(root, range, member) {
         const dialog = root.querySelector("#grid-quick");
         if (!dialog) return;
         const form = dialog.querySelector("form");
@@ -176,53 +311,30 @@
             set("endDate", dateOf(range.end));
             set("endTime", clock(minuteOf(range.end)));
         }
+        // created in a person's column: that person is preselected
+        form.querySelectorAll("[data-quick-member]").forEach(box => {
+            box.checked = Boolean(member) && box.value === member;
+        });
         dialog.showModal();
         form.elements.title.focus();
     }
 
-    /** The link "Mehr Details" takes what was entered so far to the full form. */
+    /** The link "Mehr Details" takes what was entered so far to the full form and comes back to this view. */
     function detailsUrl(form) {
         const params = new URLSearchParams({ date: form.elements.startDate.value });
         if (form.elements.allDay.value !== "true") {
             params.set("start", form.elements.startTime.value);
             params.set("end", form.elements.endTime.value);
         }
+        params.set("back", window.location.pathname + window.location.search);
         return "/calendar/events/new?" + params;
     }
 
-    async function openSheet(root, item) {
-        const dialog = root.querySelector("#grid-sheet");
-        if (!dialog) return;
-        const occurrence = item.dataset.recurrenceId;
-        const url = `/calendar/events/${item.dataset.eventId}/sheet`
-            + (occurrence ? "?occurrence=" + encodeURIComponent(occurrence) : "");
-        try {
-            const response = await fetch(url, { headers: { "Accept": "text/html" } });
-            if (!response.ok) throw new Error("Der Termin konnte nicht geladen werden.");
-            const body = dialog.querySelector("[data-sheet-body]");
-            body.innerHTML = await response.text();
-            syncScope(body);
-            dialog.showModal();
-        } catch (error) {
-            helpers().showToast(error.message, "error");
-        }
-    }
-
-    /** Category and members belong to the whole series; the days of a series stay when it moves. */
-    function syncScope(sheet) {
-        const chosen = sheet.querySelector("[data-sheet-scope]:checked")?.value;
-        if (!chosen) return;
-        sheet.querySelectorAll("[data-series-only] select, [data-series-only] input").forEach(input => {
-            input.disabled = chosen === "OCCURRENCE";
-        });
-        sheet.querySelectorAll('input[type="date"]').forEach(input => { input.readOnly = chosen === "SERIES"; });
-        sheet.querySelectorAll("[data-scope-hint]").forEach(hint => { hint.hidden = hint.dataset.scopeHint !== chosen; });
-    }
-
-    function askScope(root, seriesAllowed) {
+    function askScope(root, seriesAllowed, personChanges) {
         const dialog = root.querySelector("#grid-series");
         dialog.querySelector('[data-series-choice="SERIES"]').disabled = !seriesAllowed;
         dialog.querySelector("[data-series-hint]").hidden = seriesAllowed;
+        dialog.querySelector("[data-series-person]").hidden = !personChanges;
         return new Promise(resolve => {
             let answer = null;
             const choose = event => {
@@ -251,9 +363,10 @@
     }
 
     function onPointerDown(event) {
+        if (onPinchDown(event) || pinch.area) return;
         const root = event.target.closest("[data-time-grid]");
         if (!root || drag || event.button > 0 || !event.isPrimary
-            || event.target.closest("dialog, .cal-toolbar, .cal-legend-row, .tgrid-head, .tgrid-hint")) return;
+            || event.target.closest("dialog, .cal-toolbar, .cal-legend-row, .tgrid-head, .tgrid-people, .tgrid-hint")) return;
         const item = event.target.closest("[data-grid-item]");
         const handle = event.target.closest("[data-handle]");
         const column = event.target.closest(".tgrid-col");
@@ -273,6 +386,7 @@
     }
 
     function onPointerMove(event) {
+        if (onPinchMove(event)) return;
         if (gesture && event.pointerId === gesture.id) {
             gesture.x = event.clientX;
             gesture.y = event.clientY;
@@ -291,6 +405,7 @@
     }
 
     function onPointerUp(event) {
+        if (onPinchEnd(event)) return;
         if (gesture && event.pointerId === gesture.id) {
             cancelGesture();
             return;
@@ -299,6 +414,7 @@
     }
 
     function onPointerCancel(event) {
+        onPinchEnd(event);
         if (gesture && event.pointerId === gesture.id) cancelGesture();
         if (drag && event.pointerId === drag.id) abort();
     }
@@ -316,18 +432,19 @@
         const type = item?.dataset.gridItem;
         const mode = !item ? (g.cell ? "allday-create" : "create")
             : type === "allday" ? (g.handle ? "allday-resize" : "allday-move")
-                : type === "chore" ? "chore-move"
-                    : g.handle ? "resize-" + g.handle.dataset.handle : "move";
+                : type === "todo" ? "todo-move"
+                    : type === "chore" ? "chore-move"
+                        : g.handle ? "resize-" + g.handle.dataset.handle : "move";
+        const fromMember = item ? memberOf(item) : memberOf(g.column || g.cell);
         drag = {
             mode, root, item, id: g.id, touch: g.touch, x0: g.x0, y0: g.y0, x: g.x, y: g.y, moved: false,
             slot: slotMinutes(root), offset: 0, members: (item?.dataset.members || "").split(",").filter(Boolean),
-            recurring: item?.dataset.recurring === "true"
+            recurring: item?.dataset.recurring === "true", fromMember, toMember: fromMember
         };
-        if (item && type !== "allday") {
+        if (item && !["allday", "todo"].includes(type)) {
             drag.origin = { allDay: false, start: parseLocal(item.dataset.start), end: parseLocal(item.dataset.end) };
             const column = g.column || nearest(columns(root), g.x0);
             drag.grab = absolute(column.dataset.date, minuteAt(column, g.y0)) - drag.origin.start;
-            drag.column = column;
         } else if (item) {
             drag.origin = { allDay: true, first: item.dataset.first, last: item.dataset.last };
             drag.grabDate = nearest(cells(root), g.x0).dataset.date;
@@ -346,7 +463,7 @@
         update();
     }
 
-    /** Computes the snapped result of the drag and draws the ghost. */
+    /** Computes the snapped result of the drag (times and person column) and draws the ghost. */
     function update() {
         const d = drag;
         if (!d) return;
@@ -370,16 +487,20 @@
             case "move":
             case "chore-move": {
                 if (overAllDay && d.mode === "move" && !d.recurring) {
-                    const date = addDays(nearest(cells(root), d.x).dataset.date, d.offset);
+                    const cell = nearest(cells(root), d.x);
+                    const date = addDays(cell.dataset.date, d.offset);
+                    d.toMember = memberOf(cell);
                     d.result = { allDay: true, first: date, last: date };
                     break;
                 }
-                const column = d.mode === "chore-move" ? d.column : nearest(columns(root), d.x);
+                const column = nearest(columns(root), d.x);
+                d.toMember = memberOf(column);
                 const pointer = absolute(column.dataset.date, minuteAt(column, d.y));
                 const duration = d.origin.end - d.origin.start;
                 let start = snap(pointer - d.grab, d.slot) + d.offset * DAY_MINUTES;
                 if (d.mode === "chore-move") {
-                    const dayStart = absolute(d.column.dataset.date, 0);
+                    // a chore stays within one day
+                    const dayStart = absolute(dateOf(start + Math.min(duration, d.slot)), 0);
                     start = Math.max(dayStart, Math.min(dayStart + DAY_MINUTES - duration, start));
                 }
                 d.result = { allDay: false, start, end: start + duration };
@@ -387,7 +508,7 @@
             }
             case "resize-start":
             case "resize-end": {
-                const column = nearest(columns(root), d.x);
+                const column = columnFor(root, nearest(columns(root), d.x).dataset.date, d.fromMember);
                 const edge = absolute(column.dataset.date, snap(minuteAt(column, d.y), d.slot));
                 d.result = d.mode === "resize-end"
                     ? { allDay: false, start: d.origin.start, end: Math.max(edge, d.origin.start + d.slot) }
@@ -397,12 +518,22 @@
             case "allday-move": {
                 if (!overAllDay && !d.recurring && d.y > root.querySelector("[data-allday-row]").getBoundingClientRect().bottom) {
                     const column = nearest(columns(root), d.x);
+                    d.toMember = memberOf(column);
                     const start = absolute(column.dataset.date, snap(minuteAt(column, d.y), d.slot)) + d.offset * DAY_MINUTES;
                     d.result = { allDay: false, start, end: start + DEFAULT_MINUTES };
                     break;
                 }
-                const shift = dayNumber(nearest(cells(root), d.x).dataset.date) - dayNumber(d.grabDate) + d.offset;
+                const cell = nearest(cells(root), d.x);
+                d.toMember = memberOf(cell);
+                const shift = dayNumber(cell.dataset.date) - dayNumber(d.grabDate) + d.offset;
                 d.result = { allDay: true, first: addDays(d.origin.first, shift), last: addDays(d.origin.last, shift) };
+                break;
+            }
+            case "todo-move": {
+                const cell = nearest(cells(root), d.x);
+                d.toMember = memberOf(cell);
+                const date = addDays(cell.dataset.date, d.offset);
+                d.result = { allDay: true, first: date, last: date };
                 break;
             }
             case "allday-resize": {
@@ -418,25 +549,16 @@
         const d = drag;
         const root = d.root;
         d.ghost?.remove();
-        const blocked = blockingZone(root, d.members, d.result);
-        const label = describe(d.result);
+        const blocked = blockingZone(root, membersAfter(d), d.result);
+        let label = describe(d.result);
+        if (d.toMember !== d.fromMember) {
+            label += " · " + personName(root, d.fromMember) + " → " + personName(root, d.toMember);
+        }
         if (d.result.allDay) {
-            const dates = visibleDates(root);
-            const visible = d.result.last >= dates[0] && d.result.first <= dates.at(-1);
-            const first = d.result.first < dates[0] ? 0 : dates.indexOf(d.result.first);
-            const last = d.result.last > dates.at(-1) ? dates.length - 1 : dates.indexOf(d.result.last);
-            if (visible) {
-                d.ghost = document.createElement("div");
-                d.ghost.className = "tgrid-lane-item tgrid-ghost-lane";
-                d.ghost.style.gridColumn = `${first + 2} / span ${last - first + 1}`;
-                d.ghost.innerHTML = '<span class="occ occ-allday tgrid-item is-ghost"><span class="occ-title"></span></span>';
-                d.ghost.querySelector(".occ-title").textContent = d.item?.dataset.title || "Neuer Termin";
-                root.querySelector("[data-allday-row]").append(d.ghost);
-            }
+            drawAllDayGhost(d);
         } else {
             const date = dateOf(d.result.start);
-            const column = columns(root).find(c => c.dataset.date === date)
-                || (d.result.start < absolute(visibleDates(root)[0], 0) ? columns(root)[0] : columns(root).at(-1));
+            const column = columnFor(root, date, d.toMember);
             const startMinute = date === column.dataset.date ? minuteOf(d.result.start) : 0;
             d.ghost = document.createElement("div");
             d.ghost.className = "occ tgrid-item tgrid-event is-ghost" + (d.item ? "" : " is-draft");
@@ -451,10 +573,33 @@
             d.ghost.querySelector(".occ-title span").textContent = d.item?.dataset.title || "Neuer Termin";
             column.append(d.ghost);
         }
+        d.ghost?.querySelectorAll(".tgrid-item").forEach(el => el.classList.toggle("is-blocked", Boolean(blocked)));
         d.ghost?.classList.toggle("is-blocked", Boolean(blocked));
         root.querySelectorAll(".tgrid-zone.is-hit").forEach(zone => zone.classList.toggle("is-hit", zone === blocked));
         blocked?.classList.add("is-hit");
         showLabel(blocked ? label + " · gesperrt: " + blocked.dataset.label : label, Boolean(blocked));
+    }
+
+    /** The ghost in the all-day row; split by person it covers the cells of that person only. */
+    function drawAllDayGhost(d) {
+        const root = d.root;
+        const all = cells(root);
+        const split = root.dataset.split === "person";
+        const inRange = all.filter(c => c.dataset.date >= d.result.first && c.dataset.date <= d.result.last
+            && (!split || memberOf(c) === d.toMember));
+        if (!inRange.length) return;
+        d.ghost = document.createElement("div");
+        d.ghost.className = "tgrid-ghost-group";
+        const pieces = split ? inRange.map(c => [c, c]) : [[inRange[0], inRange.at(-1)]];
+        for (const [first, last] of pieces) {
+            const piece = document.createElement("div");
+            piece.className = "tgrid-lane-item tgrid-ghost-lane";
+            piece.style.gridColumn = `${all.indexOf(first) + 2} / ${all.indexOf(last) + 3}`;
+            piece.innerHTML = '<span class="occ occ-allday tgrid-item is-ghost"><span class="occ-title"></span></span>';
+            piece.querySelector(".occ-title").textContent = d.item?.dataset.title || "Neuer Termin";
+            d.ghost.append(piece);
+        }
+        root.querySelector("[data-allday-row]").append(d.ghost);
     }
 
     /** E.g. "Mi., 21.10. · 10:15–11:15" or "Mi., 21.10. – Fr., 23.10. · ganztägig". */
@@ -480,7 +625,7 @@
         d.label.style.top = Math.max(8, d.y - (d.touch ? 84 : 44)) + "px";
     }
 
-    /** A blocked zone of a member of the dragged event that the result touches. */
+    /** A blocked zone of a member of the dragged entry (after a change of person) that the result touches. */
     function blockingZone(root, members, result) {
         if (!members.length) return null;
         const start = result.allDay ? absolute(result.first, 0) : result.start;
@@ -497,43 +642,57 @@
         return null;
     }
 
-    /** Holding the item at the left or right edge pages one day per moment into that direction. */
+    /**
+     * Holding the item at the left or right edge scrolls a zoomed grid sideways; once it cannot scroll further it
+     * pages one day per moment into that direction.
+     */
     function trackEdge() {
         const d = drag;
-        if (!["move", "allday-move"].includes(d.mode)) return;
-        const box = d.root.querySelector(".tgrid").getBoundingClientRect();
+        if (!["move", "allday-move", "todo-move"].includes(d.mode)) return;
+        const scroller = scrollerOf(d.root);
+        const box = scroller.getBoundingClientRect();
         const direction = d.x < box.left + EDGE_PX ? -1 : d.x > box.right - EDGE_PX ? 1 : 0;
-        if (direction === d.edgeDirection) return;
+        const canScroll = direction < 0 ? scroller.scrollLeft > 0
+            : direction > 0 && scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1;
+        const edge = canScroll ? 0 : direction;
+        if (edge === d.edgeDirection) return;
         clearInterval(d.edgeTimer);
-        d.edgeDirection = direction;
-        if (!direction) return;
+        d.edgeDirection = edge;
+        if (!edge) return;
         d.edgeTimer = setInterval(() => {
             if (!drag) return;
-            drag.offset += direction;
+            drag.offset += edge;
             helpers().haptic(6);
             update();
         }, EDGE_DELAY_MS);
     }
 
-    /** Scrolls the grid while the pointer rests near its upper or lower edge. */
+    /** Scrolls the grid while the pointer rests near an edge of the visible hours or of a zoomed grid. */
     function autoScroll() {
         const d = drag;
         if (d.scrolling) return;
-        const scroller = d.root.querySelector("[data-grid-scroll]");
+        const scroller = scrollerOf(d.root);
         const speed = () => {
             const box = scroller.getBoundingClientRect();
-            if (d.y >= box.top && d.y < box.top + SCROLL_EDGE_PX) return -SCROLL_STEP_PX;
-            return d.y > box.bottom - SCROLL_EDGE_PX ? SCROLL_STEP_PX : 0;
+            const top = box.top + stickyHeight(d.root);
+            const vertical = d.y >= top && d.y < top + SCROLL_EDGE_PX ? -SCROLL_STEP_PX
+                : d.y > box.bottom - SCROLL_EDGE_PX ? SCROLL_STEP_PX : 0;
+            const horizontal = d.x < box.left + EDGE_PX * 2 && scroller.scrollLeft > 0 ? -SCROLL_STEP_PX
+                : d.x > box.right - EDGE_PX * 2 && scroller.scrollLeft + scroller.clientWidth < scroller.scrollWidth - 1
+                    ? SCROLL_STEP_PX : 0;
+            return { vertical, horizontal };
         };
-        if (!speed()) return;
+        const first = speed();
+        if (!first.vertical && !first.horizontal) return;
         d.scrolling = true;
         const step = () => {
-            const amount = drag === d ? speed() : 0;
-            if (!amount) {
+            const amount = drag === d ? speed() : { vertical: 0, horizontal: 0 };
+            if (!amount.vertical && !amount.horizontal) {
                 d.scrolling = false;
                 return;
             }
-            scroller.scrollTop += amount;
+            scroller.scrollTop += amount.vertical;
+            scroller.scrollLeft += amount.horizontal;
             update();
             requestAnimationFrame(step);
         };
@@ -565,9 +724,9 @@
         const root = d.root;
         if (!d.moved && d.offset === 0) {
             if (d.mode === "create") {
-                openQuick(root, { allDay: false, start: d.anchor, end: d.anchor + DEFAULT_MINUTES });
+                openQuick(root, { allDay: false, start: d.anchor, end: d.anchor + DEFAULT_MINUTES }, d.fromMember);
             } else if (d.mode === "allday-create") {
-                openQuick(root, { allDay: true, first: d.anchorDate, last: d.anchorDate });
+                openQuick(root, { allDay: true, first: d.anchorDate, last: d.anchorDate }, d.fromMember);
             } else if (d.touch && d.item) {
                 // lifted without moving: show the handles for start and end
                 d.item.classList.add("is-selected");
@@ -575,15 +734,15 @@
             return;
         }
         if (d.mode === "create" || d.mode === "allday-create") {
-            openQuick(root, d.result);
+            openQuick(root, d.result, d.toMember);
             return;
         }
-        const blocked = blockingZone(root, d.members, d.result);
+        const blocked = blockingZone(root, membersAfter(d), d.result);
         if (blocked) {
-            helpers().showToast(`Dort ist gesperrt (${blocked.dataset.label}). Der Termin bleibt, wo er war.`, "error");
+            helpers().showToast(`Dort ist gesperrt (${blocked.dataset.label}). Der Eintrag bleibt, wo er war.`, "error");
             return;
         }
-        if (sameTimes(d.origin, d.result)) return;
+        if (sameTimes(d.origin, d.result) && d.fromMember === d.toMember) return;
         commit(d);
     }
 
@@ -598,47 +757,75 @@
             : { allDay: "false", start: localValue(times.start), end: localValue(times.end) };
     }
 
+    /** Person change for the server: who leaves and who takes over (empty: column "Alle"); nothing if unchanged. */
+    function swapParams(from, to) {
+        return from === to ? {} : { fromMember: from, toMember: to };
+    }
+
     async function commit(d) {
         const root = d.root;
         const target = d.result.allDay ? d.result.first : dateOf(d.result.start);
+        const personChanges = d.fromMember !== d.toMember;
         if (d.mode === "chore-move") {
-            const url = `/calendar/actions/chores/${d.item.dataset.choreId}/reschedule`;
-            await run(root, url, { start: clock(minuteOf(d.result.start)) },
-                { start: clock(minuteOf(d.origin.start)) }, target);
+            const url = `/calendar/actions/chores/${d.item.dataset.choreId}/update`;
+            await run(root, url,
+                { date: dateOf(d.result.start), start: clock(minuteOf(d.result.start)),
+                    ...(personChanges ? { member: d.toMember } : {}) },
+                { date: dateOf(d.origin.start), start: clock(minuteOf(d.origin.start)),
+                    ...(personChanges ? { member: d.fromMember } : {}) }, target);
             return;
         }
+        if (d.mode === "todo-move") {
+            const url = `/calendar/actions/todos/${d.item.dataset.todoId}/move`;
+            await run(root, url, { dueOn: d.result.first, from: d.fromMember, to: d.toMember },
+                { dueOn: d.origin.first, from: d.toMember, to: d.fromMember }, target);
+            return;
+        }
+        const timesChange = !sameTimes(d.origin, d.result);
         let scope = "SINGLE";
         if (d.recurring) {
             const sameDay = !d.result.allDay && !d.origin.allDay && dateOf(d.result.start) === dateOf(d.origin.start);
-            scope = await askScope(root, sameDay);
+            scope = timesChange ? await askScope(root, sameDay, personChanges) : "OCCURRENCE";
             if (!scope) return;
         }
         const extra = d.recurring ? { scope, recurrenceId: d.item.dataset.recurrenceId } : { scope };
         const url = `/calendar/actions/events/${d.item.dataset.eventId}/reschedule`;
-        await run(root, url, { ...timesParams(d.result), ...extra }, { ...timesParams(d.origin), ...extra }, target);
+        const times = timesChange ? timesParams(d.result) : {};
+        const undoTimes = timesChange ? timesParams(d.origin) : {};
+        await run(root, url, { ...times, ...extra, ...swapParams(d.fromMember, d.toMember) },
+            { ...undoTimes, ...extra, ...swapParams(d.toMember, d.fromMember) }, target);
     }
 
     async function run(root, url, params, undoParams, date) {
         try {
-            const result = await post(url, params);
-            report(result, async () => {
-                await post(url, undoParams);
-                reload(root);
+            const result = await calendar().post(url, params);
+            calendar().report({ ...result, message: result.message + outsideNote(root, date) }, async () => {
+                await calendar().post(url, undoParams);
+                reload();
             });
         } catch (error) {
             helpers().showToast(error.message, "error");
         }
-        reload(root, date);
+        reload();
     }
 
-    /* --- Taps and forms ------------------------------------------------------------------------------------------ */
+    /* --- Taps ---------------------------------------------------------------------------------------------------- */
 
     function onClick(event) {
+        const zoomStep = event.target.closest("[data-zoomable] [data-zoom-step]");
+        if (zoomStep) {
+            stepZoom(zoomStep.closest("[data-zoomable]"), +zoomStep.dataset.zoomStep);
+            return;
+        }
         const root = event.target.closest("[data-time-grid]");
         if (!root || event.target.closest("dialog")) return;
         const slotChoice = event.target.closest("[data-slot-choice]");
         if (slotChoice) {
             switchSlot(root, slotChoice.dataset.slotChoice);
+            return;
+        }
+        if (event.target.closest("[data-split-toggle]")) {
+            toggleSplit(root);
             return;
         }
         if (!event.target.closest(".tgrid-allday, .tgrid-body")) return;
@@ -649,72 +836,53 @@
         }
         const item = event.target.closest("[data-grid-item]");
         if (item) {
-            if (item.dataset.gridItem !== "chore") {
-                event.preventDefault();
-                openSheet(root, item);
-            }
+            event.preventDefault();
+            calendar().openSheet(item.dataset.sheetUrl);
             return;
         }
         if (event.target.closest(".occ") || root.dataset.canCreate !== "true") return;
         const column = event.target.closest(".tgrid-col");
         if (column) {
             const start = absolute(column.dataset.date, snapDown(minuteAt(column, event.clientY), slotMinutes(root)));
-            openQuick(root, { allDay: false, start, end: start + DEFAULT_MINUTES });
+            openQuick(root, { allDay: false, start, end: start + DEFAULT_MINUTES }, memberOf(column));
             return;
         }
         const cell = event.target.closest(".tgrid-allday-cell");
-        if (cell) openQuick(root, { allDay: true, first: cell.dataset.date, last: cell.dataset.date });
+        if (cell) openQuick(root, { allDay: true, first: cell.dataset.date, last: cell.dataset.date }, memberOf(cell));
     }
 
-    async function onSubmit(event) {
-        const form = event.target.closest("form[data-grid-form]");
-        if (!form) return;
-        // the confirmation dialog asks first and submits again afterwards
-        if (form.dataset.confirm && form.dataset.confirmed !== "true") return;
-        event.preventDefault();
-        delete form.dataset.confirmed;
-        const root = form.closest("[data-time-grid]");
-        const button = form.querySelector('[type="submit"]');
-        if (button) button.disabled = true;
-        try {
-            const result = await post(form.action, new FormData(form));
-            const dialog = form.closest("dialog");
-            if (dialog?.open) dialog.close();
-            const undo = form.dataset.gridForm === "create" && result.eventId
-                ? () => post(`/calendar/actions/events/${result.eventId}/delete`, {}).then(() => reload(root))
-                : null;
-            report(result, undo);
-            reload(root, form.elements.startDate?.value);
-        } catch (error) {
-            helpers().showToast(error.message, "error");
-        } finally {
-            if (button) button.disabled = false;
-        }
-    }
-
-    /* --- Set-up per rendered grid -------------------------------------------------------------------------------- */
+    /* --- Set-up per rendered calendar ---------------------------------------------------------------------------- */
 
     function setUp() {
+        const area = document.querySelector("[data-zoomable]");
+        if (area && !area.dataset.zoomReady) {
+            area.dataset.zoomReady = "true";
+            applyZoom(area, readZoom(), null);
+        }
         const root = document.querySelector("[data-time-grid]");
         if (!root || root.dataset.gridReady) return;
         root.dataset.gridReady = "true";
         if (root.dataset.view === "week" && matchMedia(PHONE).matches) {
-            window.location.replace(`/calendar/days3?date=${root.dataset.date}`);
+            window.location.replace(`/calendar/days3?date=${root.dataset.focus}`);
             return;
         }
         applySlot(root, readSlot());
-        const scroller = root.querySelector("[data-grid-scroll]");
+        root.querySelectorAll("[data-split-toggle]").forEach(button =>
+            button.setAttribute("aria-pressed", String(root.dataset.split === "person")));
+        const scroller = scrollerOf(root);
         root.style.setProperty("--grid-top", Math.round(scroller.getBoundingClientRect().top + window.scrollY) + "px");
-        // head and all-day row leave room for the scrollbar so that their columns line up with the hours
-        root.style.setProperty("--scrollbar-w", scroller.offsetWidth - scroller.clientWidth + "px");
-        if (pendingScroll !== null) {
-            scroller.scrollTop = pendingScroll;
-            pendingScroll = null;
+        if (keptMinute !== null) {
+            scrollToMinute(root, keptMinute);
         } else {
             const today = root.querySelector(".tgrid-col.is-today");
-            const minute = today ? Math.max(0, +root.dataset.nowMinute - DEFAULT_MINUTES) : FIRST_HOUR_SHOWN * 60;
-            scroller.scrollTop = minute / DAY_MINUTES * scroller.scrollHeight;
+            scrollToMinute(root, today ? Math.max(0, +root.dataset.nowMinute - DEFAULT_MINUTES) : FIRST_HOUR_SHOWN * 60);
         }
+        // in a grid wider than the screen the focus day comes into view
+        const focus = root.querySelector(`.tgrid-col[data-date="${root.dataset.focus}"]`);
+        if (focus && scroller.scrollWidth > scroller.clientWidth) {
+            scroller.scrollLeft = focus.offsetLeft - root.querySelector(".tgrid-axis").offsetWidth;
+        }
+        markScrollableX(root);
         const details = root.querySelector("[data-quick-details]");
         details?.addEventListener("click", () => { details.href = detailsUrl(details.closest("form")); });
     }
@@ -731,13 +899,12 @@
         document.addEventListener("pointerup", onPointerUp);
         document.addEventListener("pointercancel", onPointerCancel);
         document.addEventListener("click", onClick, true);
-        document.addEventListener("submit", onSubmit);
-        document.addEventListener("change", event => {
-            if (event.target.matches("[data-sheet-scope]")) syncScope(event.target.closest("[data-sheet-body]"));
-        });
-        // while dragging with a finger the page must not scroll; before, it scrolls as usual
-        document.addEventListener("touchmove", event => { if (drag?.touch) event.preventDefault(); }, { passive: false });
-        // events are links: the browser's own link dragging would cancel the pointer events
+        document.addEventListener("wheel", onWheel, { passive: false });
+        // while dragging or pinching with fingers the page must not scroll; before, it scrolls as usual
+        document.addEventListener("touchmove", event => {
+            if (drag?.touch || pinch.area) event.preventDefault();
+        }, { passive: false });
+        // entries are links: the browser's own link dragging would cancel the pointer events
         document.addEventListener("dragstart", event => {
             if (event.target.closest?.("[data-time-grid] .tgrid-allday, [data-time-grid] .tgrid-body")) event.preventDefault();
         });
@@ -747,7 +914,13 @@
         document.addEventListener("keydown", event => {
             if (event.key === "Escape" && drag) abort();
         });
+        // paging and switching the view keep the visible hours
+        document.addEventListener("htmx:beforeRequest", keepScroll);
         document.addEventListener("htmx:afterSettle", setUp);
+        window.addEventListener("resize", () => {
+            const root = document.querySelector("[data-time-grid]");
+            if (root) markScrollableX(root);
+        });
         setInterval(moveNowLine, 60000);
         setUp();
     });

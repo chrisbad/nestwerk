@@ -22,11 +22,13 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 @Service
 public class CalendarEventService {
@@ -232,6 +234,40 @@ public class CalendarEventService {
         boolean wasAbsence = event.isAbsence();
         event.setTimes(draft.getStartsAt(), draft.getEndsAt(), false);
         event.moveExceptionsTo(start, zone);
+        event.markChanged();
+        absenceChanged(event, wasAbsence);
+        return found;
+    }
+
+    /**
+     * Dragging into another person's column: {@code to} takes the place of {@code from} (for a series in the whole
+     * series), other members stay; {@code null} as {@code from} only adds, {@code null} as {@code to} only removes.
+     * Then {@code timeChange} (e.g. {@code () -> reschedule(...)}, or {@code List::of} for none) gives new times in the
+     * same transaction. Blocks are checked for the new members at the new times; they prevent both changes.
+     */
+    @Transactional
+    public List<Conflict> moveToMember(Long id, Long from, Long to, Supplier<List<Conflict>> timeChange, User actor) {
+        CalendarEvent event = editable(id, actor);
+        if (to != null && !members.existsById(to)) {
+            throw new IllegalArgumentException("Unbekanntes Familienmitglied ausgewählt.");
+        }
+        Set<Long> ids = new LinkedHashSet<>(event.getMemberIds());
+        if (from != null) {
+            ids.remove(from);
+        }
+        if (to != null) {
+            ids.add(to);
+        }
+        boolean wasAbsence = event.isAbsence();
+        event.setMemberIds(ids);
+        List<Conflict> found = new ArrayList<>(timeChange.get());
+        CalendarEvent draft = new CalendarEvent("check", "Prüfung", event.getStartsAt(), event.getEndsAt(),
+                event.isAllDay(), zone.getId(), actor.getId());
+        draft.setRrule(event.getRrule());
+        draft.setMemberIds(ids);
+        List<Conflict> forMembers = conflicts(draft, event.getId(), actor);
+        refuseBlocked(forMembers);
+        forMembers.stream().filter(c -> !found.contains(c)).forEach(found::add);
         event.markChanged();
         absenceChanged(event, wasAbsence);
         return found;

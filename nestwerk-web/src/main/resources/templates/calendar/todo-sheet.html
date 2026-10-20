@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<!-- Dialog of a due to-do in the calendar: status, quick edit, delete, link to all details -->
+<div th:fragment="todo" class="grid-sheet-content">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="dialog-head">
+        <h2 th:text="${todo.title}">Steuer</h2>
+        <button type="button" class="icon-button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            <span class="visually-hidden">Schließen</span>
+        </button>
+    </div>
+
+    <form class="dialog-section" th:if="${canChangeStatus}" method="post" data-grid-form="todo-status"
+          th:action="@{/calendar/actions/todos/{id}/status(id=${todo.id})}">
+        <div class="segmented segmented-choice segmented-status" role="group" aria-label="Status">
+            <button type="submit" name="status" th:each="s : ${statuses}" th:value="${s}" th:text="${s.label()}"
+                    th:attr="aria-pressed=${s == todo.status}">Offen</button>
+        </div>
+    </form>
+
+    <form method="post" data-grid-form="todo-update" th:if="${canEdit or canAssign}"
+          th:action="@{/calendar/actions/todos/{id}/update(id=${todo.id})}">
+        <input type="hidden" name="version" th:value="${todo.version}">
+        <input type="hidden" name="assignees" th:each="key : ${otherAssignees}" th:value="${key}">
+        <div class="dialog-body">
+            <div class="field">
+                <label for="sheet-todo-title">Titel</label>
+                <input id="sheet-todo-title" type="text" name="title" th:value="${todo.title}" maxlength="200" required
+                       th:readonly="${!canEdit}">
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="sheet-todo-due">Fällig am</label>
+                    <input id="sheet-todo-due" class="input" type="date" name="dueOn" th:value="${todo.dueOn}"
+                           th:readonly="${!canEdit}">
+                </div>
+                <div class="field">
+                    <label for="sheet-todo-priority">Priorität</label>
+                    <select id="sheet-todo-priority" name="priority" class="input" th:if="${canEdit}">
+                        <option th:each="p : ${priorities}" th:value="${p}" th:text="${p.label()}"
+                                th:selected="${p == todo.priority}">Normal</option>
+                    </select>
+                    <th:block th:unless="${canEdit}">
+                        <input type="hidden" name="priority" th:value="${todo.priority}">
+                        <p id="sheet-todo-priority" th:text="${todo.priority.label()}">Normal</p>
+                    </th:block>
+                </div>
+            </div>
+            <fieldset class="field choices" th:unless="${#maps.isEmpty(memberById)}" th:disabled="${!canAssign}">
+                <legend>Zuständig</legend>
+                <label class="choice choice-member" th:each="entry : ${memberById}"
+                       th:style="|--member-color: ${entry.value.color}|">
+                    <input type="checkbox" name="assignees" th:value="|member:${entry.key}|"
+                           th:checked="${form.hasAssignee('member:' + entry.key)}">
+                    <span th:text="${entry.value.name}">Name</span>
+                </label>
+            </fieldset>
+            <th:block th:unless="${canAssign}">
+                <input type="hidden" name="assignees" th:each="key : ${form.assignees}"
+                       th:if="${#strings.startsWith(key, 'member:')}" th:value="${key}">
+            </th:block>
+            <p class="hint" th:unless="${#lists.isEmpty(otherAssignees)}">
+                Weitere Zuständige (Rollen, Kontakte) bleiben erhalten; ändern lassen sie sich unter „Alle Details“.
+            </p>
+        </div>
+        <div class="dialog-foot">
+            <a class="button button-ghost" th:href="@{/todos/{id}(id=${todo.id})}" data-keep-back>Alle Details</a>
+            <button type="submit" class="button">Speichern</button>
+        </div>
+    </form>
+
+    <div class="dialog-foot" th:unless="${canEdit or canAssign}">
+        <a class="button button-ghost" th:href="@{/todos/{id}(id=${todo.id})}" data-keep-back>Alle Details</a>
+    </div>
+
+    <div class="dialog-section dialog-section-last sheet-danger" th:if="${canDelete}">
+        <form method="post" data-grid-form="todo-delete" data-confirm-tone="danger"
+              th:action="@{/calendar/actions/todos/{id}/delete(id=${todo.id})}"
+              th:attr="data-confirm=|„${todo.title}“ samt Unteraufgaben, Kommentaren und Anhängen löschen?|">
+            <button type="submit" class="button button-danger">ToDo löschen</button>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>

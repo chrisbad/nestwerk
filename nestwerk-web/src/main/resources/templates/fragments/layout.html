@@ -25,6 +25,7 @@
     <script defer th:src="@{/js/vendor/htmx.min.js}"></script>
     <script defer th:src="@{/js/vendor/sortable.min.js}"></script>
     <script defer th:src="@{/js/nestwerk.js}"></script>
+    <script defer th:src="@{/js/calendar-sheets.js}"></script>
     <script defer th:src="@{/js/calendar-grid.js}"></script>
 </head>
 <body>
@@ -206,11 +207,11 @@
 <dialog th:fragment="confirmDialog" id="confirm-dialog" class="dialog dialog-small" aria-labelledby="confirm-title">
     <div class="dialog-body">
         <h2 id="confirm-title" data-confirm-text>Wirklich fortfahren?</h2>
-        <p class="muted">Das lässt sich nicht rückgängig machen.</p>
+        <p class="muted" data-confirm-danger-note hidden>Das lässt sich nicht rückgängig machen.</p>
     </div>
     <div class="dialog-foot">
         <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
-        <button type="button" class="button button-danger" data-confirm-ok>Löschen</button>
+        <button type="button" class="button" data-confirm-ok>Bestätigen</button>
     </div>
 </dialog>
 
