@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Fächer & Lehrkräfte')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='school')}"></header>
+<main class="event-main school-main">
+    <div th:replace="~{school/fragments :: settingsHeader('subjects')}"></div>
+
+    <section class="sheet settings-block">
+        <h2>Fächer</h2>
+        <p class="muted" th:if="${#lists.isEmpty(subjects)}">Noch keine Fächer.</p>
+        <ul class="plain-list subject-list">
+            <li th:each="s : ${subjects}" th:style="|--subject-color: ${s.color}|">
+                <form method="post" th:action="@{/school/subjects/{id}(id=${s.id})}" class="slot-row">
+                    <input type="hidden" name="yearId" th:value="${year.id}">
+                    <input type="color" name="color" th:value="${s.color}" aria-label="Farbe">
+                    <input type="text" name="name" th:value="${s.name}" maxlength="60" required aria-label="Name">
+                    <button type="submit" class="button button-ghost button-small">Speichern</button>
+                </form>
+                <span class="teacher-list">
+                    <span class="muted" th:if="${teachersBySubject[s.id].isEmpty()}">keine Lehrkraft</span>
+                    <th:block th:each="t : ${teachersBySubject[s.id]}">
+                        <a th:if="${t.email != null}" th:href="|mailto:${t.email}|" th:text="${t.name}">Frau Weber</a>
+                        <span th:if="${t.email == null}" th:text="${t.name}">Frau Weber</span>
+                    </th:block>
+                </span>
+                <details>
+                    <summary>Lehrkräfte</summary>
+                    <form method="post" th:action="@{/school/subjects/{id}/teachers(id=${s.id})}" class="teacher-pick"
+                          th:if="${!allTeachers.isEmpty()}">
+                        <input type="hidden" name="yearId" th:value="${year.id}">
+                        <label th:each="t : ${allTeachers}" class="check-row">
+                            <input type="checkbox" name="teacherId" th:value="${t.id}"
+                                   th:checked="${s.teacherIds.contains(t.id)}">
+                            <span th:text="${t.name}">Frau Weber</span>
+                            <span class="muted" th:if="${t.email != null}" th:text="${t.email}">weber@schule.de</span>
+                        </label>
+                        <button type="submit" class="button button-ghost button-small">Auswahl speichern</button>
+                    </form>
+                    <form method="post" th:action="@{/school/subjects/{id}/teachers/new(id=${s.id})}" class="slot-row"
+                          th:if="${canCreateContact}">
+                        <input type="hidden" name="yearId" th:value="${year.id}">
+                        <input type="text" name="name" maxlength="150" required placeholder="Neue Lehrkraft, z. B. Frau Weber"
+                               aria-label="Name der Lehrkraft">
+                        <input type="email" name="email" maxlength="200" placeholder="E-Mail" aria-label="E-Mail">
+                        <button type="submit" class="button button-small">Anlegen &amp; zuordnen</button>
+                    </form>
+                    <p class="muted" th:if="${!canCreateContact}">Neue Lehrkräfte legt an, wer Kontakte anlegen darf.</p>
+                </details>
+                <form method="post" th:action="@{/school/subjects/{id}/delete(id=${s.id})}"
+                      data-confirm="Fach mit allen Stunden löschen?" class="inline-form">
+                    <input type="hidden" name="yearId" th:value="${year.id}">
+                    <button type="submit" class="button button-ghost button-small">Löschen</button>
+                </form>
+            </li>
+        </ul>
+        <form method="post" th:action="@{/school/years/{id}/subjects(id=${year.id})}" class="slot-row">
+            <input type="text" name="name" maxlength="60" required placeholder="Neues Fach" aria-label="Neues Fach">
+            <button type="submit" class="button button-small">Anlegen</button>
+        </form>
+        <p class="muted">Lehrkräfte sind Kontakte der Kategorie „Lehrkraft“ und stehen auch in den Kontakten.</p>
+    </section>
+</main>
+</body>
+</html>

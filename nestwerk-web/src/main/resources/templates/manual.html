@@ -24,6 +24,7 @@
                 <li><a href="#haushalt">Haushalt</a></li>
                 <li><a href="#tablet">Wand-Tablet</a></li>
                 <li><a href="#kueche">Küche</a></li>
+                <li sec:authorize="hasAuthority('SCHOOL_VIEW')"><a href="#schule">Schule</a></li>
                 <li><a href="#kontakte">Kontakte</a></li>
                 <li><a href="#benachrichtigungen">Benachrichtigungen</a></li>
                 <li><a href="#ki">KI-Assistent</a></li>
@@ -86,15 +87,55 @@
             <section id="kalender" class="sheet manual-section">
                 <h2>Kalender</h2>
                 <p>Der Familienkalender sammelt alle Termine. Oben schaltest du zwischen <strong>Monat</strong>,
-                    <strong>Woche</strong> und <strong>Agenda</strong> (Liste der kommenden Termine) um. Mit
-                    <strong>Heute</strong> springst du zum aktuellen Tag; die Pfeile blättern vor und zurück.</p>
+                    <strong>Woche</strong>, <strong>3 Tage</strong>, <strong>Tag</strong> und <strong>Agenda</strong>
+                    (Liste der kommenden Termine) um. Mit <strong>Heute</strong> springst du zum aktuellen Tag; die
+                    Pfeile oder ein Wischen zur Seite blättern vor und zurück. Auf dem Handy zeigt
+                    <strong>Woche</strong> drei Tage, damit die Termine lesbar bleiben.</p>
+
+                <h3>Zeitraster: Woche, 3 Tage und Tag</h3>
+                <p>Diese Ansichten zeigen den Tag als Stundenraster mit einer roten Linie für die aktuelle Uhrzeit.
+                    Mit <strong>Grob</strong> und <strong>Fein</strong> wählst du, worauf Termine beim Ziehen
+                    einrasten: grob auf 15 Minuten, fein auf 5 Minuten mit mehr Platz pro Stunde. Die Wahl merkt
+                    sich jedes Gerät. Ganztägige Termine und fällige ToDos stehen in der Leiste
+                    <strong>ganztägig</strong> über dem Raster.</p>
+                <ul>
+                    <li><strong>Anlegen:</strong> Tippe auf eine freie Zeit – es öffnet sich ein kurzes Formular für
+                        eine Stunde ab dort. Hältst du den Finger gedrückt und ziehst, spannst du Beginn und Ende
+                        selbst auf. <strong>Mehr Details</strong> führt zum vollständigen Formular.</li>
+                    <li><strong>Verschieben:</strong> Halte einen Termin kurz gedrückt, bis er sich anhebt, und ziehe
+                        ihn an eine andere Zeit oder auf einen anderen Tag. Hältst du ihn am linken oder rechten Rand,
+                        wandert er Tag für Tag weiter. Ziehst du ihn in die Leiste <strong>ganztägig</strong>, wird er
+                        ganztägig – und umgekehrt bekommt ein ganztägiger Termin so eine Uhrzeit. Mit der Maus geht
+                        das ohne Warten.</li>
+                    <li><strong>Beginn und Ende ändern:</strong> Hebst du einen Termin an und lässt ihn los, ohne ihn
+                        zu bewegen, erscheinen oben und unten Griffe; ziehe daran. Mit der Maus erscheinen die Griffe
+                        beim Darüberfahren. Bei ganztägigen Terminen ändert der Griff rechts die Anzahl der Tage.</li>
+                    <li><strong>Bearbeiten und Löschen:</strong> Tippe einen Termin an. Im Blatt änderst du Titel,
+                        Zeiten, Kategorie und Personen oder löschst den Termin (mit Rückfrage).</li>
+                    <li><strong>Serien:</strong> Nach dem Ziehen fragt Nestwerk, ob nur dieses Vorkommen oder die
+                        ganze Serie gemeint ist. Die ganze Serie lässt sich nur in Uhrzeit und Dauer ändern; abgesagte
+                        Vorkommen bleiben abgesagt.</li>
+                    <li><strong>Hausarbeiten</strong> aus dem Haushaltsplan lassen sich am selben Tag auf eine andere
+                        Uhrzeit ziehen. Die Planung behält diese Zeit, solange die Person da ist.</li>
+                </ul>
+                <p class="hint">Während du ziehst, zeigt das Raster gesperrte Zeiten der betroffenen Personen
+                    schraffiert. Landet ein Termin dort, springt er zurück. Bei Warnungen (zum Beispiel Arbeitszeit)
+                    wird er gespeichert, und die Meldung bietet <strong>Rückgängig</strong> an.</p>
+
+                <h3>Kategorien und Farben</h3>
+                <p>Termine können eine <strong>Kategorie</strong> haben, etwa Arzt, Schule, Sport oder Geburtstag.
+                    Die Kategorie färbt den Termin; die betroffenen Personen erscheinen als farbige Punkte. Ohne
+                    Kategorie bekommt der Termin die Farbe der ersten Person. Wer das Recht
+                    <strong>Terminkategorien verwalten</strong> hat, legt unter <strong>Kategorien verwalten</strong>
+                    (über dem Kalender) eigene Kategorien mit einer Farbe aus der Palette an, ändert oder löscht
+                    sie. Gelöschte Kategorien nehmen ihre Termine nicht mit.</p>
 
                 <h3>Termin anlegen</h3>
                 <ol>
                     <li>Tippe oben auf <strong>Neuer Termin</strong>.</li>
                     <li>Gib einen <strong>Titel</strong> ein („Was steht an?“) sowie <strong>Beginn</strong> und
                         <strong>Ende</strong>. Für Geburtstage und Ähnliches schaltest du <strong>Ganztägig</strong> ein.</li>
-                    <li>Optional: <strong>Ort</strong> und <strong>Notizen</strong>.</li>
+                    <li>Optional: <strong>Kategorie</strong>, <strong>Ort</strong> und <strong>Notizen</strong>.</li>
                     <li>Unter <strong>Wiederholung</strong> kannst du einen Termin täglich, wöchentlich, alle
                         2 Wochen, monatlich oder jährlich wiederholen lassen. Für Sonderfälle gibt es
                         <em>Benutzerdefiniert …</em> mit einer Regel wie <code>FREQ=MONTHLY;BYDAY=-1FR</code>
@@ -121,7 +162,8 @@
                 <h3>Import und Export</h3>
                 <p>Über <strong>Import</strong> (nur mit Recht zum Anlegen von Terminen) liest du Termine aus einer
                     Kalenderdatei (iCal, <code>.ics</code>) ein, über <strong>Export</strong> lädst du alle für dich
-                    sichtbaren Termine als Datei herunter, etwa für andere Kalender-Apps. Beim Import zeigt dir
+                    sichtbaren Termine als Datei herunter, etwa für andere Kalender-Apps; Kategorien reisen dabei per
+                    Namen mit. Beim Import zeigt dir
                     Nestwerk zuerst eine Vorschau; erst nach deiner Bestätigung wird übernommen. Mit dem Schalter
                     <strong>ToDos</strong> blendest du fällige ToDos im Kalender ein oder aus.</p>
             </section>
@@ -344,6 +386,59 @@
                     verbindest <strong>Bring!</strong>. Dafür brauchst du das Recht <em>Küche: Einstellungen</em>.</p>
             </section>
 
+            <section id="schule" class="sheet manual-section" sec:authorize="hasAuthority('SCHOOL_VIEW')">
+                <h2>Schule</h2>
+                <p>Stundenplan, Hausaufgaben, Klassenarbeiten, Termine, Ferien, Noten und Elternbriefe für jedes
+                    Schulkind. „Schule“ öffnet direkt den Stundenplan der aktuellen Woche; ab Samstag ist die nächste
+                    Woche zu sehen. Bei mehreren Kindern wechselt man oben über die Namen, darunter liegen die Reiter
+                    Stundenplan, Hausaufgaben, Klassenarbeiten &amp; Termine, Elternbriefe und Noten.</p>
+                <ul>
+                    <li><strong>Einstellungen (Zahnrad):</strong> Das Zahnrad oben rechts führt zu „Kinder &amp;
+                        Schuljahre“, „Schule &amp; Stundenraster“, „Fächer &amp; Lehrkräfte“, „Stunden &amp; A/B-Wochen“
+                        und „Ferien“. Ein neues Schuljahr ersetzt das aktive; das alte bleibt mit allen Daten erhalten
+                        und lässt sich wieder aktivieren.</li>
+                    <li><strong>Schule und Sekretariat:</strong> Die Schule ist ein Kontakt der Kategorie „Schule“ mit
+                        Telefon, E-Mail und Anschrift des Sekretariats. Man wählt sie beim Schuljahr aus oder legt sie dort
+                        gleich an; Geschwister an derselben Schule teilen sie. Telefon und E-Mail stehen über dem
+                        Stundenplan.</li>
+                    <li><strong>Stundenraster:</strong> Unter „Schule &amp; Stundenraster“ trägt man die Zeiten der
+                        Stunden und Pausen der Schule ein. Der Stundenplan zeigt dann je Stunde eine Zeile und die Pausen
+                        als schmale Streifen. Ändert die Schule ihre Zeiten, ziehen alle Stunden nach.</li>
+                    <li><strong>Fächer und Lehrkräfte:</strong> Jedes Fach kann mehrere Lehrkräfte haben. Sie sind
+                        Kontakte der Kategorie „Lehrkraft“ und lassen sich mit Name und E-Mail direkt am Fach anlegen.
+                        Im Stundenplan öffnet ein Klick auf die Stunde eine Mail an die Lehrkraft.</li>
+                    <li><strong>Stunden:</strong> Eine Stunde liegt im Raster (z. B. 3.–4. Stunde für eine Doppelstunde)
+                        oder hat eine freie Uhrzeit, etwa eine AG am Nachmittag. Ein Klick auf ein leeres Feld im
+                        Stundenplan trägt dort eine Stunde ein. Wechselt der Plan alle zwei Wochen, gibt man eine A-Woche
+                        an und ordnet Stunden der A- oder B-Woche zu.</li>
+                    <li><strong>Ausfall mit einem Klick:</strong> Ein Klick auf eine Stunde öffnet ein kleines Menü:
+                        „Entfällt“ trägt den Ausfall sofort ein, dazu gibt es Vertretung (mit Hinweis), Raumwechsel und
+                        „Wieder normal“. Ausfallende Stunden kürzen den Schultag, werden allen gemeldet und stehen als
+                        Hinweis im Familienkalender, z. B. „Lena · frei ab 11:15“.</li>
+                    <li><strong>Hausaufgaben:</strong> sind ToDos, die dem Kind zugewiesen sind. Sie lassen sich einmalig,
+                        an jedem Schultag oder wöchentlich wiederholen. Erledigen und Wiederöffnen geht in der Liste
+                        oder im ToDo selbst.</li>
+                    <li><strong>Klassenarbeiten und Termine:</strong> Beides steht in einem Reiter und ist optisch
+                        getrennt: Klassenarbeiten und Tests mit Fachfarbe, Termine wie Elternabend, Elterngespräch oder
+                        Ausflug gestrichelt. Termine haben auf Wunsch Uhrzeit und Ort. Alles steht auch im
+                        Familienkalender – Klassenarbeiten beim Kind, Elternabende und -gespräche bei den Eltern; die
+                        Teilnehmenden lassen sich je Eintrag ändern. Nestwerk erinnert am Lerntag (einstellbar) und am
+                        Vortag.</li>
+                    <li><strong>Ferien:</strong> Nestwerk holt die Schulferien des Bundeslands einmal täglich von
+                        openholidaysapi.org. An Ferientagen und Feiertagen entfällt die Schulzeit, und die Ferien stehen
+                        als ganztägiges Band im Familienkalender. Eigene freie Tage trägt man unter „Ferien“ ein.</li>
+                    <li><strong>Noten:</strong> Noten von 1 bis 6 mit Tendenz (2+ ist 1,7, 2- ist 2,3), je Fach und
+                        Halbjahr, mündlich oder schriftlich, einfach oder doppelt gewichtet. Nestwerk zeigt den
+                        Durchschnitt und einen kleinen Verlauf; die Zeugnisnote trägt man getrennt ein. Wer das Recht
+                        „Noten aller Kinder“ hat, sieht und pflegt alle; mit „Eigene Noten“ sieht man nur die des
+                        eigenen Kindes-Profils. Auf dem Wand-Tablet erscheinen nie Noten.</li>
+                    <li><strong>Elternbriefe:</strong> Brief mit Frist und Anhang (Foto oder PDF). Mit „Unterschrieben“
+                        ist er erledigt; vorher erinnert Nestwerk drei Tage vorher, am Vortag und am Tag der Frist.</li>
+                    <li><strong>Heute in der Schule:</strong> Die Startseite und das Wand-Tablet zeigen je Kind die
+                        Stunden von heute, ausfallende Stunden, fällige Hausaufgaben und den nächsten Termin.</li>
+                </ul>
+            </section>
+
             <section id="kontakte" class="sheet manual-section">
                 <h2>Kontakte</h2>
                 <p>Das gemeinsame Adressbuch für Ärztin, Handwerker, Schule und alle anderen.</p>
@@ -381,7 +476,8 @@
                 <h2>KI-Assistent</h2>
                 <p>Wenn du das Recht dazu hast, kannst du einen KI-Assistenten wie Claude mit Nestwerk verbinden.
                     Er kann dann zum Beispiel Termine eintragen, Rezepte anlegen, den Essensplan füllen oder
-                    Hausarbeiten planen – in deinem Namen und mit deinen Rechten. Löschen kann er nichts.</p>
+                    Hausarbeiten planen – in deinem Namen und mit deinen Rechten. Löschen kann er nur Termine und
+                    Terminkategorien; gute Assistenten fragen vorher nach.</p>
                 <p>Die Adresse, die der Assistent braucht, steht im Benutzermenü unter <strong>KI-Zugänge</strong>
                     (sie endet auf <code>/mcp</code>). Es gibt zwei Wege:</p>
 

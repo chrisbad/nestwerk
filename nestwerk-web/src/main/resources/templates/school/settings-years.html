@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Schule einstellen')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='school')}"></header>
+<main class="event-main school-main">
+    <div th:replace="~{school/fragments :: settingsHeader('years')}"></div>
+
+    <p class="muted" th:if="${#lists.isEmpty(rows)}">Noch kein Kind mit Schulprofil.</p>
+
+    <section class="sheet settings-block" th:each="row : ${rows}">
+        <h2 th:text="${row.member.name}">Lena</h2>
+
+        <form method="post" th:action="@{/school/profiles/{id}/state(id=${row.profile.id})}" class="slot-row"
+              th:if="${canSettings}">
+            <label>Bundesland (für Ferien)
+                <select name="state">
+                    <option value="">–</option>
+                    <option th:each="s : ${states}" th:value="${s.key}" th:text="${s.value}"
+                            th:selected="${s.key == row.profile.state}">Bayern</option>
+                </select>
+            </label>
+            <button type="submit" class="button button-ghost button-small">Speichern</button>
+        </form>
+        <p class="muted" th:if="${!canSettings and row.profile.state != null}"
+           th:text="|Bundesland: ${states[row.profile.state]}|"></p>
+
+        <h3>Schuljahre</h3>
+        <ul class="plain-list">
+            <li th:each="y : ${row.years}">
+                <strong th:text="${y.label}">2026/27</strong>
+                <span th:text="${y.schoolContactId != null and schoolNames[y.schoolContactId] != null} ? ${schoolNames[y.schoolContactId]} : 'ohne Schule'">Grundschule</span>
+                <span th:text="|Klasse ${y.className}|">Klasse 3a</span>
+                <span class="muted" th:text="|${#temporals.format(y.startsOn, 'dd.MM.yyyy')} – ${#temporals.format(y.endsOn, 'dd.MM.yyyy')}|"></span>
+                <span th:if="${y.active}" class="badge">aktiv</span>
+                <a th:if="${!y.active}" th:href="@{/school/years/{id}/timetable(id=${y.id})}">ansehen</a>
+                <form method="post" th:action="@{/school/years/{id}/activate(id=${y.id})}" th:if="${canEdit and !y.active}"
+                      class="inline-form">
+                    <button type="submit" class="button button-ghost button-small">Aktivieren</button>
+                </form>
+                <details th:if="${canEdit}">
+                    <summary>Bearbeiten</summary>
+                    <form method="post" th:action="@{/school/years/{id}(id=${y.id})}" class="slot-row">
+                        <input type="text" name="label" maxlength="30" required th:value="${y.label}" aria-label="Bezeichnung">
+                        <select name="schoolContactId" aria-label="Schule">
+                            <option value="">Ohne Schule</option>
+                            <option th:each="s : ${schools}" th:value="${s.id}" th:text="${s.name}"
+                                    th:selected="${s.id == y.schoolContactId}">Grundschule</option>
+                        </select>
+                        <input type="text" name="className" maxlength="30" required th:value="${y.className}" aria-label="Klasse">
+                        <input type="date" name="startsOn" required th:value="${y.startsOn}" aria-label="Beginn">
+                        <input type="date" name="endsOn" required th:value="${y.endsOn}" aria-label="Ende">
+                        <button type="submit" class="button button-small">Speichern</button>
+                    </form>
+                </details>
+            </li>
+        </ul>
+
+        <details th:if="${canEdit}" th:open="${row.active == null}">
+            <summary>Neues Schuljahr beginnen</summary>
+            <form method="post" th:action="@{/school/profiles/{id}/years(id=${row.profile.id})}" class="stack-form">
+                <div class="slot-row">
+                    <input type="text" name="label" maxlength="30" required placeholder="Bezeichnung" aria-label="Bezeichnung"
+                           th:value="${suggestedLabel}">
+                    <input type="text" name="className" maxlength="30" required placeholder="Klasse" aria-label="Klasse">
+                    <input type="date" name="startsOn" required aria-label="Beginn" th:value="${suggestedStart}">
+                    <input type="date" name="endsOn" required aria-label="Ende" th:value="${suggestedEnd}">
+                </div>
+                <div class="slot-row">
+                    <select name="schoolContactId" aria-label="Schule">
+                        <option value="">Schule wählen …</option>
+                        <option th:each="s : ${schools}" th:value="${s.id}" th:text="${s.name}"
+                                th:selected="${row.active != null and s.id == row.active.schoolContactId}">Grundschule</option>
+                    </select>
+                    <th:block th:if="${canCreateContact}">
+                        <span class="muted">oder neu:</span>
+                        <input type="text" name="newSchoolName" maxlength="150" placeholder="Name der Schule" aria-label="Neue Schule">
+                        <input type="tel" name="newSchoolPhone" maxlength="50" placeholder="Telefon Sekretariat" aria-label="Telefon Sekretariat">
+                        <input type="email" name="newSchoolEmail" maxlength="200" placeholder="E-Mail Sekretariat" aria-label="E-Mail Sekretariat">
+                    </th:block>
+                </div>
+                <button type="submit" class="button button-small">Anlegen</button>
+            </form>
+            <p class="muted">Das bisher aktive Schuljahr bleibt mit allen Daten erhalten und ist weiter einsehbar.</p>
+        </details>
+    </section>
+
+    <section class="sheet settings-block" th:if="${canSettings and !#lists.isEmpty(freeMembers)}">
+        <h2>Schulprofil anlegen</h2>
+        <form method="post" th:action="@{/school/profiles}" class="slot-row">
+            <select name="memberId" required aria-label="Familienmitglied">
+                <option th:each="m : ${freeMembers}" th:value="${m.id}" th:text="${m.name}">Lena</option>
+            </select>
+            <select name="state" aria-label="Bundesland">
+                <option value="">Bundesland</option>
+                <option th:each="s : ${states}" th:value="${s.key}" th:text="${s.value}">Bayern</option>
+            </select>
+            <button type="submit" class="button button-small">Anlegen</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>

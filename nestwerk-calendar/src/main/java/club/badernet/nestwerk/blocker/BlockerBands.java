@@ -19,13 +19,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Blocker als Bänder für die Kalenderansichten. Betroffene und Admins sehen den Titel, andere je nach
- * Sichtbarkeit „belegt“ oder gar nichts.
+ * Blockers as bands for the calendar views. Affected members and admins see the title, others "belegt" or nothing
+ * depending on the visibility. Bands of further {@link CalendarBandSource}s are appended.
  */
 @Component
 public class BlockerBands {
 
-    /** Ein Band an einem Tag; {@code kind} für Farbe und Symbol (z. B. {@code work}). */
+    /** A band on a day; {@code kind} selects colour and icon (e.g. {@code work}). */
     public record Band(String label, String times, String kind, String color) {
     }
 
@@ -35,18 +35,29 @@ public class BlockerBands {
     private final BlockerSettings settings;
     private final FamilyMemberRepository members;
     private final ZoneId zone;
+    private final List<CalendarBandSource> sources;
 
     public BlockerBands(BlockerRepository blockers, BlockerSettings settings, FamilyMemberRepository members,
-                        CalendarSettings calendar) {
+                        CalendarSettings calendar, List<CalendarBandSource> sources) {
+        this.sources = sources;
         this.blockers = blockers;
         this.settings = settings;
         this.members = members;
         this.zone = calendar.zone();
     }
 
-    /** Bänder je Tag von {@code from} bis {@code to} (einschließlich), am Tag ihres Beginns. */
+    /** Bands per day from {@code from} to {@code to} (inclusive), on the day they start. */
     @Transactional(readOnly = true)
     public Map<LocalDate, List<Band>> between(LocalDate from, LocalDate to, User viewer) {
+        Map<LocalDate, List<Band>> result = blockerBands(from, to, viewer);
+        for (CalendarBandSource source : sources) {
+            source.bands(from, to, viewer).forEach((day, bands) ->
+                    result.computeIfAbsent(day, d -> new ArrayList<>()).addAll(bands));
+        }
+        return result;
+    }
+
+    private Map<LocalDate, List<Band>> blockerBands(LocalDate from, LocalDate to, User viewer) {
         Map<LocalDate, List<Band>> result = new LinkedHashMap<>();
         List<Blocker> all = blockers.findAll();
         if (all.isEmpty()) {

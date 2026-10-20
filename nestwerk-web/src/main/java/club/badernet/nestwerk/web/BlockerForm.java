@@ -78,6 +78,11 @@ public class BlockerForm {
                 f.weekdays = EnumSet.of(DayOfWeek.SUNDAY);
                 f.strength = BlockerStrength.SHOW;
             }
+            case SCHOOL -> {
+                f.startTime = LocalTime.of(8, 0);
+                f.endTime = LocalTime.of(13, 0);
+                f.weekdays = EnumSet.range(DayOfWeek.MONDAY, DayOfWeek.FRIDAY);
+            }
             case CUSTOM -> {
                 f.startTime = LocalTime.of(9, 0);
                 f.endTime = LocalTime.of(12, 0);

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Kalender')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='calendar')}"></header>
+<main class="cal-main cal-main-grid" id="calendar" data-swipe-area data-time-grid
+      th:attr="data-view=${view}, data-date=${first}, data-slot-fine=${slotFine}, data-slot-coarse=${slotCoarse},
+               data-can-create=${canCreate}, data-now-minute=${nowMinute}">
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+    <div th:replace="~{calendar/fragments :: toolbar(${title}, ${view}, ${first},
+            @{/calendar/{v}(v=${view}, date=${prev})}, @{/calendar/{v}(v=${view}, date=${today})},
+            @{/calendar/{v}(v=${view}, date=${next})})}"></div>
+    <div th:replace="~{calendar/fragments :: calendarLegend}"></div>
+
+    <div class="tgrid" th:classappend="'tgrid-' + ${view}"
+         th:style="|--days: ${#lists.size(gridDays)}; --lanes: ${laneCount > 0 ? laneCount : 1}|">
+        <div class="tgrid-head">
+            <div class="tgrid-corner" aria-hidden="true"></div>
+            <div class="tgrid-dayhead" th:each="d : ${gridDays}"
+                 th:classappend="${(d.today ? 'is-today ' : '') + (d.weekend ? 'is-weekend' : '')}">
+                <a class="tgrid-dayname" th:href="@{/calendar/day(date=${d.date})}"
+                   th:attr="aria-label=${#temporals.format(d.date, 'EEEE, d. MMMM')}">
+                    <span class="tgrid-weekday" th:text="${#temporals.format(d.date, 'EEE')}">Mo.</span>
+                    <span class="day-num" th:text="${d.date.dayOfMonth}">12</span>
+                </a>
+                <ul th:replace="~{calendar/fragments :: bands(${d.bands}, ${view != 'day'})}"></ul>
+            </div>
+        </div>
+
+        <div class="tgrid-allday" data-allday-row>
+            <div class="tgrid-axis-label">ganz&shy;tägig</div>
+            <div class="tgrid-allday-cell" th:each="d, it : ${gridDays}"
+                 th:classappend="${d.weekend} ? 'is-weekend'"
+                 th:style="|grid-column: ${it.index + 2}|" th:attr="data-date=${d.date}"></div>
+            <th:block th:each="lane : ${allDayLanes}">
+                <div class="tgrid-lane-item"
+                     th:style="|grid-column: ${lane.firstColumn + 2} / span ${lane.span}; grid-row: ${lane.lane + 1}|">
+                    <th:block th:if="${lane.entry.kind == 'event'}" th:with="e=${lane.entry}, o=${e.occurrence}">
+                        <a class="occ occ-allday tgrid-item"
+                           th:classappend="${(e.editable ? 'is-editable ' : '') + (lane.continuesBefore ? 'continues-before ' : '') + (lane.continuesAfter ? 'continues-after' : '')}"
+                           th:style="${e.color != null} ? |--occ-color: ${e.color}|"
+                           th:href="@{/calendar/events/{id}(id=${o.eventId}, occurrence=${o.recurring} ? ${o.recurrenceId} : null)}"
+                           th:title="${e.categoryName != null} ? |${o.title} (${e.categoryName})| : ${o.title}"
+                           th:attr="data-grid-item='allday', data-event-id=${o.eventId},
+                                    data-recurrence-id=${o.recurring} ? ${o.recurrenceId} : null,
+                                    data-recurring=${o.recurring}, data-editable=${e.editable},
+                                    data-first=${e.startsAt.toLocalDate()}, data-last=${e.lastDay()},
+                                    data-members=${e.memberList()}, data-title=${o.title}">
+                            <span class="occ-title">
+                                <svg th:if="${o.privateEvent}" class="occ-lock" viewBox="0 0 24 24" aria-label="Privat" role="img">
+                                    <rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+                                </svg>
+                                <span th:text="${o.title}">Urlaub</span>
+                            </span>
+                            <span th:replace="~{calendar/fragments :: memberDots(${o.memberIds}, ${e.categoryName != null})}"></span>
+                            <span class="tgrid-handle tgrid-handle-right" data-handle="end" aria-hidden="true"
+                                  th:if="${e.editable and !lane.continuesAfter}"></span>
+                        </a>
+                    </th:block>
+                    <th:block th:if="${lane.entry.kind == 'todo'}"><a th:replace="~{calendar/fragments :: todo(${lane.entry.todo})}"></a></th:block>
+                </div>
+            </th:block>
+        </div>
+
+        <div class="tgrid-scroll" data-grid-scroll>
+            <div class="tgrid-body">
+                <div class="tgrid-axis" aria-hidden="true">
+                    <span class="tgrid-hour" th:each="h : ${#numbers.sequence(1, 23)}" th:style="|--hour: ${h}|"
+                          th:text="|${#numbers.formatInteger(h, 2)}:00|">01:00</span>
+                </div>
+                <div class="tgrid-col" th:each="d : ${gridDays}" th:attr="data-date=${d.date}"
+                     th:classappend="${(d.today ? 'is-today ' : '') + (d.weekend ? 'is-weekend' : '')}">
+                    <div class="tgrid-zone" th:each="z : ${d.zones}" th:classappend="'tgrid-zone-' + ${z.strength}"
+                         th:style="|--start: ${z.startMinute}; --dur: ${z.endMinute - z.startMinute}|"
+                         th:attr="data-member=${z.memberId}, data-strength=${z.strength},
+                                  data-start-minute=${z.startMinute}, data-end-minute=${z.endMinute},
+                                  data-label=${z.label}" aria-hidden="true">
+                        <span class="tgrid-zone-label" th:text="${z.label}">Lena · Arbeit</span>
+                    </div>
+
+                    <th:block th:each="p : ${d.entries}">
+                        <a th:if="${p.entry.kind == 'event'}" th:with="e=${p.entry}, o=${e.occurrence}"
+                           class="occ tgrid-item tgrid-event"
+                           th:classappend="${(p.durationMinutes() < 40 ? 'is-short ' : '') + (p.columns > narrowColumns ? 'is-narrow ' : '') + (e.editable ? 'is-editable ' : '') + (p.continuesBefore ? 'continues-before ' : '') + (p.continuesAfter ? 'continues-after' : '')}"
+                           th:style="|--start: ${p.startMinute}; --dur: ${p.durationMinutes()}; --col: ${p.column}; --cols: ${p.columns};${e.color != null ? ' --occ-color: ' + e.color + ';' : ''}|"
+                           th:href="@{/calendar/events/{id}(id=${o.eventId}, occurrence=${o.recurring} ? ${o.recurrenceId} : null)}"
+                           th:title="|${#temporals.format(e.startsAt, 'HH:mm')}–${#temporals.format(e.endsAt, 'HH:mm')} ${o.title}${o.location != null ? ', ' + o.location : ''}${e.categoryName != null ? ' (' + e.categoryName + ')' : ''}|"
+                           th:attr="data-grid-item='event', data-event-id=${o.eventId},
+                                    data-recurrence-id=${o.recurring} ? ${o.recurrenceId} : null,
+                                    data-recurring=${o.recurring}, data-editable=${e.editable},
+                                    data-start=${#temporals.format(e.startsAt, 'yyyy-MM-dd''T''HH:mm')},
+                                    data-end=${#temporals.format(e.endsAt, 'yyyy-MM-dd''T''HH:mm')},
+                                    data-members=${e.memberList()}, data-title=${o.title}">
+                            <span class="occ-time" data-item-time
+                                  ><span th:text="${#temporals.format(e.startsAt, 'HH:mm')}">10:00</span><span class="occ-time-end" th:text="|–${#temporals.format(e.endsAt, 'HH:mm')}|">–11:00</span></span>
+                            <span class="occ-title">
+                                <svg th:if="${o.privateEvent}" class="occ-lock" viewBox="0 0 24 24" aria-label="Privat" role="img">
+                                    <rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+                                </svg>
+                                <svg th:if="${o.recurring}" class="occ-lock" viewBox="0 0 24 24" aria-label="Serie" role="img">
+                                    <path d="M17 3l3 3-3 3M20 6H9a5 5 0 0 0-5 5M7 21l-3-3 3-3M4 18h11a5 5 0 0 0 5-5"/>
+                                </svg>
+                                <span th:text="${o.title}">Zahnarzt</span>
+                            </span>
+                            <span class="occ-place" th:if="${o.location != null}" th:text="${o.location}">Praxis</span>
+                            <span th:replace="~{calendar/fragments :: memberDots(${o.memberIds}, ${e.categoryName != null})}"></span>
+                            <span class="tgrid-handle tgrid-handle-start" data-handle="start" aria-hidden="true"
+                                  th:if="${e.editable and !p.continuesBefore}"></span>
+                            <span class="tgrid-handle tgrid-handle-end" data-handle="end" aria-hidden="true"
+                                  th:if="${e.editable and !p.continuesAfter}"></span>
+                        </a>
+                        <a th:if="${p.entry.kind == 'chore'}" th:with="c=${p.entry.chore}"
+                           class="occ occ-chore tgrid-item tgrid-event"
+                           th:classappend="${(p.durationMinutes() < 40 ? 'is-short ' : '') + (c.movable ? 'is-editable' : '')}"
+                           th:style="|--start: ${p.startMinute}; --dur: ${p.durationMinutes()}; --col: ${p.column}; --cols: ${p.columns};${c.color != null ? ' --occ-color: ' + c.color + ';' : ''}|"
+                           th:href="@{/household/tasks/{id}(id=${c.id})}" th:title="|${c.time} ${c.title}|"
+                           th:attr="data-grid-item='chore', data-chore-id=${c.id}, data-editable=${c.movable},
+                                    data-start=${#temporals.format(c.startsAt(), 'yyyy-MM-dd''T''HH:mm')},
+                                    data-end=${#temporals.format(c.endsAt(), 'yyyy-MM-dd''T''HH:mm')},
+                                    data-title=${c.title}">
+                            <span class="occ-time" data-item-time th:text="${c.time}">18:30–18:55</span>
+                            <span class="occ-title">
+                                <svg class="occ-lock" viewBox="0 0 24 24" role="img" aria-label="Hausarbeit">
+                                    <path d="M4.5 20V10l7.5-6 7.5 6v10z"/><path d="M9.5 20v-5h5v5"/>
+                                </svg>
+                                <span th:text="${c.title}">Bad putzen · Lena</span>
+                            </span>
+                        </a>
+                    </th:block>
+
+                    <div class="tgrid-now" th:if="${d.today}" th:style="|--start: ${nowMinute}|" aria-hidden="true"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <p class="tgrid-hint muted" th:if="${canCreate}">
+        Tippen auf eine freie Zeit legt einen Termin an, gedrückt halten und ziehen spannt die Dauer auf.
+        Termine gedrückt halten zum Verschieben, an den Griffen oben und unten ziehen für Beginn und Ende.
+    </p>
+
+    <!-- Quick creation after tapping or spanning a free time -->
+    <dialog id="grid-quick" class="dialog" aria-labelledby="grid-quick-title" th:if="${canCreate}">
+        <form th:action="@{/calendar/actions/events}" method="post" data-grid-form="create">
+            <div class="dialog-head">
+                <h2 id="grid-quick-title">Neuer Termin</h2>
+                <button type="button" class="icon-button" data-close-dialog>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                    <span class="visually-hidden">Schließen</span>
+                </button>
+            </div>
+            <div class="dialog-body">
+                <div class="field">
+                    <label for="quick-title">Titel</label>
+                    <input id="quick-title" class="input-title" type="text" name="title" maxlength="200" required
+                           placeholder="Was steht an?" autocomplete="off">
+                </div>
+                <input type="hidden" name="allDay" value="false" data-quick-allday>
+                <div class="field-row field-row-when">
+                    <div class="field">
+                        <label for="quick-start-date">Beginn</label>
+                        <div class="date-time">
+                            <input id="quick-start-date" type="date" name="startDate" required>
+                            <input type="time" name="startTime" aria-label="Uhrzeit Beginn" data-time-field>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="quick-end-date">Ende</label>
+                        <div class="date-time">
+                            <input id="quick-end-date" type="date" name="endDate" required>
+                            <input type="time" name="endTime" aria-label="Uhrzeit Ende" data-time-field>
+                        </div>
+                    </div>
+                </div>
+                <div th:replace="~{calendar/fragments :: categorySelect('quick-category', null)}"></div>
+                <fieldset class="field choices" th:unless="${#lists.isEmpty(allMembers)}">
+                    <legend>Betrifft</legend>
+                    <label class="choice choice-member" th:each="m : ${allMembers}" th:style="|--member-color: ${m.color}|">
+                        <input type="checkbox" name="memberIds" th:value="${m.id}">
+                        <span th:text="${m.name}">Name</span>
+                    </label>
+                </fieldset>
+            </div>
+            <div class="dialog-foot">
+                <a class="button button-ghost" th:href="@{/calendar/events/new}" data-quick-details>Mehr Details</a>
+                <button type="submit" class="button">Termin anlegen</button>
+            </div>
+        </form>
+    </dialog>
+
+    <!-- Bottom sheet of an event, loaded on tap -->
+    <dialog id="grid-sheet" class="dialog" aria-label="Termin">
+        <div data-sheet-body></div>
+    </dialog>
+
+    <!-- Choice after dragging an occurrence of a series -->
+    <dialog id="grid-series" class="dialog dialog-small" aria-labelledby="grid-series-title">
+        <div class="dialog-body">
+            <h2 id="grid-series-title">Terminserie ändern</h2>
+            <p class="muted" data-series-text>Was soll sich ändern?</p>
+        </div>
+        <div class="dialog-foot dialog-foot-stack">
+            <button type="button" class="button" data-series-choice="OCCURRENCE">Nur dieses Vorkommen</button>
+            <button type="button" class="button button-ghost" data-series-choice="SERIES">Ganze Serie</button>
+            <p class="hint" data-series-hint hidden>Die ganze Serie lässt sich nur in der Uhrzeit und Dauer ändern, nicht auf andere Tage.</p>
+            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+        </div>
+    </dialog>
+</main>
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

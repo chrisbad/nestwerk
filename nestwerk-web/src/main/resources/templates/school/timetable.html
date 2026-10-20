@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Stundenplan')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='school')}"></header>
+<main class="event-main school-main school-wide">
+    <div th:replace="~{school/fragments :: header}"></div>
+
+    <nav class="week-nav" aria-label="Woche wählen">
+        <a class="icon-button" th:href="@{/school/years/{id}/timetable(id=${year.id},week=${previousWeek})}"
+           aria-label="Vorherige Woche" title="Vorherige Woche">←</a>
+        <strong class="week-label"
+                th:text="|${#temporals.format(monday, 'dd.MM.')} – ${#temporals.format(sunday, 'dd.MM.yyyy')}|">19.10. – 25.10.2026</strong>
+        <span class="badge" th:if="${weekKind != null}" th:text="${weekKind.label()}">A-Woche</span>
+        <a class="icon-button" th:href="@{/school/years/{id}/timetable(id=${year.id},week=${nextWeek})}"
+           aria-label="Nächste Woche" title="Nächste Woche">→</a>
+        <a class="button button-ghost button-small" th:if="${!thisWeek}"
+           th:href="@{/school/years/{id}/timetable(id=${year.id})}">Aktuelle Woche</a>
+    </nav>
+
+    <section class="sheet settings-block" th:if="${!hasLessons}">
+        <p class="muted">Noch keine Stunden im Stundenplan.</p>
+        <p th:if="${canEdit}">
+            <a class="button button-small" th:href="@{/school/settings/school(year=${year.id})}">Stundenraster anlegen</a>
+            <a class="button button-ghost button-small" th:href="@{/school/settings/subjects(year=${year.id})}">Fächer anlegen</a>
+            <a class="button button-ghost button-small" th:href="@{/school/settings/lessons(year=${year.id})}">Stunden eintragen</a>
+        </p>
+    </section>
+
+    <section class="timetable" th:if="${hasLessons}" aria-label="Stundenplan der Woche">
+        <p class="muted tt-hint-line" th:if="${!grid.usesPeriods and canEdit}">
+            Ohne Stundenraster richtet sich der Plan nach den Anfangszeiten.
+            <a th:href="@{/school/settings/school(year=${year.id})}">Stundenraster mit Pausen anlegen</a>
+        </p>
+
+        <div class="tt-grid" th:style="|grid-template-columns: ${grid.columnTemplate()}; grid-template-rows: ${grid.rowTemplate()}|">
+            <div class="tt-corner" style="grid-row: 1; grid-column: 1"></div>
+            <div th:each="col : ${grid.columns}" class="tt-day" th:classappend="${col.today} ? 'tt-today'"
+                 th:style="|grid-row: 1; grid-column: ${col.column}|">
+                <span class="tt-day-name" th:text="${col.name}">Mo</span>
+                <span class="tt-day-date" th:text="${#temporals.format(col.date, 'dd.MM.')}">19.10.</span>
+            </div>
+
+            <th:block th:each="r : ${grid.rows}">
+                <div class="tt-rowhead" th:classappend="${r.pause} ? 'tt-pause-head' : (${r.extra} ? 'tt-extra-head')"
+                     th:style="|grid-row: ${r.row}; grid-column: 1|">
+                    <strong th:text="${r.label}">1.</strong>
+                    <span th:if="${!r.times.isEmpty()}" th:text="${r.times}">08:00–08:45</span>
+                </div>
+                <div class="tt-pause" th:if="${r.pause}" th:style="|grid-row: ${r.row}; grid-column: 2 / -1|"></div>
+            </th:block>
+
+            <div th:each="col : ${grid.columns}" th:if="${col.today}" class="tt-today-column"
+                 th:style="|grid-row: 1 / ${grid.lastRow()}; grid-column: ${col.column}|"></div>
+
+            <div th:each="col : ${grid.columns}" th:if="${col.free != null}" class="tt-free"
+                 th:style="|grid-row: 2 / ${grid.lastRow()}; grid-column: ${col.column}|">
+                <span th:text="${col.free}">Herbstferien</span>
+            </div>
+
+            <th:block th:if="${canEdit}">
+                <a th:each="s : ${grid.slots}" class="tt-slot"
+                   th:href="@{/school/settings/lessons(year=${year.id},weekday=${s.weekday},period=${s.period})}"
+                   th:style="|grid-row: ${s.row}; grid-column: ${s.column}|"
+                   th:title="|Stunde eintragen|" aria-label="Stunde eintragen">+</a>
+            </th:block>
+
+            <div th:each="c : ${grid.mainCells()}" class="tt-place"
+                 th:style="|grid-row: ${c.row} / ${c.rowEnd}; grid-column: ${c.column}|">
+                <div th:replace="~{school/fragments :: lessonCell(${c})}"></div>
+            </div>
+
+            <th:block th:if="${grid.extraRow() != null}">
+                <div th:each="col : ${grid.columns}" class="tt-place tt-extra"
+                     th:style="|grid-row: ${grid.extraRow().row}; grid-column: ${col.column}|">
+                    <div th:each="c : ${grid.extraCells(col.column)}" class="tt-extra-item">
+                        <span class="tt-extra-time" th:text="${c.times()}">14:00–15:30</span>
+                        <div th:replace="~{school/fragments :: lessonCell(${c})}"></div>
+                    </div>
+                </div>
+            </th:block>
+        </div>
+
+        <div class="tt-days">
+            <section th:each="col : ${grid.columns}" class="tt-daycard" th:classappend="${col.today} ? 'tt-today'">
+                <h2>
+                    <span th:text="${#temporals.format(col.date, 'EEEE, dd.MM.')}">Montag, 19.10.</span>
+                    <span class="badge" th:if="${col.today}">heute</span>
+                </h2>
+                <p class="muted" th:if="${col.free != null}" th:text="|Schulfrei: ${col.free}|">Schulfrei: Herbstferien</p>
+                <p class="muted" th:if="${col.free == null and grid.cellsOf(col.date).isEmpty()}">Keine Stunden.</p>
+                <div th:each="c : ${grid.cellsOf(col.date)}" class="tt-dayrow">
+                    <span class="tt-extra-time" th:text="${c.times()}">08:00–08:45</span>
+                    <div th:replace="~{school/fragments :: lessonCell(${c})}"></div>
+                </div>
+            </section>
+        </div>
+    </section>
+
+    <div class="school-aside">
+        <section class="sheet settings-block">
+            <h2>Nächste Termine</h2>
+            <p class="muted" th:if="${#lists.isEmpty(nextExams)}">Keine anstehenden Klassenarbeiten oder Termine.</p>
+            <ul class="plain-list">
+                <li th:each="e : ${nextExams}" th:classappend="${e.kind.isExam()} ? 'exam-item' : 'event-item'">
+                    <strong th:text="${#temporals.format(e.day, 'EE dd.MM.')}">Do 22.10.</strong>
+                    <span class="badge" th:classappend="${e.kind.isExam()} ? 'badge-exam'" th:text="${e.kind.label()}">Klassenarbeit</span>
+                    <span th:if="${e.subjectId != null and subjectNames[e.subjectId] != null}"
+                          th:text="${subjectNames[e.subjectId]}">Mathe</span>
+                    <span th:if="${!e.allDay}" th:text="${#temporals.format(e.startsAt, 'HH:mm')}">19:30</span>
+                </li>
+            </ul>
+            <p><a th:href="@{/school/years/{id}/exams(id=${year.id})}">Alle Klassenarbeiten &amp; Termine</a></p>
+        </section>
+        <section class="sheet settings-block">
+            <h2>Offene Hausaufgaben</h2>
+            <p class="muted" th:if="${#lists.isEmpty(openHomework)}">Keine offenen Hausaufgaben.</p>
+            <ul class="plain-list">
+                <li th:each="i : ${openHomework}"
+                    th:style="${i.subject != null} ? |border-left: 4px solid ${i.subject.color}; padding-left: .6rem|">
+                    <span th:text="${i.todo.title}">Seite 12 lesen</span>
+                    <span class="badge" th:if="${i.todo.dueOn != null}"
+                          th:classappend="${i.todo.dueOn.isBefore(today)} ? 'badge-warn'"
+                          th:text="|fällig ${#temporals.format(i.todo.dueOn, 'dd.MM.')}|">fällig 21.10.</span>
+                </li>
+            </ul>
+            <p><a th:href="@{/school/years/{id}/homework(id=${year.id})}">Alle Hausaufgaben</a></p>
+        </section>
+    </div>
+</main>
+</body>
+</html>

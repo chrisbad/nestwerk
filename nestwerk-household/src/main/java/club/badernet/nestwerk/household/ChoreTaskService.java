@@ -235,6 +235,23 @@ public class ChoreTaskService {
         }
     }
 
+    /**
+     * Plans the open task at another time of its day (e.g. moved in the calendar). Needs the right to reassign it;
+     * automatic re-planning keeps the time as long as the assignee stays available.
+     */
+    @Transactional
+    public void reschedule(Long taskId, LocalTime plannedAt, User actor) {
+        ChoreTask task = get(taskId, actor);
+        requireOpen(task);
+        if (plannedAt == null) {
+            throw new IllegalArgumentException("Bitte eine Uhrzeit angeben.");
+        }
+        if (!access.can(actor, "ASSIGN", task)) {
+            throw new AccessDeniedException("Keine Berechtigung, diese Hausarbeit zu verschieben");
+        }
+        task.planManually(plannedAt);
+    }
+
     @Transactional(readOnly = true)
     public List<ChoreTask> between(User viewer, LocalDate from, LocalDate to) {
         return tasks.findAllByDueOnBetween(from, to).stream()

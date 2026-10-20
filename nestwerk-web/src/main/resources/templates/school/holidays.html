@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Schulferien')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='school')}"></header>
+<main class="event-main school-main">
+    <p><a th:href="@{/school}">← Schule</a></p>
+    <h1>Schulferien</h1>
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+    <p class="muted">Die Ferien kommen einmal täglich von openholidaysapi.org. An Ferientagen entfällt die Schulzeit im
+        Kalender. Eigene Einträge (bewegliche Ferientage) bleiben beim Abruf erhalten.</p>
+
+    <p class="muted" th:if="${#maps.isEmpty(byState)}">Noch kein Schulprofil mit Bundesland.</p>
+
+    <section class="sheet settings-block" th:each="entry : ${byState}">
+        <h2 th:text="${stateNames[entry.key]}">Bayern</h2>
+        <p class="muted" th:if="${#lists.isEmpty(entry.value)}">Noch keine Ferien gespeichert.</p>
+        <ul class="plain-list">
+            <li th:each="h : ${entry.value}">
+                <strong th:text="${h.name}">Sommerferien</strong>
+                <span th:text="|${#temporals.format(h.startsOn, 'dd.MM.yyyy')} – ${#temporals.format(h.endsOn, 'dd.MM.yyyy')}|">03.08.2026 – 14.09.2026</span>
+                <span class="badge" th:if="${h.source == 'MANUAL'}">eigener Eintrag</span>
+                <form method="post" th:action="@{/school/holidays/{id}/delete(id=${h.id})}"
+                      th:if="${canSettings and h.source == 'MANUAL'}" class="inline-form">
+                    <button type="submit" class="button button-ghost button-small">Löschen</button>
+                </form>
+            </li>
+        </ul>
+        <form method="post" th:action="@{/school/holidays/{s}/refresh(s=${entry.key})}" th:if="${canSettings}">
+            <button type="submit" class="button button-ghost button-small">Jetzt abrufen</button>
+        </form>
+    </section>
+
+    <section class="sheet settings-block" th:if="${canSettings}">
+        <h2>Eigener Ferientag</h2>
+        <form method="post" th:action="@{/school/holidays}" class="slot-row">
+            <select name="state" required aria-label="Bundesland">
+                <option th:each="s : ${allStates}" th:value="${s}" th:text="${stateNames[s]}">Bayern</option>
+            </select>
+            <input type="text" name="name" maxlength="100" required placeholder="z. B. Brückentag" aria-label="Name">
+            <input type="date" name="startsOn" required aria-label="Von">
+            <input type="date" name="endsOn" required aria-label="Bis">
+            <button type="submit" class="button button-small">Speichern</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>

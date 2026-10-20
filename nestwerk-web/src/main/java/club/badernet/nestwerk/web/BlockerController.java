@@ -102,7 +102,9 @@ public class BlockerController {
             people.add(new Person(m, isOwn, blockers.canEditGoals(m.getId(), viewer), rows, goals));
         }
         model.addAttribute("people", people);
-        model.addAttribute("kinds", BlockerKind.values());
+        // Schul-Blocker entstehen aus dem Stundenplan und werden dort gepflegt
+        model.addAttribute("kinds", java.util.Arrays.stream(BlockerKind.values())
+                .filter(k -> k != BlockerKind.SCHOOL).toList());
         model.addAttribute("canCreate", blockers.canCreate(viewer));
         model.addAttribute("canManageSettings", blockers.canManageSettings(viewer));
         model.addAttribute("states", new TreeMap<>(GermanHolidays.STATES).entrySet().stream()

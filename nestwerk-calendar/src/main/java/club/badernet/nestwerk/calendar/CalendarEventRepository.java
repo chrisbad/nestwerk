@@ -1,6 +1,7 @@
 package club.badernet.nestwerk.calendar;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -13,6 +14,10 @@ public interface CalendarEventRepository extends JpaRepository<CalendarEvent, Lo
     Optional<CalendarEvent> findByUid(String uid);
 
     List<CalendarEvent> findAllByAbsenceTrue();
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update CalendarEvent e set e.categoryId = null where e.categoryId = :categoryId")
+    void clearCategory(@Param("categoryId") Long categoryId);
 
     /**
      * Kandidaten für ein Zeitfenster: Einzeltermine, die das Fenster berühren, und alle Serien,

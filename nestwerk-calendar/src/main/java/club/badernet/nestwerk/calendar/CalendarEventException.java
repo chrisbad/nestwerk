@@ -53,6 +53,10 @@ public class CalendarEventException {
         this.recurrenceId = recurrenceId;
     }
 
+    void referTo(Instant recurrenceId) {
+        this.recurrenceId = recurrenceId;
+    }
+
     void cancel() {
         this.cancelled = true;
     }

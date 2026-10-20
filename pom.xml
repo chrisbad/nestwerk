@@ -33,6 +33,7 @@
         <module>nestwerk-household</module>
         <module>nestwerk-kitchen</module>
         <module>nestwerk-attachment</module>
+        <module>nestwerk-school</module>
         <module>nestwerk-transfer</module>
         <module>nestwerk-maintenance</module>
         <module>nestwerk-web</module>
@@ -87,6 +88,11 @@
             <dependency>
                 <groupId>club.badernet</groupId>
                 <artifactId>nestwerk-attachment</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>club.badernet</groupId>
+                <artifactId>nestwerk-school</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

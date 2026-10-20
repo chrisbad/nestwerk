@@ -58,6 +58,7 @@ class TransferRoundTripTest {
     @Autowired ContactTransfer contactTransfer;
     @Autowired TodoTransfer todoTransfer;
     @Autowired CalendarEventService events;
+    @Autowired club.badernet.nestwerk.calendar.EventCategoryService categories;
     @Autowired CalendarEventRepository eventRepository;
     @Autowired ContactService contacts;
     @Autowired ContactRepository contactRepository;
@@ -122,6 +123,26 @@ class TransferRoundTripTest {
         assertThat(eventRepository.findAll()).filteredOn(CalendarEvent::isAllDay).singleElement()
                 .satisfies(e -> assertThat(e.getEndsAt()).isEqualTo(LocalDate.of(2026, 12, 28)
                         .atStartOfDay(java.time.ZoneId.of("Europe/Berlin")).toInstant()));
+    }
+
+    @Test
+    void categoriesTravelByNameAndUnknownNamesAreIgnored() {
+        Long doctor = categories.findByName("Arzt", admin).orElseThrow().getId();
+        CalendarEvent checkup = events.create(new EventInput("Vorsorge", null, null, LocalDate.of(2026, 11, 2),
+                LocalTime.of(8, 30), LocalDate.of(2026, 11, 2), LocalTime.of(9, 0), false, null, false, Set.of(),
+                false, doctor), admin);
+
+        String ics = calendarTransfer.exportIcs(admin);
+        assertThat(ics).contains("CATEGORIES:Arzt");
+
+        jdbc.update("DELETE FROM calendar_events");
+        String foreign = ics.replace("UID:" + checkup.getUid(), "UID:fremd-1@example")
+                .replace("CATEGORIES:Arzt", "CATEGORIES:Unbekannt\\, sonst,Arzt");
+        calendarTransfer.importIcs(ics.getBytes(StandardCharsets.UTF_8), admin, true);
+        calendarTransfer.importIcs(foreign.getBytes(StandardCharsets.UTF_8), admin, true);
+
+        assertThat(eventRepository.findByUid(checkup.getUid()).orElseThrow().getCategoryId()).contains(doctor);
+        assertThat(eventRepository.findByUid("fremd-1@example").orElseThrow().getCategoryId()).isEmpty();
     }
 
     @Test

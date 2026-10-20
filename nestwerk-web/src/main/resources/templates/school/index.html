@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Schule')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='school')}"></header>
+<main class="event-main school-main">
+    <h1>Schule</h1>
+    <p class="muted">Noch kein Kind mit aktivem Schuljahr. Schulprofile legt an, wer die Schule einstellen darf.</p>
+    <p><a th:href="@{/school/holidays}">Schulferien ansehen</a></p>
+</main>
+</body>
+</html>

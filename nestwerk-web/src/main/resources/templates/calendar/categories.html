@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Terminkategorien')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='calendar')}"></header>
+<main>
+    <a class="back-link" th:href="@{/calendar/week}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+        Zum Kalender
+    </a>
+    <div class="page-head">
+        <div>
+            <h1>Terminkategorien</h1>
+            <p>Arten von Terminen mit eigener Farbe. Die Farbe färbt den Termin im Kalender, die Personen bleiben als Punkte sichtbar.</p>
+        </div>
+        <div class="page-actions">
+            <button type="button" class="button" data-open-dialog="create-category">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                Kategorie anlegen
+            </button>
+        </div>
+    </div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <ul class="members categories" th:unless="${#lists.isEmpty(categories)}">
+        <li th:each="c : ${categories}">
+            <button type="button" class="member" th:attr="data-open-dialog='edit-category-' + ${c.id}">
+                <span class="category-swatch" th:style="|--swatch: ${c.color.hex()}|" aria-hidden="true"></span>
+                <span class="member-text">
+                    <strong th:text="${c.name}">Arzt</strong>
+                    <span class="muted" th:text="${c.color.label()}">Rot</span>
+                </span>
+            </button>
+        </li>
+    </ul>
+    <div class="sheet sheet-empty" th:if="${#lists.isEmpty(categories)}">
+        Noch keine Kategorien. Lege über „Kategorie anlegen“ z. B. Arzt, Sport oder Schule an.
+    </div>
+</main>
+
+<dialog th:each="c : ${categories}" th:id="'edit-category-' + ${c.id}" class="dialog"
+        th:attr="aria-labelledby='edit-category-title-' + ${c.id}">
+    <form th:action="@{/calendar/categories/{id}(id=${c.id})}" method="post">
+        <div class="dialog-head">
+            <h2 th:id="'edit-category-title-' + ${c.id}">Kategorie bearbeiten</h2>
+            <button type="button" class="icon-button" data-close-dialog>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span class="visually-hidden">Schließen</span>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <div class="field">
+                <label th:for="'cat-name-' + ${c.id}">Name</label>
+                <input th:id="'cat-name-' + ${c.id}" type="text" name="name" maxlength="60" th:value="${c.name}" required>
+            </div>
+            <fieldset th:replace="~{calendar/fragments :: palette(${c.color})}"></fieldset>
+        </div>
+        <div class="dialog-foot">
+            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+            <button type="submit" class="button">Speichern</button>
+        </div>
+    </form>
+    <form class="dialog-section dialog-section-last" th:action="@{/calendar/categories/{id}/delete(id=${c.id})}"
+          method="post" th:attr="data-confirm=|Kategorie „${c.name}“ löschen?|">
+        <p class="muted">Die Termine bleiben erhalten, nur ohne Kategorie.</p>
+        <button type="submit" class="button button-danger">Kategorie löschen</button>
+    </form>
+</dialog>
+
+<dialog id="create-category" class="dialog" aria-labelledby="create-category-title">
+    <form th:action="@{/calendar/categories}" method="post">
+        <div class="dialog-head">
+            <h2 id="create-category-title">Kategorie anlegen</h2>
+            <button type="button" class="icon-button" data-close-dialog>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span class="visually-hidden">Schließen</span>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <div class="field">
+                <label for="new-category-name">Name</label>
+                <input id="new-category-name" type="text" name="name" maxlength="60" required placeholder="z. B. Musikschule">
+            </div>
+            <fieldset th:replace="~{calendar/fragments :: palette(${colors[0]})}"></fieldset>
+        </div>
+        <div class="dialog-foot">
+            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+            <button type="submit" class="button">Kategorie anlegen</button>
+        </div>
+    </form>
+</dialog>
+
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

@@ -1,6 +1,7 @@
 package club.badernet.nestwerk.ai.tools;
 
 import club.badernet.nestwerk.ai.McpCaller;
+import club.badernet.nestwerk.calendar.CategoryNotFoundException;
 import club.badernet.nestwerk.calendar.EventNotFoundException;
 import club.badernet.nestwerk.contact.ContactNotFoundException;
 import club.badernet.nestwerk.household.ChoreConflictException;
@@ -74,7 +75,8 @@ public class Tools {
             throw new ToolException(e.getMessage());
         } catch (ObjectOptimisticLockingFailureException e) {
             throw new ToolException("Der Eintrag wurde inzwischen geändert. Bitte neu laden und erneut versuchen.");
-        } catch (TodoNotFoundException | EventNotFoundException | ChoreNotFoundException | ContactNotFoundException
+        } catch (TodoNotFoundException | EventNotFoundException | CategoryNotFoundException | ChoreNotFoundException
+                 | ContactNotFoundException
                  | NotificationNotFoundException | TodoConflictException | ChoreConflictException
                  | NoSuchElementException | ExternalServiceException e) {
             throw new ToolException(e.getMessage());

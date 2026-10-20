@@ -7,11 +7,11 @@ import club.badernet.nestwerk.blocker.TimeRange;
 import club.badernet.nestwerk.calendar.CalendarEvent;
 import club.badernet.nestwerk.calendar.CalendarEventService;
 import club.badernet.nestwerk.calendar.CalendarGrid;
+import club.badernet.nestwerk.calendar.EventCategoryService;
 import club.badernet.nestwerk.settings.CalendarSettings;
 import club.badernet.nestwerk.calendar.DayCell;
 import club.badernet.nestwerk.calendar.Occurrence;
 import club.badernet.nestwerk.calendar.OccurrenceInput;
-import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberService;
 import club.badernet.nestwerk.security.CurrentUser;
 import club.badernet.nestwerk.todo.AssigneeRef;
@@ -19,7 +19,6 @@ import club.badernet.nestwerk.todo.Todo;
 import club.badernet.nestwerk.todo.TodoAccess;
 import club.badernet.nestwerk.todo.TodoEventLinks;
 import club.badernet.nestwerk.todo.TodoNotFoundException;
-import club.badernet.nestwerk.todo.TodoQuery;
 import club.badernet.nestwerk.todo.TodoService;
 import club.badernet.nestwerk.user.User;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -46,64 +45,53 @@ import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+/** Month and agenda view and the event form. The time grid views live in {@link CalendarGridController}. */
 @Controller
 @RequestMapping("/calendar")
 @PreAuthorize("hasAuthority('CALENDAR_VIEW')")
 public class CalendarController {
 
     private static final int AGENDA_DAYS = 60;
-    private static final DateTimeFormatter ALTERNATIVE = DateTimeFormatter.ofPattern("EE d.M. HH:mm",
-            java.util.Locale.GERMAN);
+    private static final DateTimeFormatter ALTERNATIVE = DateTimeFormatter.ofPattern("EE d.M. HH:mm", Locale.GERMAN);
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
 
     private final CalendarEventService events;
+    private final EventCategoryService categories;
     private final FamilyMemberService members;
     private final CurrentUser currentUser;
     private final CalendarSettings settings;
-    private final TodoQuery todoQuery;
+    private final CalendarPageData pageData;
     private final TodoAccess todoAccess;
     private final TodoService todoService;
     private final TodoEventLinks todoLinks;
     private final BlockerConflicts blockerConflicts;
     private final BlockerBands blockerBands;
-    private final club.badernet.nestwerk.household.ChoreTaskService choreTasks;
-    private final club.badernet.nestwerk.household.HouseholdAccess householdAccess;
 
-    public CalendarController(CalendarEventService events, FamilyMemberService members,
-                              CurrentUser currentUser, CalendarSettings settings, TodoQuery todoQuery,
-                              TodoAccess todoAccess, TodoService todoService, TodoEventLinks todoLinks,
-                              BlockerConflicts blockerConflicts, BlockerBands blockerBands,
-                              club.badernet.nestwerk.household.ChoreTaskService choreTasks,
-                              club.badernet.nestwerk.household.HouseholdAccess householdAccess) {
-        this.choreTasks = choreTasks;
-        this.householdAccess = householdAccess;
-        this.blockerConflicts = blockerConflicts;
-        this.blockerBands = blockerBands;
+    public CalendarController(CalendarEventService events, EventCategoryService categories,
+                              FamilyMemberService members, CurrentUser currentUser, CalendarSettings settings,
+                              CalendarPageData pageData, TodoAccess todoAccess, TodoService todoService,
+                              TodoEventLinks todoLinks, BlockerConflicts blockerConflicts,
+                              BlockerBands blockerBands) {
         this.events = events;
+        this.categories = categories;
         this.members = members;
         this.currentUser = currentUser;
         this.settings = settings;
-        this.todoQuery = todoQuery;
+        this.pageData = pageData;
         this.todoAccess = todoAccess;
         this.todoService = todoService;
         this.todoLinks = todoLinks;
-    }
-
-    /** Fällige ToDos des Zeitraums, wenn der Betrachter das ToDo-Modul nutzen darf. */
-    private Map<LocalDate, List<Todo>> addTodos(Model model, LocalDate from, LocalDate to) {
-        User viewer = currentUser.require();
-        boolean show = todoAccess.mayOpen(viewer.getUsername());
-        Map<LocalDate, List<Todo>> todos = show ? todoQuery.dueBetween(viewer, from, to) : Map.of();
-        model.addAttribute("showTodos", show);
-        model.addAttribute("todosByDay", todos);
-        return todos;
+        this.blockerConflicts = blockerConflicts;
+        this.blockerBands = blockerBands;
     }
 
     @GetMapping
@@ -113,11 +101,11 @@ public class CalendarController {
 
     @GetMapping("/month")
     String month(@RequestParam(required = false) String date, Model model) {
-        LocalDate day = parseDate(date);
-        YearMonth month = YearMonth.from(day);
+        User viewer = currentUser.require();
+        YearMonth month = YearMonth.from(pageData.parseDate(date));
         List<LocalDate> days = CalendarGrid.monthDays(month);
-        Map<LocalDate, List<Occurrence>> byDay = load(days);
-        LocalDate today = LocalDate.now(settings.zone());
+        Map<LocalDate, List<Occurrence>> byDay = pageData.occurrences(days, viewer);
+        LocalDate today = pageData.today();
 
         List<List<DayCell>> weeks = new ArrayList<>();
         for (int i = 0; i < days.size(); i += 7) {
@@ -128,43 +116,23 @@ public class CalendarController {
             weeks.add(week);
         }
         model.addAttribute("weeks", weeks);
-        model.addAttribute("bands", blockerBands.between(days.getFirst(), days.getLast(), currentUser.require()));
-        addChores(model, days.getFirst(), days.getLast());
-        addTodos(model, days.getFirst(), days.getLast());
+        model.addAttribute("bands", blockerBands.between(days.getFirst(), days.getLast(), viewer));
+        pageData.addChores(model, days.getFirst(), days.getLast(), viewer);
+        pageData.addTodos(model, days.getFirst(), days.getLast(), viewer);
         model.addAttribute("month", month);
         model.addAttribute("prev", month.minusMonths(1).atDay(1));
         model.addAttribute("next", month.plusMonths(1).atDay(1));
-        addCommon(model, "month");
+        pageData.addCommon(model, "month", viewer);
         return "calendar/month";
-    }
-
-    @GetMapping("/week")
-    String week(@RequestParam(required = false) String date, Model model) {
-        LocalDate day = parseDate(date);
-        List<LocalDate> days = CalendarGrid.weekDays(day);
-        Map<LocalDate, List<Occurrence>> byDay = load(days);
-        LocalDate today = LocalDate.now(settings.zone());
-
-        List<DayCell> cells = days.stream()
-                .map(d -> new DayCell(d, true, d.equals(today), byDay.get(d))).toList();
-        model.addAttribute("bands", blockerBands.between(days.getFirst(), days.getLast(), currentUser.require()));
-        addChores(model, days.getFirst(), days.getLast());
-        model.addAttribute("days", cells);
-        addTodos(model, days.getFirst(), days.getLast());
-        model.addAttribute("first", days.getFirst());
-        model.addAttribute("last", days.getLast());
-        model.addAttribute("prev", days.getFirst().minusWeeks(1));
-        model.addAttribute("next", days.getFirst().plusWeeks(1));
-        addCommon(model, "week");
-        return "calendar/week";
     }
 
     @GetMapping("/agenda")
     String agenda(@RequestParam(required = false) String from, Model model) {
-        LocalDate start = parseDate(from);
+        User viewer = currentUser.require();
+        LocalDate start = pageData.parseDate(from);
         List<LocalDate> days = start.datesUntil(start.plusDays(AGENDA_DAYS)).toList();
-        Map<LocalDate, List<Occurrence>> byDay = load(days);
-        Map<LocalDate, List<Todo>> todos = addTodos(model, days.getFirst(), days.getLast());
+        Map<LocalDate, List<Occurrence>> byDay = pageData.occurrences(days, viewer);
+        Map<LocalDate, List<Todo>> todos = pageData.addTodos(model, days.getFirst(), days.getLast(), viewer);
         Map<LocalDate, List<Occurrence>> nonEmpty = new LinkedHashMap<>();
         byDay.forEach((d, l) -> {
             if (!l.isEmpty() || todos.containsKey(d)) {
@@ -175,20 +143,26 @@ public class CalendarController {
         model.addAttribute("from", start);
         model.addAttribute("prev", start.minusDays(AGENDA_DAYS));
         model.addAttribute("next", start.plusDays(AGENDA_DAYS));
-        addCommon(model, "agenda");
+        pageData.addCommon(model, "agenda", viewer);
         return "calendar/agenda";
     }
 
     @GetMapping("/events/new")
-    String newForm(@RequestParam(required = false) String date, @RequestParam(required = false) Long todo,
-                   Model model) {
-        EventForm form = EventForm.forNew(parseDate(date));
+    String newForm(@RequestParam(required = false) String date,
+                   @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime start,
+                   @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime end,
+                   @RequestParam(required = false) Long todo, Model model) {
+        EventForm form = EventForm.forNew(pageData.parseDate(date));
+        if (start != null && end != null && end.isAfter(start)) {
+            form.setStartTime(start);
+            form.setEndTime(end);
+        }
         if (todo != null) {
             Todo t = linkableTodo(todo, currentUser.require());
-            form = EventForm.forNew(t.getDueOn() != null ? t.getDueOn() : parseDate(date));
+            form = EventForm.forNew(t.getDueOn() != null ? t.getDueOn() : pageData.parseDate(date));
             form.setTitle(t.getTitle());
             form.setTodoId(t.getId());
-            Set<Long> memberIds = new java.util.HashSet<>();
+            Set<Long> memberIds = new HashSet<>();
             t.assigneeRefs().stream().filter(r -> r.type() == AssigneeRef.Type.MEMBER).forEach(r -> memberIds.add(r.id()));
             form.setMemberIds(memberIds);
             model.addAttribute("fromTodo", t);
@@ -249,6 +223,8 @@ public class CalendarController {
         addFormData(model);
         if (!events.canEdit(event, viewer)) {
             model.addAttribute("details", EventDetails.of(shown != null ? shown : seriesStart(event), event.getRrule()));
+            event.getCategoryId().map(c -> categories.get(c, viewer))
+                    .ifPresent(c -> model.addAttribute("category", c));
             return "calendar/event-view";
         }
         return "calendar/event-form";
@@ -281,15 +257,14 @@ public class CalendarController {
         }
     }
 
-    /** Ziehen im Kalender: einzelnen Termin auf einen anderen Tag legen. Antwortet mit einer kurzen Meldung. */
+    /** Dragging in the month view: puts a single event on another day. Answers with a short message. */
     @PostMapping(value = "/events/{id}/move", produces = "text/plain;charset=UTF-8")
     @ResponseBody
     ResponseEntity<String> move(@PathVariable Long id,
                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         try {
             List<Conflict> warnings = events.moveToDate(id, date, currentUser.require());
-            String notes = warnings.stream().map(Conflict::message).distinct()
-                    .collect(java.util.stream.Collectors.joining(" "));
+            String notes = warnings.stream().map(Conflict::message).distinct().collect(Collectors.joining(" "));
             return ResponseEntity.ok(notes.isEmpty() ? "Termin wurde verschoben."
                     : "Termin wurde verschoben. Achtung: " + notes);
         } catch (IllegalArgumentException e) {
@@ -337,43 +312,18 @@ public class CalendarController {
         return "redirect:/calendar/month";
     }
 
-    /** Eine eingeplante Hausarbeit im Kalender der zuständigen Person. */
-    public record ChoreEntry(Long id, String title, String time, String color) {
-    }
-
-    /** Offene Hausarbeiten mit vom Planer gewählter Uhrzeit, wenn der Betrachter den Haushaltsplan nutzen darf. */
-    private void addChores(Model model, LocalDate from, LocalDate to) {
-        User viewer = currentUser.require();
-        Map<LocalDate, List<ChoreEntry>> byDay = new LinkedHashMap<>();
-        if (householdAccess.mayOpen(viewer.getUsername())) {
-            Map<Long, FamilyMember> people = members.findAll().stream()
-                    .collect(java.util.stream.Collectors.toMap(FamilyMember::getId, m -> m));
-            for (club.badernet.nestwerk.household.ChoreTask t : choreTasks.between(viewer, from, to)) {
-                if (!t.isOpen() || t.getPlannedAt() == null || t.getAssigneeMemberId() == null) {
-                    continue;
-                }
-                FamilyMember who = people.get(t.getAssigneeMemberId());
-                LocalTime end = t.getPlannedAt().plusMinutes(Math.max(5, t.getChore().getMinutesMedium()));
-                byDay.computeIfAbsent(t.getDueOn(), d -> new ArrayList<>()).add(new ChoreEntry(t.getId(),
-                        t.getChore().getTitle() + (who == null ? "" : " · " + who.getName()),
-                        TIME.format(t.getPlannedAt()) + "–" + TIME.format(end), who == null ? null : who.getColor()));
-            }
-        }
-        model.addAttribute("choresByDay", byDay);
-    }
-
-    /** Freie Zeit als Vorschlag im Formular. */
+    /** A free time offered as suggestion in the form. */
     public record Alternative(String label, LocalDate startDate, LocalTime startTime, LocalDate endDate,
                               LocalTime endTime) {
     }
 
-    /** Signalisiert im Änderungsformular „erst Warnung zeigen“ (kein Fehler). */
+    /** Signals "show the warning first" in the change form (not an error). */
     private static final class BlockerWarning extends IllegalArgumentException {
     }
 
     /**
-     * Zeigt Warnungen von Blockern einmal an, mit freien Alternativen; erst mit „Trotzdem speichern“
-     * ({@code confirmBlockers}) wird gespeichert. Sperren meldet der Service beim Speichern selbst.
+     * Shows warnings of blockers once, with free alternatives; only with "save anyway" ({@code confirmBlockers})
+     * the form is saved. The service itself refuses blocks when saving.
      */
     private boolean warnAboutBlockers(EventForm form, Long eventId, User actor, Model model) {
         if (form.isConfirmBlockers()) {
@@ -407,59 +357,34 @@ public class CalendarController {
         return new Occurrence(event.getId(), event.getUid(), event.getStartsAt(), event.getTitle(),
                 event.getDescription(), event.getLocation(), event.getStartsAt().atZone(settings.zone()),
                 event.getEndsAt().atZone(settings.zone()), event.isAllDay(), event.isPrivateEvent(),
-                event.getRrule() != null, event.getCreatedBy(), event.getMemberIds());
+                event.getRrule() != null, event.getCreatedBy(), event.getMemberIds(),
+                event.getCategoryId().orElse(null));
     }
 
     private void addFormData(Model model) {
         model.addAttribute("allMembers", members.findAll());
+        model.addAttribute("allCategories", categories.list(currentUser.require()));
     }
 
-    private Map<LocalDate, List<Occurrence>> load(List<LocalDate> days) {
-        User viewer = currentUser.require();
-        Instant from = days.getFirst().atStartOfDay(settings.zone()).toInstant();
-        Instant to = days.getLast().plusDays(1).atStartOfDay(settings.zone()).toInstant();
-        return CalendarGrid.groupByDay(events.findOccurrences(from, to, viewer), days);
-    }
-
-    /** ToDo, an das der Benutzer einen Termin hängen darf (ACL-Aktion {@code LINK}). */
+    /** To-do the user may attach an event to (ACL action {@code LINK}). */
     private Todo linkableTodo(Long todoId, User actor) {
         Todo todo = todoService.get(todoId, actor);
         if (!todoAccess.can(actor, "LINK", todo)) {
-            throw new org.springframework.security.access.AccessDeniedException(
-                    "Keine Berechtigung, einen Termin mit diesem ToDo zu verknüpfen");
+            throw new AccessDeniedException("Keine Berechtigung, einen Termin mit diesem ToDo zu verknüpfen");
         }
         return todo;
     }
 
-    /** Verknüpfte ToDos, die der Betrachter sehen darf. */
+    /** Linked to-dos the viewer may see. */
     private List<Todo> linkedTodos(Long eventId, User viewer) {
         List<Todo> result = new ArrayList<>();
         for (Long todoId : todoLinks.todoIds(eventId)) {
             try {
                 result.add(todoService.get(todoId, viewer));
             } catch (TodoNotFoundException ignored) {
-                // unsichtbar oder gelöscht
+                // invisible or deleted
             }
         }
         return result;
-    }
-
-    private void addCommon(Model model, String view) {
-        Map<Long, FamilyMember> byId = new LinkedHashMap<>();
-        members.findAll().forEach(m -> byId.put(m.getId(), m));
-        model.addAttribute("memberById", byId);
-        model.addAttribute("view", view);
-        model.addAttribute("today", LocalDate.now(settings.zone()));
-    }
-
-    private LocalDate parseDate(String value) {
-        if (value == null || value.isBlank()) {
-            return LocalDate.now(settings.zone());
-        }
-        try {
-            return LocalDate.parse(value);
-        } catch (DateTimeParseException e) {
-            return LocalDate.now(settings.zone());
-        }
     }
 }

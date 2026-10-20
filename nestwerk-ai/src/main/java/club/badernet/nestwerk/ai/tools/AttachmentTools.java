@@ -3,6 +3,9 @@ package club.badernet.nestwerk.ai.tools;
 import club.badernet.nestwerk.attachment.Attachment;
 import club.badernet.nestwerk.attachment.AttachmentOwner;
 import club.badernet.nestwerk.attachment.AttachmentService;
+import club.badernet.nestwerk.school.LetterService;
+import club.badernet.nestwerk.school.SchoolAccess;
+import club.badernet.nestwerk.school.SchoolPermission;
 import club.badernet.nestwerk.contact.ContactService;
 import club.badernet.nestwerk.kitchen.RecipeService;
 import club.badernet.nestwerk.todo.TodoCommentService;
@@ -24,7 +27,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Anhänge an ToDos, Kommentaren, Kontakten und Rezepten: auflisten, Text- und CSV-Dateien lesen, kleine Dateien
+ * Anhänge an ToDos, Kommentaren, Kontakten, Rezepten und Elternbriefen: auflisten, Text- und CSV-Dateien lesen, kleine Dateien
  * hinzufügen. Bilder, PDFs und Office-Dateien lassen sich hier nicht lesen, nur auflisten.
  */
 @Component
@@ -46,9 +49,14 @@ public class AttachmentTools {
     private final TodoCommentService comments;
     private final ContactService contacts;
     private final RecipeService recipes;
+    private final LetterService letters;
+    private final SchoolAccess schoolAccess;
 
     public AttachmentTools(Tools tools, AttachmentService attachments, TodoService todos,
-                           TodoCommentService comments, ContactService contacts, RecipeService recipes) {
+                           TodoCommentService comments, ContactService contacts, RecipeService recipes,
+                           LetterService letters, SchoolAccess schoolAccess) {
+        this.letters = letters;
+        this.schoolAccess = schoolAccess;
         this.tools = tools;
         this.attachments = attachments;
         this.todos = todos;
@@ -57,11 +65,11 @@ public class AttachmentTools {
         this.recipes = recipes;
     }
 
-    @McpTool(name = "list_attachments", description = "Listet die Anhänge eines ToDos, Kommentars, Kontakts oder "
-            + "Rezepts (ownerType TODO, COMMENT, CONTACT oder RECIPE).",
+    @McpTool(name = "list_attachments", description = "Listet die Anhänge eines ToDos, Kommentars, Kontakts, "
+            + "Rezepts oder Elternbriefs (ownerType TODO, COMMENT, CONTACT, RECIPE oder LETTER).",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
     public List<AttachmentItem> listAttachments(McpTransportContext context,
-                                                @McpToolParam(description = "TODO, COMMENT, CONTACT oder RECIPE")
+                                                @McpToolParam(description = "TODO, COMMENT, CONTACT, RECIPE oder LETTER")
                                                 String ownerType,
                                                 @McpToolParam(description = "ID des ToDos, Kommentars, Kontakts oder "
                                                         + "Rezepts") Long ownerId) {
@@ -73,6 +81,7 @@ public class AttachmentTools {
                 case COMMENT -> attachments.forComments(List.of(owner.id())).getOrDefault(owner.id(), List.of());
                 case CONTACT -> attachments.forContact(owner.id());
                 case RECIPE -> attachments.forRecipe(owner.id());
+                case LETTER -> attachments.forLetter(owner.id());
             };
             return found.stream().map(AttachmentTools::item).toList();
         });
@@ -106,7 +115,7 @@ public class AttachmentTools {
             + "Erlaubt sind Bilder, PDF, Office-Dokumente, Text und CSV; der Inhalt muss zur Endung passen.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
     public AttachmentItem addAttachment(McpTransportContext context,
-                                        @McpToolParam(description = "TODO, COMMENT, CONTACT oder RECIPE")
+                                        @McpToolParam(description = "TODO, COMMENT, CONTACT, RECIPE oder LETTER")
                                         String ownerType,
                                         @McpToolParam(description = "ID des Besitzers") Long ownerId,
                                         @McpToolParam(description = "Dateiname mit Endung, z. B. liste.csv")
@@ -140,6 +149,10 @@ public class AttachmentTools {
             case COMMENT -> comments.load(owner.id(), user);
             case CONTACT -> contacts.get(owner.id(), user);
             case RECIPE -> recipes.get(owner.id(), user);
+            case LETTER -> {
+                schoolAccess.require(user, SchoolPermission.SCHOOL_VIEW);
+                letters.get(owner.id());
+            }
         }
     }
 
@@ -152,6 +165,7 @@ public class AttachmentTools {
             case COMMENT -> AttachmentOwner.comment(ownerId);
             case CONTACT -> AttachmentOwner.contact(ownerId);
             case RECIPE -> AttachmentOwner.recipe(ownerId);
+            case LETTER -> AttachmentOwner.letter(ownerId);
         };
     }
 

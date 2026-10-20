@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Hausaufgaben')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='school')}"></header>
+<main class="event-main school-main school-wide">
+    <div th:replace="~{school/fragments :: header}"></div>
+
+    <nav class="week-nav" aria-label="Filter">
+        <a class="button button-small" th:classappend="${!showDone} ? '' : 'button-ghost'"
+           th:href="@{/school/years/{id}/homework(id=${year.id},subject=${subjectFilter})}">Offen</a>
+        <a class="button button-small" th:classappend="${showDone} ? '' : 'button-ghost'"
+           th:href="@{/school/years/{id}/homework(id=${year.id},subject=${subjectFilter},done=true)}">Erledigt</a>
+        <form method="get" th:action="@{/school/years/{id}/homework(id=${year.id})}" class="inline-form">
+            <input type="hidden" name="done" th:value="${showDone}">
+            <select name="subject" aria-label="Fach" onchange="this.form.submit()">
+                <option value="">Alle Fächer</option>
+                <option th:each="s : ${subjects}" th:value="${s.id}" th:text="${s.name}"
+                        th:selected="${s.id == subjectFilter}">Mathe</option>
+            </select>
+            <noscript><button type="submit" class="button button-small">Filtern</button></noscript>
+        </form>
+    </nav>
+
+    <section class="sheet settings-block">
+        <p class="muted" th:if="${#lists.isEmpty(items)}"
+           th:text="${showDone} ? 'Noch nichts erledigt.' : 'Keine offenen Hausaufgaben.'">Keine offenen Hausaufgaben.</p>
+        <ul class="plain-list">
+            <li th:each="i : ${items}"
+                th:style="${i.subject != null} ? |border-left: 4px solid ${i.subject.color}; padding-left: .6rem|">
+                <form method="post" th:action="@{/school/homework/{id}/done(id=${i.todo.id})}" th:if="${canHomework}"
+                      class="inline-form">
+                    <input type="hidden" name="yearId" th:value="${year.id}">
+                    <input type="hidden" name="done" th:value="${!i.todo.closed}">
+                    <button type="submit" class="button button-ghost button-small"
+                            th:text="${i.todo.closed} ? 'Wieder öffnen' : '✓ Erledigt'">✓ Erledigt</button>
+                </form>
+                <span th:classappend="${i.todo.closed} ? 'struck'">
+                    <strong th:text="${i.todo.title}">Seite 12 lesen</strong>
+                    <span class="muted" th:if="${i.subject != null}" th:text="${i.subject.name}">Deutsch</span>
+                </span>
+                <span class="badge" th:if="${i.todo.dueOn != null}"
+                      th:classappend="${!i.todo.closed and i.todo.dueOn.isBefore(today)} ? 'badge-warn'"
+                      th:text="|fällig ${#temporals.format(i.todo.dueOn, 'dd.MM.')}|">fällig 05.08.</span>
+                <span class="badge" th:if="${i.todo.rrule != null}">wiederkehrend</span>
+                <a th:href="@{/todos/{id}(id=${i.todo.id})}" class="muted">Details</a>
+            </li>
+        </ul>
+    </section>
+
+    <section class="sheet settings-block" th:if="${canHomework}">
+        <h2>Neue Hausaufgabe</h2>
+        <form method="post" th:action="@{/school/years/{id}/homework(id=${year.id})}" class="slot-row">
+            <input type="text" name="title" maxlength="200" required placeholder="Aufgabe" aria-label="Aufgabe">
+            <select name="subjectId" aria-label="Fach">
+                <option value="">Ohne Fach</option>
+                <option th:each="s : ${subjects}" th:value="${s.id}" th:text="${s.name}">Mathe</option>
+            </select>
+            <input type="date" name="dueOn" required aria-label="Fällig am">
+            <select name="repeat" aria-label="Wiederholung">
+                <option th:each="r : ${repeats}" th:value="${r.key}" th:text="${r.value[0]}">Einmalig</option>
+            </select>
+            <input type="text" name="description" maxlength="2000" placeholder="Notiz" aria-label="Notiz">
+            <button type="submit" class="button button-small">Anlegen</button>
+        </form>
+    </section>
+</main>
+</body>
+</html>

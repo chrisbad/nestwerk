@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Stunden & A/B-Wochen')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='school')}"></header>
+<main class="event-main school-main">
+    <div th:replace="~{school/fragments :: settingsHeader('lessons')}"></div>
+
+    <section class="sheet settings-block" th:if="${#lists.isEmpty(subjects)}">
+        <p class="muted">Zuerst <a th:href="@{/school/settings/subjects(year=${year.id})}">Fächer anlegen</a>.</p>
+    </section>
+
+    <section class="sheet settings-block" th:if="${!#lists.isEmpty(subjects)}" id="new-lesson">
+        <h2>Stunde eintragen</h2>
+        <p class="muted" th:if="${#lists.isEmpty(gridLessons)}">Ohne <a th:href="@{/school/settings/school(year=${year.id})}">Stundenraster</a>
+            werden Stunden mit Uhrzeit eingetragen.</p>
+        <form method="post" th:action="@{/school/years/{id}/lessons(id=${year.id})}" class="stack-form lesson-form">
+            <div class="slot-row">
+                <select name="subjectId" required aria-label="Fach">
+                    <option th:each="s : ${subjects}" th:value="${s.id}" th:text="${s.name}">Mathe</option>
+                </select>
+                <select name="weekday" required aria-label="Wochentag">
+                    <option th:each="w : ${weekdays}" th:value="${w.name()}" th:selected="${w == presetWeekday}"
+                            th:text="${w.getDisplayName(T(java.time.format.TextStyle).FULL, T(java.util.Locale).GERMAN)}">Montag</option>
+                </select>
+                <input type="text" name="room" maxlength="30" placeholder="Raum" aria-label="Raum">
+                <select name="weekKind" aria-label="Wochen">
+                    <option th:each="k : ${weekKinds}" th:value="${k.name()}" th:text="${k.label()}">Jede Woche</option>
+                </select>
+            </div>
+            <div class="slot-row" th:if="${!#lists.isEmpty(gridLessons)}">
+                <label class="check-row"><input type="radio" name="mode" value="grid" checked> Stunde</label>
+                <select name="periodFrom" aria-label="Von Stunde">
+                    <option th:each="p : ${gridLessons}" th:value="${p.number}" th:selected="${p.number == presetPeriod}"
+                            th:text="|${p.number}. (${#temporals.format(p.startsAt, 'HH:mm')})|">1. (08:00)</option>
+                </select>
+                <span>bis</span>
+                <select name="periodTo" aria-label="Bis Stunde">
+                    <option th:each="p : ${gridLessons}" th:value="${p.number}" th:selected="${p.number == presetPeriod}"
+                            th:text="|${p.number}. (bis ${#temporals.format(p.endsAt, 'HH:mm')})|">1. (bis 08:45)</option>
+                </select>
+            </div>
+            <div class="slot-row">
+                <label class="check-row" th:if="${!#lists.isEmpty(gridLessons)}"><input type="radio" name="mode" value="free"> Freie Zeit (z. B. AG)</label>
+                <input type="hidden" name="mode" value="free" th:if="${#lists.isEmpty(gridLessons)}">
+                <input type="time" name="startsAt" aria-label="Beginn">
+                <input type="time" name="endsAt" aria-label="Ende">
+            </div>
+            <button type="submit" class="button button-small">Eintragen</button>
+        </form>
+    </section>
+
+    <section class="sheet settings-block" th:if="${!#lists.isEmpty(lessons)}">
+        <h2>Stunden</h2>
+        <ul class="plain-list">
+            <li th:each="l : ${lessons}" th:style="|border-left: 4px solid ${subjectsById[l.subjectId].color}; padding-left: .6rem|">
+                <strong th:text="${l.weekday.getDisplayName(T(java.time.format.TextStyle).SHORT, T(java.util.Locale).GERMAN)}">Mo</strong>
+                <span th:if="${l.inPeriods()}"
+                      th:text="${l.periodFrom == l.periodTo} ? |${l.periodFrom}. Stunde| : |${l.periodFrom}.–${l.periodTo}. Stunde|">1. Stunde</span>
+                <span class="muted" th:text="|${#temporals.format(l.startsAt, 'HH:mm')}–${#temporals.format(l.endsAt, 'HH:mm')}|">08:00–08:45</span>
+                <span th:text="${subjectsById[l.subjectId].name}">Mathe</span>
+                <span class="muted" th:if="${l.room != null}" th:text="|Raum ${l.room}|"></span>
+                <span class="badge" th:if="${l.weekKind.name() != 'EVERY'}" th:text="${l.weekKind.label()}">A-Woche</span>
+                <details>
+                    <summary>Ändern</summary>
+                    <form method="post" th:action="@{/school/lessons/{id}(id=${l.id})}" class="slot-row">
+                        <input type="hidden" name="yearId" th:value="${year.id}">
+                        <input type="hidden" name="mode" th:value="${l.inPeriods()} ? 'grid' : 'free'">
+                        <select name="subjectId" aria-label="Fach">
+                            <option th:each="s : ${subjects}" th:value="${s.id}" th:text="${s.name}"
+                                    th:selected="${s.id == l.subjectId}">Mathe</option>
+                        </select>
+                        <select name="weekday" aria-label="Wochentag">
+                            <option th:each="w : ${weekdays}" th:value="${w.name()}" th:selected="${w == l.weekday}"
+                                    th:text="${w.getDisplayName(T(java.time.format.TextStyle).SHORT, T(java.util.Locale).GERMAN)}">Mo</option>
+                        </select>
+                        <th:block th:if="${l.inPeriods()}">
+                            <select name="periodFrom" aria-label="Von Stunde">
+                                <option th:each="p : ${gridLessons}" th:value="${p.number}" th:selected="${p.number == l.periodFrom}"
+                                        th:text="|${p.number}.|">1.</option>
+                            </select>
+                            <select name="periodTo" aria-label="Bis Stunde">
+                                <option th:each="p : ${gridLessons}" th:value="${p.number}" th:selected="${p.number == l.periodTo}"
+                                        th:text="|${p.number}.|">1.</option>
+                            </select>
+                        </th:block>
+                        <th:block th:if="${!l.inPeriods()}">
+                            <input type="time" name="startsAt" th:value="${l.startsAt}" aria-label="Beginn">
+                            <input type="time" name="endsAt" th:value="${l.endsAt}" aria-label="Ende">
+                        </th:block>
+                        <input type="text" name="room" maxlength="30" th:value="${l.room}" placeholder="Raum" aria-label="Raum">
+                        <select name="weekKind" aria-label="Wochen">
+                            <option th:each="k : ${weekKinds}" th:value="${k.name()}" th:text="${k.label()}"
+                                    th:selected="${k == l.weekKind}">Jede Woche</option>
+                        </select>
+                        <button type="submit" class="button button-small">Speichern</button>
+                    </form>
+                </details>
+                <form method="post" th:action="@{/school/lessons/{id}/delete(id=${l.id})}" class="inline-form">
+                    <input type="hidden" name="yearId" th:value="${year.id}">
+                    <button type="submit" class="button button-ghost button-small">Löschen</button>
+                </form>
+            </li>
+        </ul>
+    </section>
+
+    <section class="sheet settings-block">
+        <h2>A/B-Wochen</h2>
+        <p class="muted">Wenn der Stundenplan alle zwei Wochen wechselt: eine beliebige Woche angeben, die eine A-Woche ist.</p>
+        <form method="post" th:action="@{/school/years/{id}/week-plan(id=${year.id})}" class="slot-row">
+            <input type="date" name="weekAStart" th:value="${year.weekAStart}" aria-label="Datum einer A-Woche">
+            <button type="submit" class="button button-small">Speichern</button>
+        </form>
+        <p class="muted">Feld leeren und speichern schaltet A/B-Wochen ab.</p>
+    </section>
+</main>
+</body>
+</html>
