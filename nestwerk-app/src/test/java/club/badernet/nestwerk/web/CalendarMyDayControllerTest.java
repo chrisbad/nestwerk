@@ -3,9 +3,13 @@ package club.badernet.nestwerk.web;
 import club.badernet.nestwerk.TestcontainersConfiguration;
 import club.badernet.nestwerk.calendar.CalendarEventService;
 import club.badernet.nestwerk.calendar.EventInput;
+import club.badernet.nestwerk.kitchen.MealPlanService;
+import club.badernet.nestwerk.kitchen.MealSlotRepository;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
+import club.badernet.nestwerk.role.Role;
 import club.badernet.nestwerk.role.RoleRepository;
+import club.badernet.nestwerk.role.RoleService;
 import club.badernet.nestwerk.todo.AssigneeRef;
 import club.badernet.nestwerk.todo.TodoInput;
 import club.badernet.nestwerk.todo.TodoService;
@@ -49,6 +53,9 @@ class CalendarMyDayControllerTest {
     @Autowired CalendarEventService events;
     @Autowired TodoService todoService;
     @Autowired CalendarPageData pageData;
+    @Autowired RoleService roleService;
+    @Autowired MealPlanService mealPlan;
+    @Autowired MealSlotRepository mealSlots;
 
     User mama;
     User papa;
@@ -141,5 +148,31 @@ class CalendarMyDayControllerTest {
     void isForbiddenWithoutCalendarPermission() throws Exception {
         mockMvc.perform(get("/calendar/my").with(user("papa").authorities(new SimpleGrantedAuthority("MEMBER_MANAGE"))))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void showsMealsTheViewerEatsWithoutNeedingTheCalendarForOthers() throws Exception {
+        Role cooks = roleService.create("Köche", null, Set.of("CALENDAR_VIEW", "KITCHEN_VIEW", "KITCHEN_PLAN"));
+        User cook = userService.create("koch", "passwort1", Set.of(cooks.getId()));
+        members.save(new FamilyMember("Koch", "#0000aa", cook.getId()));
+        mealPlan.add(DAY, mealSlots.findAllByOrderBySortOrderAsc().get(0).getId(), null, "Spaghetti Bolognese", cook);
+
+        mockMvc.perform(get("/calendar/my").param("date", DAY.toString()).with(as("koch")))
+                .andExpect(content().string(containsString("Spaghetti Bolognese")))
+                .andExpect(content().string(containsString("occ-meal")));
+    }
+
+    @Test
+    void hidesMealsFromUsersWithoutTheKitchenRight() throws Exception {
+        Role cooks = roleService.create("Köche", null, Set.of("CALENDAR_VIEW", "KITCHEN_VIEW", "KITCHEN_PLAN"));
+        User cook = userService.create("koch", "passwort1", Set.of(cooks.getId()));
+        Role viewers = roleService.create("Nur Kalender", null, Set.of("CALENDAR_VIEW"));
+        User viewer = userService.create("gast", "passwort1", Set.of(viewers.getId()));
+        members.save(new FamilyMember("Gast", "#aaaa00", viewer.getId()));
+        mealPlan.add(DAY, mealSlots.findAllByOrderBySortOrderAsc().get(0).getId(), null, "Linsensuppe", cook);
+
+        mockMvc.perform(get("/calendar/my").param("date", DAY.toString()).with(as("gast")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("Linsensuppe"))));
     }
 }

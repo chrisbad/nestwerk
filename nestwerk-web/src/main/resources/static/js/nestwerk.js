@@ -51,24 +51,28 @@
 
     /* --- Navigation und Benutzermenü ------------------------------------- */
 
+    /** Menus work by delegation, so menus that arrive with a swapped page part (the calendar toolbar) work too. */
     function initNav() {
-        document.querySelectorAll("[data-menu]").forEach(menu => {
+        const setOpen = (menu, open) => {
             const button = menu.querySelector("[data-menu-toggle]");
             const panel = menu.querySelector("[data-menu-panel]");
-            const setOpen = open => {
-                panel.hidden = !open;
-                button.setAttribute("aria-expanded", String(open));
-                if (open) panel.querySelector("button, a")?.focus();
-            };
-            button.addEventListener("click", () => setOpen(panel.hidden));
-            document.addEventListener("click", event => {
-                if (!panel.hidden && !menu.contains(event.target)) setOpen(false);
-            });
-            menu.addEventListener("keydown", event => {
-                if (event.key === "Escape" && !panel.hidden) {
-                    setOpen(false);
-                    button.focus();
-                }
+            panel.hidden = !open;
+            button.setAttribute("aria-expanded", String(open));
+            if (open) panel.querySelector("button, a")?.focus();
+        };
+        const openMenus = () => [...document.querySelectorAll("[data-menu]")]
+            .filter(menu => !menu.querySelector("[data-menu-panel]").hidden);
+        document.addEventListener("click", event => {
+            const toggle = event.target.closest("[data-menu-toggle]");
+            const own = toggle?.closest("[data-menu]");
+            openMenus().filter(menu => menu !== own && !menu.contains(event.target)).forEach(menu => setOpen(menu, false));
+            if (own) setOpen(own, own.querySelector("[data-menu-panel]").hidden);
+        });
+        document.addEventListener("keydown", event => {
+            if (event.key !== "Escape") return;
+            openMenus().forEach(menu => {
+                setOpen(menu, false);
+                menu.querySelector("[data-menu-toggle]").focus();
             });
         });
     }

@@ -1,15 +1,18 @@
 package club.badernet.nestwerk.web;
 
 import club.badernet.nestwerk.member.FamilyMemberService;
+import club.badernet.nestwerk.user.User;
 import club.badernet.nestwerk.user.UserService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
+import org.springframework.http.HttpStatus;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -29,7 +32,18 @@ public class AdminMemberController {
     String list(Model model) {
         model.addAttribute("members", members.findAll());
         model.addAttribute("users", userService.findAll());
+        model.addAttribute("accountNames", userService.findAll().stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, User::getUsername)));
         return "admin/members";
+    }
+
+    /** Details of one family member for the drawer. */
+    @GetMapping("/{id}/edit")
+    String edit(@PathVariable Long id, Model model) {
+        model.addAttribute("m", members.findAll().stream().filter(m -> m.getId().equals(id)).findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
+        model.addAttribute("users", userService.findAll());
+        return "admin/member-drawer :: content";
     }
 
     @PostMapping

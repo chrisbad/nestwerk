@@ -20,75 +20,60 @@
     <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
     <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
 
-    <ul class="members" th:unless="${#lists.isEmpty(members)}">
-        <li th:each="m : ${members}">
-            <button type="button" class="member" th:attr="data-open-dialog='edit-member-' + ${m.id}">
-                <span class="avatar avatar-large" th:style="|background-color: ${m.color}|"
-                      th:text="${#strings.toUpperCase(#strings.substring(m.name, 0, 1))}">A</span>
-                <span class="member-text">
-                    <strong th:text="${m.name}">Name</strong>
-                    <span class="muted" th:if="${m.userId == null}">Ohne Benutzerkonto</span>
-                    <span class="muted" th:each="u : ${users}" th:if="${m.userId == u.id}"
-                          th:text="'Konto: ' + ${u.username}">Konto</span>
-                </span>
-            </button>
-        </li>
-    </ul>
+    <div class="table-tools" data-table-for="members" th:unless="${#lists.isEmpty(members)}">
+        <label class="search">
+            <span class="visually-hidden">Mitglied suchen</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+            <input class="input" type="search" placeholder="Suchen" data-table-search autocomplete="off">
+        </label>
+        <label class="field field-inline">
+            <span>Konto</span>
+            <select data-table-select="account">
+                <option value="">Alle</option>
+                <option value="LINKED">Mit Konto</option>
+                <option value="NONE">Ohne Konto</option>
+            </select>
+        </label>
+        <p class="table-count muted" data-table-count aria-live="polite"></p>
+        <button type="button" class="button button-ghost button-small" data-table-reset hidden>Filter zurücksetzen</button>
+    </div>
+    <div class="sheet" th:unless="${#lists.isEmpty(members)}">
+        <table class="table data-table" data-table="members" data-table-persist data-sort-default="name">
+            <thead>
+            <tr>
+                <th scope="col" data-col="name" data-sort="text">Mitglied</th>
+                <th scope="col" data-col="user" data-sort="text">Konto</th>
+                <th scope="col" data-col="pin" data-sort="text">Tablet-PIN</th>
+                <th scope="col"><span class="visually-hidden">Aktion</span></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="m : ${members}" class="drawer-row"
+                th:attr="data-filter-account=${m.userId != null} ? 'LINKED' : 'NONE', data-drawer-url=@{/admin/members/{id}/edit(id=${m.id})}, data-drawer-title=${m.name}">
+                <td data-col="name" data-label="Mitglied" th:attr="data-value=${m.name}">
+                    <span class="person">
+                        <span class="avatar" aria-hidden="true" th:style="|background-color: ${m.color}|"
+                              th:text="${#strings.toUpperCase(#strings.substring(m.name, 0, 1))}">A</span>
+                        <span th:text="${m.name}">Name</span>
+                    </span>
+                </td>
+                <td data-col="user" data-label="Konto"
+                    th:attr="data-value=${m.userId != null} ? ${accountNames[m.userId]} : ''"
+                    th:text="${m.userId != null} ? ${accountNames[m.userId]} : 'Ohne Konto'">Konto</td>
+                <td data-col="pin" data-label="Tablet-PIN" th:text="${m.hasPin()} ? 'eingerichtet' : 'keine'">keine</td>
+                <td class="cell-actions">
+                    <button type="button" class="button button-ghost button-small"
+                            th:attr="data-drawer-url=@{/admin/members/{id}/edit(id=${m.id})}, data-drawer-title=${m.name}">Bearbeiten</button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="muted table-empty" data-table-empty="members" hidden>Kein Mitglied passt zur Suche.</p>
     <div class="sheet sheet-empty" th:if="${#lists.isEmpty(members)}">
         Noch keine Mitglieder. Lege die Familie über „Mitglied anlegen“ an.
     </div>
 </main>
-
-<dialog th:each="m : ${members}" th:id="'edit-member-' + ${m.id}" class="dialog"
-        th:attr="aria-labelledby='edit-member-title-' + ${m.id}">
-    <form th:action="@{/admin/members/{id}(id=${m.id})}" method="post">
-        <div class="dialog-head">
-            <h2 th:id="'edit-member-title-' + ${m.id}">Mitglied bearbeiten</h2>
-            <button type="button" class="icon-button" data-close-dialog>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-                <span class="visually-hidden">Schließen</span>
-            </button>
-        </div>
-        <div class="dialog-body">
-            <div class="field-row field-row-color">
-                <div class="field">
-                    <label th:for="'m-name-' + ${m.id}">Name</label>
-                    <input th:id="'m-name-' + ${m.id}" type="text" name="name" maxlength="100" th:value="${m.name}" required>
-                </div>
-                <div class="field">
-                    <label th:for="'m-color-' + ${m.id}">Farbe</label>
-                    <input th:id="'m-color-' + ${m.id}" class="color-input" type="color" name="color" th:value="${m.color}">
-                </div>
-            </div>
-            <div class="field">
-                <label th:for="'m-user-' + ${m.id}">Benutzerkonto <span class="hint">optional</span></label>
-                <select th:id="'m-user-' + ${m.id}" name="userId">
-                    <option value="">Kein Konto</option>
-                    <option th:each="u : ${users}" th:value="${u.id}" th:text="${u.username}"
-                            th:selected="${m.userId != null and m.userId == u.id}">konto</option>
-                </select>
-            </div>
-        </div>
-        <div class="dialog-foot">
-            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
-            <button type="submit" class="button">Speichern</button>
-        </div>
-    </form>
-    <form class="dialog-section pin-form" th:action="@{/admin/members/{id}/pin(id=${m.id})}" method="post">
-        <div class="field">
-            <label th:for="'m-pin-' + ${m.id}">PIN fürs Wand-Tablet
-                <span class="hint" th:text="${m.hasPin()} ? '(eingerichtet; leer speichern entfernt sie)' : '(4 bis 8 Ziffern)'">hint</span></label>
-            <input th:id="'m-pin-' + ${m.id}" type="password" name="pin" inputmode="numeric" pattern="\d{4,8}"
-                   maxlength="8" autocomplete="new-password">
-        </div>
-        <button type="submit" class="button button-ghost">PIN speichern</button>
-    </form>
-    <form data-confirm-tone="danger" class="dialog-section dialog-section-last" th:action="@{/admin/members/{id}/delete(id=${m.id})}" method="post"
-          th:attr="data-confirm=|„${m.name}“ löschen?|">
-        <p class="muted">Zugewiesene Termine bleiben erhalten.</p>
-        <button type="submit" class="button button-danger">Mitglied löschen</button>
-    </form>
-</dialog>
 
 <dialog id="create-member" class="dialog" aria-labelledby="create-member-title">
     <form th:action="@{/admin/members}" method="post">

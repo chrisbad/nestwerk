@@ -42,6 +42,13 @@ public class CategoryController {
         return "calendar/categories";
     }
 
+    /** Details of one category for the drawer. */
+    @GetMapping("/{id}/edit")
+    String edit(@PathVariable Long id, Model model) {
+        model.addAttribute("c", categories.get(id, currentUser.require()));
+        return "calendar/category-drawer :: content";
+    }
+
     @PostMapping
     String create(@RequestParam String name, @RequestParam(required = false) String color,
                   @RequestParam(required = false) String back, RedirectAttributes redirect) {

@@ -31,6 +31,7 @@
     <script defer th:src="@{/js/navigation.js}"></script>
     <script defer th:src="@{/js/data-table.js}"></script>
     <script defer th:src="@{/js/palette.js}"></script>
+    <script defer th:src="@{/js/drawer.js}"></script>
 </head>
 <body>
 
@@ -153,6 +154,10 @@
             <ul class="cmd-list" data-cmd-list role="listbox" aria-label="Treffer"></ul>
             <p class="muted cmd-hint">↑ ↓ wählen · Enter öffnen · Esc schließen</p>
         </div>
+    </dialog>
+    <!-- One container for the details of a table row or list entry; drawer.js loads the content on demand -->
+    <dialog id="drawer" class="dialog drawer" aria-label="Details">
+        <div data-drawer-body></div>
     </dialog>
 </header>
 

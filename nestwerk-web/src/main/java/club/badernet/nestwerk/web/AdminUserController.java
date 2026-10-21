@@ -7,12 +7,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Controller;
+import org.springframework.http.HttpStatus;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -38,6 +40,15 @@ public class AdminUserController {
     String list(Model model) {
         addListAttributes(model);
         return "admin/users";
+    }
+
+    /** Details of one user for the drawer. */
+    @GetMapping("/{id}/edit")
+    String edit(@PathVariable Long id, Model model) {
+        model.addAttribute("user", userService.findAll().stream().filter(u -> u.getId().equals(id)).findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
+        model.addAttribute("roles", roleRepository.findAllByOrderByNameAsc());
+        return "admin/user-drawer :: content";
     }
 
     /**

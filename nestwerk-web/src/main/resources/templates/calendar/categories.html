@@ -21,52 +21,47 @@
     <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
     <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
 
-    <ul class="members categories" th:unless="${#lists.isEmpty(categories)}">
-        <li th:each="c : ${categories}">
-            <button type="button" class="member" th:attr="data-open-dialog='edit-category-' + ${c.id}">
-                <span class="category-swatch" th:style="|--swatch: ${c.color.hex()}|" aria-hidden="true"></span>
-                <span class="member-text">
-                    <strong th:text="${c.name}">Arzt</strong>
-                    <span class="muted" th:text="${c.color.label()}">Rot</span>
-                </span>
-            </button>
-        </li>
-    </ul>
+    <div class="table-tools" data-table-for="categories" th:unless="${#lists.isEmpty(categories)}">
+        <label class="search">
+            <span class="visually-hidden">Kategorie suchen</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+            <input class="input" type="search" placeholder="Suchen" data-table-search autocomplete="off">
+        </label>
+        <p class="table-count muted" data-table-count aria-live="polite"></p>
+        <button type="button" class="button button-ghost button-small" data-table-reset hidden>Filter zurücksetzen</button>
+    </div>
+    <div class="sheet" th:unless="${#lists.isEmpty(categories)}">
+        <table class="table data-table" data-table="categories" data-table-persist data-sort-default="name">
+            <thead>
+            <tr>
+                <th scope="col" data-col="name" data-sort="text">Kategorie</th>
+                <th scope="col" data-col="color" data-sort="text">Farbe</th>
+                <th scope="col"><span class="visually-hidden">Aktion</span></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="c : ${categories}"
+                th:attr="data-drawer-url=@{/calendar/categories/{id}/edit(id=${c.id}, back=${nav.back})}, data-drawer-title=${c.name}">
+                <td data-col="name" data-label="Kategorie" th:attr="data-value=${c.name}">
+                    <span class="person">
+                        <span class="category-swatch" th:style="|--swatch: ${c.color.hex()}|" aria-hidden="true"></span>
+                        <span th:text="${c.name}">Arzt</span>
+                    </span>
+                </td>
+                <td data-col="color" data-label="Farbe" th:text="${c.color.label()}">Rot</td>
+                <td class="cell-actions">
+                    <button type="button" class="button button-ghost button-small"
+                            th:attr="data-drawer-url=@{/calendar/categories/{id}/edit(id=${c.id}, back=${nav.back})}, data-drawer-title=${c.name}">Bearbeiten</button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="muted table-empty" data-table-empty="categories" hidden>Keine Kategorie passt zur Suche.</p>
     <div class="sheet sheet-empty" th:if="${#lists.isEmpty(categories)}">
         Noch keine Kategorien. Lege über „Kategorie anlegen“ z. B. Arzt, Sport oder Schule an.
     </div>
 </main>
-
-<dialog th:each="c : ${categories}" th:id="'edit-category-' + ${c.id}" class="dialog"
-        th:attr="aria-labelledby='edit-category-title-' + ${c.id}">
-    <form th:action="@{/calendar/categories/{id}(id=${c.id})}" method="post">
-    <input th:replace="~{fragments/layout :: backField}">
-        <div class="dialog-head">
-            <h2 th:id="'edit-category-title-' + ${c.id}">Kategorie bearbeiten</h2>
-            <button type="button" class="icon-button" data-close-dialog>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-                <span class="visually-hidden">Schließen</span>
-            </button>
-        </div>
-        <div class="dialog-body">
-            <div class="field">
-                <label th:for="'cat-name-' + ${c.id}">Name</label>
-                <input th:id="'cat-name-' + ${c.id}" type="text" name="name" maxlength="60" th:value="${c.name}" required>
-            </div>
-            <fieldset th:replace="~{calendar/fragments :: palette(${c.color})}"></fieldset>
-        </div>
-        <div class="dialog-foot">
-            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
-            <button type="submit" class="button">Speichern</button>
-        </div>
-    </form>
-    <form data-confirm-tone="danger" class="dialog-section dialog-section-last" th:action="@{/calendar/categories/{id}/delete(id=${c.id})}"
-          method="post" th:attr="data-confirm=|Kategorie „${c.name}“ löschen?|">
-    <input th:replace="~{fragments/layout :: backField}">
-        <p class="muted">Die Termine bleiben erhalten, nur ohne Kategorie.</p>
-        <button type="submit" class="button button-danger">Kategorie löschen</button>
-    </form>
-</dialog>
 
 <dialog id="create-category" class="dialog" aria-labelledby="create-category-title">
     <form th:action="@{/calendar/categories}" method="post">

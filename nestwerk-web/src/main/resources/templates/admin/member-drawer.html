@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Details of one family member, loaded into the drawer; expects ${m} and ${users} -->
+<div th:fragment="content">
+    <form th:action="@{/admin/members/{id}(id=${m.id})}" method="post">
+        <div class="dialog-head">
+            <h2 th:id="'edit-member-title-' + ${m.id}">Mitglied bearbeiten</h2>
+            <button type="button" class="icon-button" data-close-dialog>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span class="visually-hidden">Schließen</span>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <div class="field-row field-row-color">
+                <div class="field">
+                    <label th:for="'m-name-' + ${m.id}">Name</label>
+                    <input th:id="'m-name-' + ${m.id}" type="text" name="name" maxlength="100" th:value="${m.name}" required>
+                </div>
+                <div class="field">
+                    <label th:for="'m-color-' + ${m.id}">Farbe</label>
+                    <input th:id="'m-color-' + ${m.id}" class="color-input" type="color" name="color" th:value="${m.color}">
+                </div>
+            </div>
+            <div class="field">
+                <label th:for="'m-user-' + ${m.id}">Benutzerkonto <span class="hint">optional</span></label>
+                <select th:id="'m-user-' + ${m.id}" name="userId">
+                    <option value="">Kein Konto</option>
+                    <option th:each="u : ${users}" th:value="${u.id}" th:text="${u.username}"
+                            th:selected="${m.userId != null and m.userId == u.id}">konto</option>
+                </select>
+            </div>
+        </div>
+        <div class="dialog-foot">
+            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+            <button type="submit" class="button">Speichern</button>
+        </div>
+    </form>
+    <form class="dialog-section pin-form" th:action="@{/admin/members/{id}/pin(id=${m.id})}" method="post">
+        <div class="field">
+            <label th:for="'m-pin-' + ${m.id}">PIN fürs Wand-Tablet
+                <span class="hint" th:text="${m.hasPin()} ? '(eingerichtet; leer speichern entfernt sie)' : '(4 bis 8 Ziffern)'">hint</span></label>
+            <input th:id="'m-pin-' + ${m.id}" type="password" name="pin" inputmode="numeric" pattern="\d{4,8}"
+                   maxlength="8" autocomplete="new-password">
+        </div>
+        <button type="submit" class="button button-ghost">PIN speichern</button>
+    </form>
+    <form data-confirm-tone="danger" class="dialog-section dialog-section-last" th:action="@{/admin/members/{id}/delete(id=${m.id})}" method="post"
+          th:attr="data-confirm=|„${m.name}“ löschen?|">
+        <p class="muted">Zugewiesene Termine bleiben erhalten.</p>
+        <button type="submit" class="button button-danger">Mitglied löschen</button>
+    </form>
+</div>
+</body>
+</html>

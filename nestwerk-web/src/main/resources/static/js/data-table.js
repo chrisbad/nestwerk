@@ -27,7 +27,10 @@
 
     const toolsOf = table => [...document.querySelectorAll(`[data-table-for="${table.dataset.table}"]`)];
     const fromTools = (table, selector) => toolsOf(table).flatMap(tools => [...tools.querySelectorAll(selector)]);
+    /** A row can carry the value of a column that has no cell of its own as data-filter-<column>. */
     const cellValue = (row, column) => {
+        const own = row.dataset["filter" + column.charAt(0).toUpperCase() + column.slice(1)];
+        if (own !== undefined) return own;
         const cell = row.querySelector(`[data-col="${column}"]`);
         return cell ? (cell.dataset.value ?? cell.textContent).trim() : "";
     };
@@ -211,8 +214,10 @@
             sortable.click();
             return;
         }
-        const row = event.target.closest("table[data-table] tbody tr[data-open]");
-        if (row && event.target === row && event.key === "Enter") openRow(row, event);
+        const row = event.target.closest("table[data-table] tbody tr[data-open], table[data-table] tbody tr[data-drawer-url]");
+        if (!row || event.target !== row || event.key !== "Enter") return;
+        if (row.dataset.open) openRow(row, event);
+        else row.click();
     }
 
     /* --- Set-up -------------------------------------------------------------------------------------------------- */
@@ -232,7 +237,7 @@
         if (table._state) return;
         table._state = initialState(table);
         table.querySelectorAll("th[data-sort]:not([data-sort='none'])").forEach(th => { th.tabIndex = 0; });
-        table.tBodies[0].querySelectorAll("tr[data-open]").forEach(row => { row.tabIndex = 0; });
+        table.tBodies[0].querySelectorAll("tr[data-open], tr[data-drawer-url]").forEach(row => { row.tabIndex = 0; });
         apply(table, table._state);
     }
 

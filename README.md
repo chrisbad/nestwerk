@@ -114,7 +114,9 @@ neu eintragen.
   und alle Formulare führen dorthin zurück; ohne Ursprung gilt die zuletzt besuchte Kalenderansicht.
 - **Einstellungs-Register:** `/settings` listet alle Einstellungen, die der Benutzer sehen darf, in einer durchsuchbaren,
   filter- und sortierbaren Tabelle (Komponente `data-table`, Zustand in der Adresse). Neue Einstellungen werden in
-  `Settings` eingetragen; MCP: `list_settings`.
+  `Settings` eingetragen; MCP: `list_settings`. Benutzer, Mitglieder und Kategorien nutzen dieselbe Tabelle.
+- **Seitenpanel:** Zeilen öffnen ihre Einzelheiten in einem gemeinsamen Panel (`drawer.js`), das ein Fragment per
+  `GET …/{id}/edit` nachlädt, statt dass jede Zeile einen eigenen Dialog mitbringt. Die Zurück-Taste schließt es.
 
 ### Benachrichtigungen
 

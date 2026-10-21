@@ -4219,3 +4219,31 @@ form.is-allday [data-time-field] { display: none; }
     .nav-tools > [data-open-cmd] { display: none; }
 }
 .cmd:not([open]) { display: none; }
+
+/* Seitenpanel für Einzelheiten (drawer.js): am Computer rechts, am Handy als Blatt von unten */
+.drawer:not([open]) { display: none; }
+@media (min-width: 40.01rem) {
+    .drawer {
+        width: min(32.5rem, 100vw);
+        height: 100dvh;
+        max-height: 100dvh;
+        margin: 0 0 0 auto;
+        border-radius: var(--radius-sheet) 0 0 var(--radius-sheet);
+        border-right: 0;
+        overflow-y: auto;
+    }
+    .drawer[open] { animation: drawer-in 0.32s var(--ease); }
+    .drawer.is-closing { animation: drawer-out 0.22s ease-in forwards; }
+}
+@keyframes drawer-in { from { transform: translateX(100%); } }
+@keyframes drawer-out { to { transform: translateX(100%); } }
+.drawer-loading, .drawer-error { padding: 2rem 1.5rem; }
+.data-table tbody tr[data-drawer-url] { cursor: pointer; }
+
+/* Kalender-Leiste: Anzeige- und Mehr-Menü */
+.cal-menu { position: relative; }
+.cal-menu-panel { display: grid; gap: 0.6rem; padding: 0.75rem; min-width: 16rem; }
+.cal-menu-panel[hidden] { display: none; }
+.cal-menu-panel .segmented { justify-self: start; }
+.occ-meal { border-style: dotted; background: color-mix(in srgb, var(--honey, #f0c56f) 12%, var(--surface)); }
+.person .avatar[style*="background-color"] { background-image: none; }
