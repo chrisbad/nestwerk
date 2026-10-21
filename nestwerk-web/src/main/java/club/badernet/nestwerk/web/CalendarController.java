@@ -94,7 +94,7 @@ public class CalendarController {
 
     @GetMapping
     String index() {
-        return "redirect:/calendar/month";
+        return "redirect:/calendar/my";
     }
 
     @GetMapping("/month")

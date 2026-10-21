@@ -12,6 +12,17 @@ import java.util.List;
  */
 public enum CalendarView {
 
+    MY_DAY("my") {
+        @Override
+        public List<LocalDate> days(LocalDate focus) {
+            return List.of(focus);
+        }
+
+        @Override
+        public LocalDate shift(LocalDate focus, int periods) {
+            return focus.plusDays(periods);
+        }
+    },
     DAY("day") {
         @Override
         public List<LocalDate> days(LocalDate focus) {

@@ -43,13 +43,14 @@
                 <span class="visually-hidden">Vergrößern</span>
             </button>
         </div>
-        <button type="button" class="button button-ghost button-small cal-split-toggle" th:if="${gridDays != null}"
+        <button type="button" class="button button-ghost button-small cal-split-toggle" th:if="${gridDays != null and lanes != true}"
                 data-split-toggle th:attr="aria-pressed=${splitByPerson}"
                 title="Für jede Person eine eigene Spalte – Einträge lassen sich zwischen Personen ziehen">
             <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M3 19c0-3 2.2-5 5-5s5 2 5 5M13.5 19c.2-2.6 1.6-4.2 3.5-4.2S20.8 16.4 21 19"/></svg>
             Nach Personen
         </button>
         <nav class="segmented" aria-label="Ansicht" hx-boost="true" hx-target="#calendar" hx-select="#calendar" hx-swap="outerHTML">
+            <a th:href="@{/calendar/my(date=${date})}" th:aria-current="${view == 'my'} ? 'page'">Meine</a>
             <a th:href="@{/calendar/day(date=${date})}" th:aria-current="${view == 'day'} ? 'page'">Tag</a>
             <a th:href="@{/calendar/days3(date=${date})}" th:aria-current="${view == 'days3'} ? 'page'">3 Tage</a>
             <a class="segment-week" th:href="@{/calendar/week(date=${date})}" th:aria-current="${view == 'week'} ? 'page'">Woche</a>
@@ -72,6 +73,55 @@
 <!-- Dialog of a tapped entry (event, chore or to-do); its content is loaded on tap -->
 <dialog th:fragment="sheetDialog" id="calendar-sheet" class="dialog" aria-label="Eintrag">
     <div data-sheet-body></div>
+</dialog>
+
+<!-- Quick creation after tapping or spanning a free time -->
+<dialog th:fragment="quickDialog" id="grid-quick" class="dialog" aria-labelledby="grid-quick-title" th:if="${canCreate}">
+    <form th:action="@{/calendar/actions/events}" method="post" data-grid-form="create">
+        <div class="dialog-head">
+            <h2 id="grid-quick-title">Neuer Termin</h2>
+            <button type="button" class="icon-button" data-close-dialog>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span class="visually-hidden">Schließen</span>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <div class="field">
+                <label for="quick-title">Titel</label>
+                <input id="quick-title" class="input-title" type="text" name="title" maxlength="200" required
+                       placeholder="Was steht an?" autocomplete="off">
+            </div>
+            <input type="hidden" name="allDay" value="false" data-quick-allday>
+            <div class="field-row field-row-when">
+                <div class="field">
+                    <label for="quick-start-date">Beginn</label>
+                    <div class="date-time">
+                        <input id="quick-start-date" type="date" name="startDate" required>
+                        <input type="time" name="startTime" aria-label="Uhrzeit Beginn" data-time-field>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="quick-end-date">Ende</label>
+                    <div class="date-time">
+                        <input id="quick-end-date" type="date" name="endDate" required>
+                        <input type="time" name="endTime" aria-label="Uhrzeit Ende" data-time-field>
+                    </div>
+                </div>
+            </div>
+            <div th:replace="~{calendar/fragments :: categorySelect('quick-category', null)}"></div>
+            <fieldset class="field choices" th:unless="${#lists.isEmpty(allMembers)}">
+                <legend>Betrifft</legend>
+                <label class="choice choice-member" th:each="m : ${allMembers}" th:style="|--member-color: ${m.color}|">
+                    <input type="checkbox" name="memberIds" th:value="${m.id}" data-quick-member>
+                    <span th:text="${m.name}">Name</span>
+                </label>
+            </fieldset>
+        </div>
+        <div class="dialog-foot">
+            <a class="button button-ghost" th:href="@{/calendar/events/new}" data-quick-details>Mehr Details</a>
+            <button type="submit" class="button">Termin anlegen</button>
+        </div>
+    </form>
 </dialog>
 
 <!-- Blocker and school bands of a day -->
@@ -148,6 +198,29 @@
     <span th:replace="~{calendar/fragments :: memberDots(${o.memberIds}, ${category != null})}"></span>
 </a>
 
+<!-- One line of the agenda; events and to-dos reuse the calendar fragments -->
+<th:block th:fragment="myEntry(entry)">
+    <th:block th:if="${entry instanceof T(club.badernet.nestwerk.web.MyDayEntry.EventEntry)}">
+        <a th:replace="~{calendar/fragments :: occurrence(${entry.occurrence})}"></a>
+    </th:block>
+    <th:block th:if="${entry instanceof T(club.badernet.nestwerk.web.MyDayEntry.TodoEntry)}">
+        <a th:replace="~{calendar/fragments :: todo(${entry.todo})}"></a>
+    </th:block>
+    <a th:if="${entry instanceof T(club.badernet.nestwerk.web.MyDayEntry.ChoreEntry)}"
+       class="occ occ-chore" th:href="@{/household/tasks/{id}(id=${entry.task.id})}"
+       th:attr="data-sheet-url=@{/calendar/chores/{id}/sheet(id=${entry.task.id})}"
+       th:title="${entry.task.chore.title}">
+        <span class="occ-time" th:if="${entry.task.plannedAt != null}"
+              th:text="${#temporals.format(entry.task.plannedAt, 'HH:mm')}">18:30</span>
+        <span class="occ-title">
+            <svg class="occ-lock" viewBox="0 0 24 24" role="img" aria-label="Hausarbeit">
+                <path d="M4.5 20V10l7.5-6 7.5 6v10z"/><path d="M9.5 20v-5h5v5"/>
+            </svg>
+            <span th:text="${entry.task.chore.title}">Bad putzen</span>
+        </span>
+    </a>
+</th:block>
+
 <!-- Member dots; with a category all members are shown, otherwise only from two on (the colour is the first) -->
 <span th:fragment="memberDots(ids, always)" class="occ-members"
       th:if="${#sets.size(ids) > 1 or (always and #sets.size(ids) > 0)}">
@@ -179,5 +252,21 @@
     </select>
 </div>
 
+<!-- Choice after dragging an occurrence of a series -->
+<th:block th:fragment="seriesDialog">
+    <dialog id="grid-series" class="dialog dialog-small" aria-labelledby="grid-series-title">
+        <div class="dialog-body">
+            <h2 id="grid-series-title">Terminserie ändern</h2>
+            <p class="muted" data-series-text>Was soll sich ändern?</p>
+            <p class="hint" data-series-person hidden>Die Person wechselt immer für die ganze Serie.</p>
+        </div>
+        <div class="dialog-foot dialog-foot-stack">
+            <button type="button" class="button" data-series-choice="OCCURRENCE">Nur dieses Vorkommen</button>
+            <button type="button" class="button button-ghost" data-series-choice="SERIES">Ganze Serie</button>
+            <p class="hint" data-series-hint hidden>Die ganze Serie lässt sich nur in der Uhrzeit und Dauer ändern, nicht auf andere Tage.</p>
+            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+        </div>
+    </dialog>
+</th:block>
 </body>
 </html>

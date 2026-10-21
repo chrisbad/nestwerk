@@ -32,6 +32,13 @@ class CalendarViewTest {
     }
 
     @Test
+    void myDayShowsOnlyTheFocusDayAndPagesByDay() {
+        assertThat(CalendarView.MY_DAY.days(WEDNESDAY)).containsExactly(WEDNESDAY);
+        assertThat(CalendarView.MY_DAY.next(WEDNESDAY)).isEqualTo(WEDNESDAY.plusDays(1));
+        assertThat(CalendarView.MY_DAY.path()).isEqualTo("my");
+    }
+
+    @Test
     void dayAndAgendaPageByTheirLength() {
         assertThat(CalendarView.DAY.days(WEDNESDAY)).containsExactly(WEDNESDAY);
         assertThat(CalendarView.DAY.previous(WEDNESDAY)).isEqualTo(WEDNESDAY.minusDays(1));

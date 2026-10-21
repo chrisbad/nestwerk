@@ -98,7 +98,7 @@ class CalendarGridControllerTest {
         Long doctor = categories.findByName("Arzt", editor).orElseThrow().getId();
         event("Zahnarzt", 15, doctor);
 
-        for (String view : new String[]{"day", "days3", "week"}) {
+        for (String view : new String[]{"days3", "week"}) {
             mockMvc.perform(get("/calendar/" + view).param("date", TUESDAY.toString()).with(as("editor")))
                     .andExpect(status().isOk())
                     .andExpect(content().string(containsString("data-time-grid")))
@@ -111,8 +111,59 @@ class CalendarGridControllerTest {
     }
 
     @Test
-    void gridShowsBlockedZonesForLiveFeedback() throws Exception {
+    void dayViewShowsOneLanePerPersonWithTheEventInTheLaneOfItsMember() throws Exception {
+        events.create(new EventInput("Zahnarzt", null, "Praxis", TUESDAY, LocalTime.of(15, 0), TUESDAY,
+                LocalTime.of(16, 0), false, null, false, Set.of(kid.getId()), false, null), editor);
+
+        String page = mockMvc.perform(get("/calendar/day").param("date", TUESDAY.toString()).with(as("editor")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-lanes")))
+                .andExpect(content().string(not(containsString("data-time-grid"))))
+                .andExpect(content().string(containsString("data-member=\"" + kid.getId() + "\"")))
+                .andExpect(content().string(containsString("--start: 900; --dur: 60;")))
+                .andExpect(content().string(containsString("data-slot-coarse=\"15\"")))
+                .andReturn().getResponse().getContentAsString();
+
+        String laneOfKid = page.substring(page.indexOf("data-member=\"" + kid.getId() + "\""));
+        assertThat(laneOfKid.indexOf("Zahnarzt")).isPositive();
+        assertThat(laneOfKid.indexOf("Zahnarzt")).isLessThan(laneOfKid.indexOf("Alle (ohne Person)"));
+    }
+
+    @Test
+    void dayViewOffersHandlesAndTheSeriesChoiceForEditableEntries() throws Exception {
+        event("Zahnarzt", 15, null);
+
         mockMvc.perform(get("/calendar/day").param("date", TUESDAY.toString()).with(as("editor")))
+                .andExpect(content().string(containsString("data-grid-item=\"event\"")))
+                .andExpect(content().string(containsString("data-editable=\"true\"")))
+                .andExpect(content().string(containsString("data-start=\"" + TUESDAY + "T15:00\"")))
+                .andExpect(content().string(containsString("data-end=\"" + TUESDAY + "T16:00\"")))
+                .andExpect(content().string(containsString("data-handle=\"start\"")))
+                .andExpect(content().string(containsString("data-handle=\"end\"")))
+                .andExpect(content().string(containsString("id=\"grid-series\"")));
+    }
+
+    @Test
+    void dayViewKeepsForeignEntriesReadOnly() throws Exception {
+        event("Meins", 15, null);
+
+        mockMvc.perform(get("/calendar/day").param("date", TUESDAY.toString()).with(as("anderer")))
+                .andExpect(content().string(containsString("Meins")))
+                .andExpect(content().string(containsString("data-editable=\"false\"")))
+                .andExpect(content().string(not(containsString("data-handle=\"start\""))));
+    }
+
+    @Test
+    void dayViewIgnoresTheSplitCookieAndHidesTheSplitToggle() throws Exception {
+        mockMvc.perform(get("/calendar/day").param("date", TUESDAY.toString()).with(as("editor"))
+                        .cookie(new jakarta.servlet.http.Cookie(GridSplit.COOKIE, "none")))
+                .andExpect(content().string(containsString("Lio")))
+                .andExpect(content().string(not(containsString("data-split-toggle"))));
+    }
+
+    @Test
+    void gridShowsBlockedZonesForLiveFeedback() throws Exception {
+        mockMvc.perform(get("/calendar/days3").param("date", TUESDAY.toString()).with(as("editor")))
                 .andExpect(content().string(containsString("tgrid-zone-block")))
                 .andExpect(content().string(containsString("data-member=\"" + kid.getId() + "\"")))
                 .andExpect(content().string(containsString("data-start-minute=\"480\"")));
@@ -122,7 +173,7 @@ class CalendarGridControllerTest {
     void foreignEventsAreNotEditableInTheGrid() throws Exception {
         event("Meins", 15, null);
 
-        mockMvc.perform(get("/calendar/day").param("date", TUESDAY.toString()).with(as("anderer")))
+        mockMvc.perform(get("/calendar/days3").param("date", TUESDAY.toString()).with(as("anderer")))
                 .andExpect(content().string(containsString("Meins")))
                 .andExpect(content().string(containsString("data-editable=\"false\"")))
                 .andExpect(content().string(not(containsString("data-handle=\"start\""))));

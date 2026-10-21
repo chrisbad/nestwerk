@@ -284,7 +284,7 @@ class CalendarDialogsTest {
         events.create(new EventInput("Zahnarzt", null, null, WEDNESDAY, LocalTime.of(15, 0), WEDNESDAY,
                 LocalTime.of(16, 0), false, null, false, Set.of(lena.getId(), tim.getId())), admin);
 
-        String page = mockMvc.perform(get("/calendar/day").param("date", WEDNESDAY.toString()).with(asAdmin())
+        String page = mockMvc.perform(get("/calendar/days3").param("date", WEDNESDAY.toString()).with(asAdmin())
                         .cookie(new Cookie(GridSplit.COOKIE, "person")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("tgrid-split")))
@@ -293,7 +293,7 @@ class CalendarDialogsTest {
                 .andReturn().getResponse().getContentAsString();
 
         assertThat(page.split(">Zahnarzt</span>", -1)).hasSize(3);
-        mockMvc.perform(get("/calendar/day").param("date", WEDNESDAY.toString()).with(asAdmin()))
+        mockMvc.perform(get("/calendar/days3").param("date", WEDNESDAY.toString()).with(asAdmin()))
                 .andExpect(content().string(not(containsString("tgrid-split"))));
     }
 

@@ -1091,6 +1091,12 @@ a.day-num:hover { background: var(--sage); }
 .agenda .occ { flex-wrap: wrap; }
 .agenda .occ-title span { white-space: normal; overflow-wrap: anywhere; }
 
+/* Personal day agenda */
+.my-day-section { display: grid; gap: 0.5rem; max-width: 46rem; margin-bottom: 1.4rem; }
+.my-day-heading { margin: 0; font-size: var(--step-1); }
+.my-day-section .occ { flex-wrap: wrap; font-size: var(--step-0); padding: 0.4rem 0.6rem; }
+.my-day-section .occ-title span { white-space: normal; overflow-wrap: anywhere; }
+
 /* Agenda */
 .agenda { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; max-width: 46rem; }
 .agenda-day {
@@ -2365,7 +2371,7 @@ a { color: var(--moss); }
 }
 .area:hover { transform: translateY(-4px) scale(1.01); filter: saturate(1.15); border: 0; }
 .area:active { transform: scale(0.97); }
-.area h2 { color: #fff; overflow-wrap: anywhere; hyphens: auto; }
+.area h2 { color: #fff; overflow-wrap: break-word; hyphens: auto; }
 .area p, .area.area-feature p { color: rgb(255 255 255 / 0.82); }
 .area-icon, .area-feature .area-icon { background: rgb(255 255 255 / 0.18); color: #fff; backdrop-filter: blur(4px); }
 .area-feature, .area-feature:hover { background: var(--tile); }
@@ -3958,3 +3964,173 @@ form.is-allday [data-time-field] { display: none; }
 .tgrid-split .tgrid-col:not(.is-day-start) .tgrid-now::before { display: none; }
 /* narrow person columns: the to-do icon gives its room to the title */
 .tgrid-split .tgrid-lane-item .occ-title .occ-lock { display: none; }
+
+/* Tab bars wrap instead of scrolling labels out of sight */
+.kitchen-tabs, .school-tabs, .household-head .segmented {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    max-width: 100%;
+    border-radius: 1.4rem;
+}
+
+/* Touch targets of at least 44 px on phones and touch screens */
+@media (max-width: 47.99rem), (pointer: coarse) {
+    .icon-button { width: 2.75rem; height: 2.75rem; }
+    .avatar-button .avatar { width: 2.75rem; height: 2.75rem; }
+    .button-small { min-height: 2.75rem; }
+    .kitchen-tabs a, .school-tabs a, .household-head .segmented a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+    .school-head p a, .back-link, .notice a, .home-todos-head a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 2.75rem;
+    }
+}
+
+/* Tiles of one row share the height of the tallest tile */
+.areas > li > .area { height: 100%; }
+
+/* --- Kalender: Tag in Bahnen (Zeit von links nach rechts, eine Bahn je Person) ----------------------------------- */
+
+.cal-main-lanes { max-width: 92rem; }
+[data-lanes] {
+    --hour-w: calc(6.5rem * var(--zoom, 1));
+    --label-w: 10rem;
+    --text-scale: clamp(0.9, var(--zoom, 1), 1.35);
+}
+.lanes {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sheet);
+    background: var(--card-sheen), var(--surface);
+    overflow: clip;
+}
+.lanes-scroll { overflow-x: auto; overscroll-behavior-x: contain; }
+.lanes-sizer { position: relative; width: calc(var(--label-w) + 24 * var(--hour-w)); }
+.lanes-hours, .lanes-row { display: grid; grid-template-columns: var(--label-w) 1fr; }
+.lanes-hours { border-bottom: 1px solid var(--line); }
+.lanes-corner, .lanes-label { position: sticky; left: 0; z-index: 4; background: var(--surface); }
+.lanes-hours-track { position: relative; height: 1.9rem; }
+.lanes-hour {
+    position: absolute;
+    left: calc(var(--hour) * var(--hour-w));
+    width: var(--hour-w);
+    padding: 0.35rem 0 0 0.4rem;
+    border-left: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+}
+.lanes-row { border-bottom: 1px solid var(--line); }
+.lanes-row:last-of-type { border-bottom: 0; }
+.lanes-label {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.3rem;
+    padding: 0.55rem 0.6rem 0.55rem 0.8rem;
+    border-right: 1px solid var(--line);
+    box-shadow: inset 4px 0 0 var(--member-color, var(--line));
+    overflow-wrap: anywhere;
+}
+.lanes-row.is-all .lanes-label { color: var(--ink-soft); }
+.lanes-name { font-size: var(--step-0); line-height: 1.25; }
+.lanes-allday { white-space: normal; padding: 0.2rem 0.5rem; font-size: 0.78rem; }
+.lanes-allday .occ-title span { white-space: normal; overflow-wrap: anywhere; }
+.lanes-track {
+    position: relative;
+    height: var(--lane-height, 5rem);
+    min-height: 3.2rem;
+    cursor: default;
+    background-image: repeating-linear-gradient(to right, var(--line) 0, var(--line) 1px, transparent 1px, transparent var(--hour-w));
+}
+[data-lanes][data-can-create="true"] .lanes-track { cursor: copy; }
+.lanes-entry {
+    position: absolute;
+    top: 6px;
+    left: calc(var(--start) * var(--hour-w) / 60);
+    width: max(calc(var(--dur) * var(--hour-w) / 60 - 3px), 7.5rem);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.05rem;
+    padding: 0.25rem 0.5rem 0.3rem 0.6rem;
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--occ-color) 26%, var(--surface-2));
+    box-shadow: inset 3px 0 0 var(--occ-color), 0 0 0 1px var(--surface);
+    font-size: calc(0.8rem * var(--text-scale));
+    line-height: 1.25;
+}
+.lanes-entry.occ-chore { background: color-mix(in srgb, var(--occ-color) 14%, var(--surface-2)); }
+.lanes-entry .occ-time { font-size: calc(0.72rem * var(--text-scale)); font-weight: 600; }
+.lanes-entry .occ-title { display: flex; align-items: flex-start; font-weight: 650; }
+.lanes-entry .occ-title span { white-space: normal; overflow-wrap: anywhere; hyphens: auto; }
+.lanes-entry .occ-place { color: var(--ink-soft); font-size: calc(0.72rem * var(--text-scale)); overflow-wrap: anywhere; }
+.lanes-entry.continues-before { border-top-left-radius: 2px; border-bottom-left-radius: 2px; }
+.lanes-entry.continues-after { border-top-right-radius: 2px; border-bottom-right-radius: 2px; }
+.lanes-now {
+    position: absolute;
+    top: 1.9rem;
+    bottom: 0;
+    left: calc(var(--label-w) + var(--start) * var(--hour-w) / 60);
+    z-index: 3;
+    width: 2px;
+    background: var(--brick);
+    box-shadow: 0 0 8px var(--brick);
+    pointer-events: none;
+}
+.lanes-hint { margin: 0.8rem 0 0; font-size: var(--step--1); }
+@media (max-width: 40rem) {
+    [data-lanes] { --label-w: 6.5rem; --hour-w: calc(5.5rem * var(--zoom, 1)); }
+    .lanes-label { padding: 0.45rem 0.4rem 0.45rem 0.6rem; }
+    .lanes-name { font-size: var(--step--1); }
+    .cal-main-lanes .cal-actions a[href*="/export/"], .cal-main-lanes .cal-actions a[href*="/import/"] { display: none; }
+    .cal-main-lanes .cal-legend-row { gap: 0.25rem 1rem; font-size: 0.8rem; }
+}
+
+/* Tag in Bahnen: Verschieben und Größe ändern */
+.lanes-entry.is-editable { cursor: grab; }
+.lanes-entry.is-lifted { opacity: 0.35; }
+.lanes-entry.is-selected {
+    z-index: 3;
+    outline: 2px solid var(--occ-color);
+    outline-offset: 1px;
+    box-shadow: var(--shadow-float);
+}
+.lanes-entry.is-ghost {
+    z-index: 5;
+    pointer-events: none;
+    background: color-mix(in srgb, var(--occ-color) 45%, var(--surface-2));
+    box-shadow: var(--shadow-float), inset 3px 0 0 var(--occ-color);
+}
+.lanes-entry.is-blocked { --occ-color: var(--brick); }
+.is-lanes-dragging .lanes-track, .is-lanes-dragging .lanes-entry { cursor: grabbing; }
+.lanes-entry, .lanes-entry * { -webkit-touch-callout: none; }
+.lanes-handle { position: absolute; top: 0; bottom: 0; z-index: 2; width: 12px; cursor: ew-resize; touch-action: none; }
+.lanes-handle-start { left: 0; }
+.lanes-handle-end { right: 0; }
+.lanes-handle::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 4px;
+    height: 1.1rem;
+    border-radius: 2px;
+    background: var(--occ-color);
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+@media (hover: hover) and (pointer: fine) {
+    .lanes-entry.is-editable:hover .lanes-handle::after { opacity: 0.9; }
+}
+.lanes-entry.is-selected .lanes-handle { width: 44px; }
+.lanes-entry.is-selected .lanes-handle-start { left: -22px; }
+.lanes-entry.is-selected .lanes-handle-end { right: -22px; }
+.lanes-entry.is-selected .lanes-handle::after {
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--surface);
+    border-radius: 50%;
+    opacity: 1;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+}
