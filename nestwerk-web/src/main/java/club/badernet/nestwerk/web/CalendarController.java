@@ -94,7 +94,7 @@ public class CalendarController {
 
     @GetMapping
     String index() {
-        return "redirect:/calendar/month";
+        return "redirect:/calendar/my";
     }
 
     @GetMapping("/month")
@@ -133,9 +133,11 @@ public class CalendarController {
         List<LocalDate> days = CalendarView.AGENDA.days(start);
         Map<LocalDate, List<Occurrence>> byDay = pageData.occurrences(days, viewer);
         Map<LocalDate, List<Todo>> todos = pageData.addTodos(model, days.getFirst(), days.getLast(), viewer);
+        CalendarChores chores = pageData.addChores(model, days.getFirst(), days.getLast(), viewer);
         Map<LocalDate, List<Occurrence>> nonEmpty = new LinkedHashMap<>();
         byDay.forEach((d, l) -> {
-            if (!l.isEmpty() || todos.containsKey(d)) {
+            if (!l.isEmpty() || todos.containsKey(d) || chores.timed().containsKey(d)
+                    || chores.untimed().containsKey(d)) {
                 nonEmpty.put(d, l);
             }
         });
@@ -154,7 +156,7 @@ public class CalendarController {
                    @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime end,
                    @RequestParam(required = false) Long todo, @RequestParam(required = false) String back,
                    Model model) {
-        model.addAttribute("back", TodoController.safeBack(back, null));
+        model.addAttribute("back", SafeRedirect.target(back, null));
         EventForm form = EventForm.forNew(pageData.parseDate(date));
         if (start != null && end != null && end.isAfter(start)) {
             form.setStartTime(start);
@@ -180,7 +182,7 @@ public class CalendarController {
     @PostMapping("/events")
     String create(@ModelAttribute("form") EventForm form, @RequestParam(required = false) String back, Model model,
                   RedirectAttributes redirect) {
-        model.addAttribute("back", TodoController.safeBack(back, null));
+        model.addAttribute("back", SafeRedirect.target(back, null));
         try {
             User actor = currentUser.require();
             Todo fromTodo = form.getTodoId() == null ? null : linkableTodo(form.getTodoId(), actor);
@@ -208,7 +210,7 @@ public class CalendarController {
     @GetMapping("/events/{id}")
     String edit(@PathVariable Long id, @RequestParam(required = false) Instant occurrence,
                 @RequestParam(required = false) String back, Model model) {
-        model.addAttribute("back", TodoController.safeBack(back, null));
+        model.addAttribute("back", SafeRedirect.target(back, null));
         User viewer = currentUser.require();
         CalendarEvent event = events.get(id, viewer);
         model.addAttribute("form", EventForm.from(event));
@@ -240,7 +242,7 @@ public class CalendarController {
     @PostMapping("/events/{id}")
     String update(@PathVariable Long id, @ModelAttribute("form") EventForm form,
                   @RequestParam(required = false) String back, Model model, RedirectAttributes redirect) {
-        model.addAttribute("back", TodoController.safeBack(back, null));
+        model.addAttribute("back", SafeRedirect.target(back, null));
         User actor = currentUser.require();
         try {
             if (warnAboutBlockers(form, id, actor, model)) {
@@ -364,7 +366,7 @@ public class CalendarController {
 
     /** Back to the calendar view the user came from, otherwise to the month of {@code date}. */
     private static String backTo(String back, LocalDate date) {
-        return "redirect:" + TodoController.safeBack(back, date == null ? "/calendar/month"
+        return "redirect:" + SafeRedirect.target(back, date == null ? "/calendar/month"
                 : "/calendar/month?date=" + date);
     }
 

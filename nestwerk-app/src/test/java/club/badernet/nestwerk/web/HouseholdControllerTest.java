@@ -244,16 +244,84 @@ class HouseholdControllerTest {
     }
 
     @Test
-    void todayAndHomeTileListOwnTasks() throws Exception {
+    void planShowsTheDayWithPersonFilterNextToTheWeek() throws Exception {
         todaysTask("Zimmer aufräumen", kidM.getId());
         todaysTask("Steuer", mamaM.getId());
 
-        mockMvc.perform(get("/household/today").with(as("kind")))
+        mockMvc.perform(get("/household").with(as("kind")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-household-day")))
+                .andExpect(content().string(containsString("data-own-member=\"" + kidM.getId() + "\"")))
+                .andExpect(content().string(containsString("data-who=\"" + kidM.getId() + "\"")))
+                .andExpect(content().string(containsString("data-who=\"" + mamaM.getId() + "\"")))
+                .andExpect(content().string(containsString("data-member=\"" + kidM.getId() + "\"")))
                 .andExpect(content().string(containsString("Zimmer aufräumen")))
-                .andExpect(content().string(not(containsString("Steuer"))));
+                .andExpect(content().string(containsString("Steuer")))
+                .andExpect(content().string(containsString("plan-grid")));
+    }
+
+    @Test
+    void anotherDayCanBeChosenAndTheOldWeekLinkStillWorks() throws Exception {
+        Chore c = chores.create(new ChoreInput("Fenster", "Haus", null, 15, 15, 15, ChoreKind.RECURRING,
+                "FREQ=DAILY;COUNT=1", today.plusDays(1), null, null, Distribution.FIXED, List.of(kidM.getId())), admin);
+        entityManager.flush();
+
+        mockMvc.perform(get("/household").param("date", today.plusDays(1).toString()).with(as("kind")))
+                .andExpect(content().string(containsString("Fenster")))
+                .andExpect(content().string(containsString("household-day-title")));
+        mockMvc.perform(get("/household").param("week", today.plusDays(1).toString()).with(as("kind")))
+                .andExpect(content().string(containsString("Fenster")));
+        mockMvc.perform(get("/household").param("date", "unsinn").with(as("kind")))
+                .andExpect(status().isOk());
+        org.assertj.core.api.Assertions.assertThat(c.getId()).isNotNull();
+    }
+
+    @Test
+    void theOldTodayPageLeadsToThePlan() throws Exception {
+        mockMvc.perform(get("/household/today").with(as("kind")))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/household"));
+    }
+
+    @Test
+    void homeTileListsOwnTasks() throws Exception {
+        todaysTask("Zimmer aufräumen", kidM.getId());
+        todaysTask("Steuer", mamaM.getId());
+
         mockMvc.perform(get("/").with(as("kind")))
                 .andExpect(content().string(containsString("Meine Hausarbeiten")))
                 .andExpect(content().string(containsString("Zimmer aufräumen")));
+    }
+
+    @Test
+    void choreListOffersQuickBookingThroughTheSidePanel() throws Exception {
+        Chore c = chores.create(new ChoreInput("Staubsaugen", null, null, 10, 20, 30, ChoreKind.ON_DEMAND, null, null,
+                null, null, Distribution.OPEN, List.of()), admin);
+        entityManager.flush();
+
+        mockMvc.perform(get("/household/chores").with(as("kind")))
+                .andExpect(content().string(containsString(
+                        "data-drawer-url=\"/household/chores/" + c.getId() + "/book-form\"")));
+        mockMvc.perform(get("/household/chores/{id}/book-form", c.getId()).with(as("kind")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("name=\"effort\"")))
+                .andExpect(content().string(containsString("name=\"back\" value=\"/household/chores\"")))
+                .andExpect(content().string(not(containsString("<html"))));
+        mockMvc.perform(post("/household/chores/{id}/book", c.getId()).with(csrf()).with(as("kind"))
+                        .param("effort", "EASY").param("back", "/household/chores"))
+                .andExpect(redirectedUrl("/household/chores"));
+        org.assertj.core.api.Assertions.assertThat(tasks.findAllByChoreId(c.getId())).singleElement()
+                .satisfies(t -> org.assertj.core.api.Assertions.assertThat(t.isOpen()).isFalse());
+    }
+
+    @Test
+    void usersWithoutHouseholdRightCannotOpenTheBookingForm() throws Exception {
+        Chore c = chores.create(new ChoreInput("Garage", null, null, 10, 20, 30, ChoreKind.ON_DEMAND, null, null,
+                null, null, Distribution.OPEN, List.of()), admin);
+        entityManager.flush();
+
+        mockMvc.perform(get("/household/chores/{id}/book-form", c.getId()).with(as("fremd")))
+                .andExpect(status().isForbidden());
     }
 
     @Test

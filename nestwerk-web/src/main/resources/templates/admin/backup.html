@@ -36,7 +36,7 @@
                         <a class="button button-ghost button-small"
                            th:href="@{/admin/backup/files/{n}(n=${f.name})}">Herunterladen</a>
                         <button type="button" class="button button-ghost button-small"
-                                th:attr="data-open-dialog='restore-' + ${it.index}">Wiederherstellen</button>
+                                th:attr="data-drawer-url=@{/admin/backup/files/{n}/restore-form(n=${f.name})}, data-drawer-title='Wiederherstellen'">Wiederherstellen</button>
                         <form data-confirm-tone="danger" method="post" th:action="@{/admin/backup/files/{n}/delete(n=${f.name})}"
                               th:attr="data-confirm=|Sicherung ${f.name} löschen?|">
                             <button type="submit" class="button button-danger button-small">Löschen</button>
@@ -286,31 +286,6 @@
         </ul>
     </section>
 
-    <dialog th:each="f, it : ${files}" th:id="'restore-' + ${it.index}" class="dialog"
-            th:attr="aria-labelledby='restore-title-' + ${it.index}">
-        <div class="dialog-head">
-            <h2 th:id="'restore-title-' + ${it.index}">Wiederherstellen</h2>
-            <button type="button" class="icon-button" data-close-dialog>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-                <span class="visually-hidden">Schließen</span>
-            </button>
-        </div>
-        <form class="dialog-section dialog-section-last" method="post"
-              th:action="@{/admin/backup/files/{n}/restore(n=${f.name})}">
-            <p><strong>Alle aktuellen Daten werden durch den Stand der Sicherung ersetzt.</strong> Vorher legt Nestwerk
-                automatisch eine Sicherheitskopie an. Danach melden sich alle neu an.</p>
-            <div class="field">
-                <label th:for="'confirm-' + ${it.index}">Zum Bestätigen den Dateinamen eintippen:
-                    <code th:text="${f.name}">datei</code></label>
-                <input th:id="'confirm-' + ${it.index}" class="input" type="text" name="confirm" required
-                       autocomplete="off" th:attr="pattern=${#strings.replace(f.name, '.', '\.')}">
-            </div>
-            <div class="dialog-foot">
-                <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
-                <button type="submit" class="button">Wiederherstellen</button>
-            </div>
-        </form>
-    </dialog>
 </main>
 <div th:replace="~{fragments/layout :: confirmDialog}"></div>
 <div th:replace="~{fragments/layout :: toasts}"></div>

@@ -26,7 +26,7 @@ public class SecurityConfig {
                         // Wand-Tablet: eigene Prüfung über das Geräte-Cookie im TabletController
                         .requestMatchers("/tablet", "/tablet/**").permitAll()
                         .anyRequest().authenticated())
-                .formLogin(form -> form.loginPage("/login").permitAll())
+                .formLogin(form -> form.loginPage("/login").successHandler(new LandingPageSuccessHandler()).permitAll())
                 .logout(Customizer.withDefaults());
         return http.build();
     }

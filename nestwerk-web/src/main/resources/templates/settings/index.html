@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Einstellungen')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='settings')}"></header>
+<main>
+    <th:block th:if="${nav.hasOrigin()}"><a th:replace="~{fragments/layout :: backLink(@{/}, 'Start', null)}"></a></th:block>
+    <div class="page-head">
+        <div>
+            <h1>Einstellungen</h1>
+            <p>Alles, was sich in Nestwerk einstellen lässt, an einer Stelle. Nach „Fertig“ geht es genau dorthin zurück, wo du herkommst.</p>
+        </div>
+    </div>
+
+    <div class="table-tools" data-table-for="settings">
+        <label class="search">
+            <span class="visually-hidden">Einstellung suchen</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+            <input class="input" type="search" placeholder="Einstellung suchen" data-table-search autocomplete="off">
+        </label>
+        <div class="table-chips" role="group" aria-label="Bereich" data-table-chips="area">
+            <button type="button" class="chip-toggle" th:each="area : ${areas}" th:text="${area.label()}"
+                    th:attr="data-chip-value=${area.name()}" aria-pressed="false">Kalender</button>
+        </div>
+        <div class="table-selects">
+            <label class="field field-inline">
+                <span>Geltung</span>
+                <select data-table-select="scope">
+                    <option value="">Alle</option>
+                    <option th:each="scope : ${scopes}" th:value="${scope.name()}" th:text="${scope.label()}">Ich</option>
+                </select>
+            </label>
+            <label class="field field-inline">
+                <span>Status</span>
+                <select data-table-select="status">
+                    <option value="">Alle</option>
+                    <option th:each="status : ${statuses}" th:value="${status.name()}" th:text="${status.label()}">in Ordnung</option>
+                </select>
+            </label>
+        </div>
+        <p class="table-count muted" data-table-count aria-live="polite"></p>
+        <button type="button" class="button button-ghost button-small" data-table-reset hidden>Filter zurücksetzen</button>
+    </div>
+
+    <div class="sheet">
+        <table class="table data-table" data-table="settings" data-table-persist data-sort-default="title">
+            <thead>
+            <tr>
+                <th scope="col" data-col="title" data-sort="text">Einstellung</th>
+                <th scope="col" data-col="area" data-sort="text">Bereich</th>
+                <th scope="col" data-col="scope" data-sort="text">Geltung</th>
+                <th scope="col" data-col="summary" data-sort="text">Aktueller Wert</th>
+                <th scope="col" data-col="status" data-sort="text">Status</th>
+                <th scope="col"><span class="visually-hidden">Aktion</span></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="entry : ${entries}" th:attr="data-open=${entry.path}, data-search=${entry.description}"
+                th:id="'setting-' + ${entry.id}">
+                <td data-col="title" data-label="Einstellung" th:attr="data-value=${entry.title}">
+                    <strong th:text="${entry.title}">Terminkategorien</strong>
+                    <span class="table-note muted" th:text="${entry.description}">Arten von Terminen</span>
+                </td>
+                <td data-col="area" data-label="Bereich" th:attr="data-value=${entry.area().name()}" th:text="${entry.area().label()}">Kalender</td>
+                <td data-col="scope" data-label="Geltung" th:attr="data-value=${entry.scope().name()}" th:text="${entry.scope().label()}">Familie</td>
+                <td data-col="summary" data-label="Aktueller Wert" th:text="${entry.summary()}">6 Kategorien</td>
+                <td data-col="status" data-label="Status" th:attr="data-value=${entry.status().name()}">
+                    <span class="status" th:classappend="${entry.status().name() == 'ATTENTION'} ? 'status-attention' : (${entry.status().name() == 'NOT_SET'} ? 'status-off')"
+                          th:text="${entry.status().label()}">in Ordnung</span>
+                </td>
+                <td class="cell-actions">
+                    <a class="button button-ghost button-small" th:href="@{${entry.path}}" data-excursion
+                       th:attr="aria-label='Öffnen: ' + ${entry.title}">Öffnen</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="muted table-empty" data-table-empty="settings" hidden>Keine Einstellung passt zu dieser Auswahl.</p>
+</main>
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

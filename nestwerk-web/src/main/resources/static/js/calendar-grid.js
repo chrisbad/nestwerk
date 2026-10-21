@@ -88,7 +88,9 @@
         return y >= box.top && y <= box.bottom;
     }
 
-    const visibleDates = root => [...new Set(columns(root).map(c => c.dataset.date))];
+    // the day in lanes has no columns; its root carries the one shown day
+    const visibleDates = root => columns(root).length
+        ? [...new Set(columns(root).map(c => c.dataset.date))] : [root.dataset.date];
 
     /** The column of a day and person; falls back to the first or last day for days outside the view. */
     function columnFor(root, date, member) {
@@ -886,6 +888,22 @@
         const details = root.querySelector("[data-quick-details]");
         details?.addEventListener("click", () => { details.href = detailsUrl(details.closest("form")); });
     }
+
+    /** Shared with calendar-lanes.js, which shows the day in lanes instead of a time grid. */
+    window.NestwerkGrid = Object.freeze({
+        time: Object.freeze({ absolute, parseLocal, dateOf, minuteOf, clock, snap }),
+        describe,
+        sameTimes,
+        /** Saves a finished drag from the lanes (same server calls, series choice and undo as in the grid). */
+        commit,
+        openQuickAt(root, date, startMinute, endMinute, member) {
+            openQuick(root, { allDay: false, start: absolute(date, startMinute), end: absolute(date, endMinute) }, member);
+        },
+        bindDetails(root) {
+            const details = root.querySelector("[data-quick-details]");
+            details?.addEventListener("click", () => { details.href = detailsUrl(details.closest("form")); });
+        }
+    });
 
     function moveNowLine() {
         const now = new Date();

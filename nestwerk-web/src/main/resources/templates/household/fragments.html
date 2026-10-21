@@ -9,8 +9,7 @@
         <p th:if="${subtitle != null}" th:text="${subtitle}">KW 42</p>
     </div>
     <nav class="segmented" aria-label="Haushalt">
-        <a th:href="@{/household}" th:aria-current="${tab == 'week'} ? 'page'">Wochenplan</a>
-        <a th:href="@{/household/today}" th:aria-current="${tab == 'today'} ? 'page'">Heute</a>
+        <a th:href="@{/household}" th:aria-current="${tab == 'plan'} ? 'page'">Plan</a>
         <a th:href="@{/household/chores}" th:aria-current="${tab == 'chores'} ? 'page'">Hausarbeiten</a>
         <a th:href="@{/household/stats}" th:aria-current="${tab == 'stats'} ? 'page'">Auswertung</a>
         <a th:href="@{/household/rewards}" th:if="${@rewardService.mayOpen(#authentication.name)}"
@@ -198,6 +197,7 @@
 
 <!-- Eine Aufgabe; erwartet ${c} (TaskChip), ${back}, optional ${showAssignee}, ${showDay}, ${toast} -->
 <li th:fragment="chip" class="chore-chip" th:id="|task-${c.id}|"
+    th:attr="data-member=${c.assignee != null} ? ${c.assignee.id} : 'open'"
     th:classappend="${(c.done ? ' is-done' : '') + (c.overdue ? ' is-overdue' : '')}"
     th:style="${c.assignee != null} ? |--member-color: ${c.assignee.color}|">
     <th:block th:if="${c.canComplete}">

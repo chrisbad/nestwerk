@@ -91,9 +91,11 @@ class CalendarViewTests {
     }
 
     @Test
-    void calendarRedirectsToMonth() throws Exception {
+    void calendarRedirectsToThePersonalDay() throws Exception {
         mockMvc.perform(get("/calendar").with(user("kal-besitzer").authorities(
                         new org.springframework.security.core.authority.SimpleGrantedAuthority("CALENDAR_VIEW"))))
-                .andExpect(status().is3xxRedirection());
+                .andExpect(status().is3xxRedirection())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .redirectedUrl("/calendar/my"));
     }
 }

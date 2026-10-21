@@ -98,6 +98,17 @@ public class ChoreTask {
         return task;
     }
 
+    /**
+     * Einmalige, von Hand eingeplante Aufgabe (z. B. aus dem Kalender), unabhängig vom Rhythmus der Hausarbeit. Sie
+     * zählt wie eine ungeplant gebuchte: die Planung verteilt sie nicht um, und nach „Rückgängig“ verschwindet sie.
+     */
+    static ChoreTask scheduledOnce(Chore chore, LocalDate day, LocalTime time, Long assigneeMemberId) {
+        ChoreTask task = new ChoreTask(chore, day, time, assigneeMemberId);
+        task.slotKey = AD_HOC + UUID.randomUUID().toString().replace("-", "");
+        task.planManually(time);
+        return task;
+    }
+
     /** Eindeutiger Schlüssel des Termins innerhalb der Hausarbeit (macht die Planung idempotent). */
     public static String slotKey(LocalDate dueOn, LocalTime dueTime) {
         return dueTime == null ? dueOn.toString() : dueOn + "T" + dueTime.format(TIME);

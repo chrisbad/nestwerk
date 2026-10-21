@@ -125,6 +125,47 @@ public class ChoreTaskService {
         return task;
     }
 
+    /**
+     * Plans a chore once for a day (and optionally a time and a member), independent of its rhythm; this is how a
+     * chore "on demand" gets a date. Planning for oneself or leaving it open needs the right to book the chore, giving
+     * it to someone else the right to assign it.
+     */
+    @Transactional
+    public ChoreTask planOnce(Long choreId, LocalDate day, LocalTime time, Long memberId, User actor) {
+        Chore chore = chores.get(choreId, actor);
+        if (!canBook(actor, chore)) {
+            throw new AccessDeniedException("Keine Berechtigung, diese Hausarbeit einzuplanen");
+        }
+        if (day == null) {
+            throw new IllegalArgumentException("Bitte einen Tag angeben.");
+        }
+        if (day.isBefore(today())) {
+            throw new IllegalArgumentException("Eine Hausarbeit lässt sich nicht für die Vergangenheit einplanen.");
+        }
+        if (memberId != null && !members.existsById(memberId)) {
+            throw new IllegalArgumentException("Unbekanntes Familienmitglied ausgewählt.");
+        }
+        Long own = access.memberId(actor).orElse(null);
+        if (memberId != null && !memberId.equals(own)) {
+            requireMayAssign(chore, memberId, actor);
+        }
+        ChoreTask task = tasks.save(ChoreTask.scheduledOnce(chore, day, time, memberId));
+        if (memberId != null && !memberId.equals(own)) {
+            notifier.assigned(task, actor);
+        }
+        return task;
+    }
+
+    private void requireMayAssign(Chore chore, Long memberId, User actor) {
+        ChoreTask probe = ChoreTask.adHoc(chore, today(), null);
+        if (!access.can(actor, "ASSIGN", probe)) {
+            throw new AccessDeniedException("Keine Berechtigung, diese Hausarbeit jemand anderem zuzuweisen");
+        }
+        if (!access.canAny(actor, "ASSIGN") && !chore.getMemberIds().contains(memberId)) {
+            throw new AccessDeniedException("Du kannst sie nur an Zuständige dieser Hausarbeit geben");
+        }
+    }
+
     private Long doer(User actor, Long doerId) {
         Long own = access.memberId(actor).orElse(null);
         Long doer = doerId != null ? doerId : own;

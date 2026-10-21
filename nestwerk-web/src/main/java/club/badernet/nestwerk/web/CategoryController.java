@@ -31,6 +31,10 @@ public class CategoryController {
         this.currentUser = currentUser;
     }
 
+    private static String backSuffix(String back) {
+        return SafeRedirect.withBack("", back);
+    }
+
     @GetMapping
     String list(Model model) {
         model.addAttribute("categories", categories.list(currentUser.require()));
@@ -38,9 +42,16 @@ public class CategoryController {
         return "calendar/categories";
     }
 
+    /** Details of one category for the drawer. */
+    @GetMapping("/{id}/edit")
+    String edit(@PathVariable Long id, Model model) {
+        model.addAttribute("c", categories.get(id, currentUser.require()));
+        return "calendar/category-drawer :: content";
+    }
+
     @PostMapping
     String create(@RequestParam String name, @RequestParam(required = false) String color,
-                  RedirectAttributes redirect) {
+                  @RequestParam(required = false) String back, RedirectAttributes redirect) {
         try {
             EventCategory created = categories.create(new CategoryInput(name, CategoryColor.parse(color)),
                     currentUser.require());
@@ -48,25 +59,25 @@ public class CategoryController {
         } catch (IllegalArgumentException e) {
             redirect.addFlashAttribute("error", e.getMessage());
         }
-        return REDIRECT;
+        return REDIRECT + backSuffix(back);
     }
 
     @PostMapping("/{id}")
     String update(@PathVariable Long id, @RequestParam String name, @RequestParam(required = false) String color,
-                  RedirectAttributes redirect) {
+                  @RequestParam(required = false) String back, RedirectAttributes redirect) {
         try {
             categories.update(id, new CategoryInput(name, CategoryColor.parse(color)), currentUser.require());
             redirect.addFlashAttribute("success", "Gespeichert.");
         } catch (IllegalArgumentException e) {
             redirect.addFlashAttribute("error", e.getMessage());
         }
-        return REDIRECT;
+        return REDIRECT + backSuffix(back);
     }
 
     @PostMapping("/{id}/delete")
-    String delete(@PathVariable Long id, RedirectAttributes redirect) {
+    String delete(@PathVariable Long id, @RequestParam(required = false) String back, RedirectAttributes redirect) {
         categories.delete(id, currentUser.require());
         redirect.addFlashAttribute("success", "Kategorie ist gelöscht. Ihre Termine haben jetzt keine Kategorie.");
-        return REDIRECT;
+        return REDIRECT + backSuffix(back);
     }
 }

@@ -32,6 +32,9 @@
                         <span th:unless="${ch.kind.name() == 'ON_DEMAND'}" th:text="${ch.distribution.label()}">Reihum</span>
                     </span>
                 </a>
+                <button type="button" class="button button-ghost button-small chore-row-book"
+                        th:if="${bookable.contains(ch.id)}"
+                        th:attr="data-drawer-url=@{/household/chores/{id}/book-form(id=${ch.id})}, data-drawer-title=|${ch.title} buchen|">Buchen</button>
             </li>
         </ul>
     </section>

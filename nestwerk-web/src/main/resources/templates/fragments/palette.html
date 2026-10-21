@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Entries of the command palette, loaded by palette.js; expects ${entries} (PaletteController.Entry) -->
+<ul th:fragment="entries">
+    <li th:each="entry : ${entries}" role="option" class="cmd-item"
+        th:attr="data-path=${entry.path}, data-search=${entry.search}, data-excursion=${entry.excursion}">
+        <span class="cmd-group" th:text="${entry.group}">Gehe zu</span>
+        <span class="cmd-label" th:text="${entry.label}">Kalender</span>
+        <span class="cmd-note muted" th:if="${!#strings.isEmpty(entry.hint)}" th:text="${entry.hint}">Kalender</span>
+    </li>
+</ul>
+</body>
+</html>

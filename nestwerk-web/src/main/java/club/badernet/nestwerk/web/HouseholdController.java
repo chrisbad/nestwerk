@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 
 @Controller
 @RequestMapping("/household")
@@ -76,12 +77,18 @@ public class HouseholdController {
         this.currentUser = currentUser;
     }
 
+    /**
+     * The household plan: the day (default today) with a filter by person next to the week it belongs to. {@code week}
+     * is the older name of {@code date} and still works in links.
+     */
     @GetMapping
-    String week(@RequestParam(required = false) String week, Model model) {
+    String plan(@RequestParam(required = false) String date, @RequestParam(required = false) String week,
+                Model model) {
         User viewer = requireModule();
         HouseholdViews.Context ctx = views.context(viewer);
         LocalDate today = ctx.today();
-        LocalDate monday = parseDate(week, today).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate focus = parseDate(date != null ? date : week, today);
+        LocalDate monday = focus.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
         List<WeekDay> days = new ArrayList<>();
         for (int i = 0; i < 7; i++) {
             LocalDate d = monday.plusDays(i);
@@ -108,17 +115,29 @@ public class HouseholdController {
         }
         List<DayGroup> byDay = days.stream().map(d -> new DayGroup(d, views.chips(inWeek.stream()
                 .filter(t -> t.getDueOn().equals(d.date())).toList(), ctx))).toList();
+        List<HouseholdViews.TaskChip> overdue = focus.equals(today)
+                ? views.chips(tasks.overdue(viewer, today), ctx) : List.of();
+        List<HouseholdViews.TaskChip> dayChips = byDay.stream().filter(g -> g.day().date().equals(focus))
+                .findFirst().map(DayGroup::chips).orElse(List.of());
         model.addAttribute("days", days);
         model.addAttribute("rows", rows);
         model.addAttribute("byDay", byDay);
-        model.addAttribute("overdue", views.chips(tasks.overdue(viewer, today), ctx));
+        model.addAttribute("overdue", overdue);
+        model.addAttribute("dayChips", dayChips);
+        model.addAttribute("hasOpenTasks", Stream.concat(overdue.stream(), dayChips.stream())
+                .anyMatch(c -> c.assignee() == null));
+        model.addAttribute("filterMembers", ctx.members().values());
+        model.addAttribute("ownMember", ctx.ownMember());
+        model.addAttribute("focus", focus);
+        model.addAttribute("focusLabel", HouseholdViews.longDay(focus));
+        model.addAttribute("focusIsToday", focus.equals(today));
         model.addAttribute("monday", monday);
         model.addAttribute("weekNumber", monday.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
         model.addAttribute("weekRange", HouseholdViews.longDay(monday) + " – " + HouseholdViews.longDay(monday.plusDays(6)));
         model.addAttribute("isCurrentWeek", !today.isBefore(monday) && !today.isAfter(monday.plusDays(6)));
-        model.addAttribute("back", "/household?week=" + monday);
-        addCommon(model, viewer, "week");
-        return "household/week";
+        model.addAttribute("back", "/household?date=" + focus);
+        addCommon(model, viewer, "plan");
+        return "household/plan";
     }
 
     private WeekRow row(Long memberId, String label, String color, List<ChoreTask> list, List<WeekDay> days,
@@ -131,18 +150,10 @@ public class HouseholdController {
         return new WeekRow(memberId, label, color, cells, minutes);
     }
 
+    /** The day view is the start page of the household now; old links keep working. */
     @GetMapping("/today")
-    String today(Model model) {
-        User viewer = requireModule();
-        HouseholdViews.Context ctx = views.context(viewer);
-        List<HouseholdViews.TaskChip> mine = views.chips(tasks.mine(viewer, ctx.today()), ctx);
-        model.addAttribute("overdue", mine.stream().filter(HouseholdViews.TaskChip::overdue).toList());
-        model.addAttribute("dueToday", mine.stream().filter(c -> !c.overdue()).toList());
-        model.addAttribute("hasMember", ctx.ownMember() != null);
-        model.addAttribute("todayLabel", HouseholdViews.longDay(ctx.today()));
-        model.addAttribute("back", "/household/today");
-        addCommon(model, viewer, "today");
-        return "household/today";
+    String today() {
+        return "redirect:/household";
     }
 
     /* --- Hausarbeiten ------------------------------------------------------ */
@@ -156,6 +167,8 @@ public class HouseholdController {
             groups.computeIfAbsent(key, k -> new ArrayList<>()).add(c);
         }
         model.addAttribute("groups", groups);
+        model.addAttribute("bookable", groups.values().stream().flatMap(List::stream)
+                .filter(c -> tasks.canBook(viewer, c)).map(Chore::getId).collect(java.util.stream.Collectors.toSet()));
         model.addAttribute("canCreate", chores.canCreate(viewer));
         addCommon(model, viewer, "chores");
         return "household/chores";
@@ -208,6 +221,22 @@ public class HouseholdController {
         model.addAttribute("back", "/household/chores/" + id);
         addCommon(model, viewer, "chores");
         return "household/chore";
+    }
+
+    /** Booking form for the side panel of the chore list: book a chore that was not planned. */
+    @GetMapping("/chores/{id}/book-form")
+    String bookForm(@PathVariable Long id, Model model) {
+        User viewer = requireModule();
+        Chore chore = chores.get(id, viewer);
+        if (!tasks.canBook(viewer, chore)) {
+            throw new AccessDeniedException("Keine Berechtigung, diese Hausarbeit zu buchen");
+        }
+        HouseholdViews.Context ctx = views.context(viewer);
+        model.addAttribute("chore", chore);
+        model.addAttribute("ownMember", ctx.ownMember());
+        model.addAttribute("completeAny", ctx.completeAny());
+        model.addAttribute("allMembers", ctx.members());
+        return "household/chore-book-drawer :: content";
     }
 
     @GetMapping("/chores/{id}/edit")
@@ -323,7 +352,7 @@ public class HouseholdController {
     @GetMapping("/tasks/{id}")
     String task(@PathVariable Long id, @RequestParam(required = false) String back, Model model) {
         User viewer = requireModule();
-        model.addAttribute("returnTo", TodoController.safeBack(back, null));
+        model.addAttribute("returnTo", SafeRedirect.target(back, null));
         ChoreTask task = tasks.get(id, viewer);
         HouseholdViews.Context ctx = views.context(viewer);
         model.addAttribute("task", task);
@@ -347,7 +376,7 @@ public class HouseholdController {
                 @RequestParam(name = "helpers", required = false) Set<Long> helpers,
                 @RequestParam(required = false) ChoreEffort effort, @RequestParam(required = false) Integer minutes,
                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime performedAt,
-                RedirectAttributes redirect) {
+                @RequestParam(required = false) String back, RedirectAttributes redirect) {
         User actor = requireModule();
         try {
             tasks.bookAdHoc(id, actor, doer, helpers, new ChoreTaskService.Booking(effort, minutes, performedAt));
@@ -355,7 +384,7 @@ public class HouseholdController {
         } catch (ChoreConflictException | IllegalArgumentException e) {
             redirect.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/household/chores/" + id;
+        return "redirect:" + SafeRedirect.target(back, "/household/chores/" + id);
     }
 
     @PostMapping("/tasks/{id}/complete")
@@ -428,13 +457,13 @@ public class HouseholdController {
                           RedirectAttributes redirect) {
         if (htmx != null) {
             model.addAttribute("c", views.chip(tasks.get(id, actor), views.context(actor)));
-            model.addAttribute("back", TodoController.safeBack(back, "/household"));
+            model.addAttribute("back", SafeRedirect.target(back, "/household"));
             model.addAttribute("toast", message);
             model.addAttribute("toastType", ok ? "success" : "error");
             return "household/fragments :: chip";
         }
         redirect.addFlashAttribute(ok ? "success" : "error", message);
-        return "redirect:" + TodoController.safeBack(back, "/household/tasks/" + id);
+        return "redirect:" + SafeRedirect.target(back, "/household/tasks/" + id);
     }
 
     private void prepareForm(Model model, User viewer, Chore chore) {

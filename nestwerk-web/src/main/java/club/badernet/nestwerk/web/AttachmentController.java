@@ -54,6 +54,6 @@ public class AttachmentController {
     String delete(@PathVariable Long id, @RequestParam(required = false) String back, RedirectAttributes redirect) {
         attachments.delete(id, currentUser.require());
         redirect.addFlashAttribute("success", "Anhang wurde gelöscht.");
-        return "redirect:" + TodoController.safeBack(back, "/");
+        return "redirect:" + SafeRedirect.target(back, "/");
     }
 }

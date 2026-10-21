@@ -4,7 +4,7 @@
 <body>
 <header th:replace="~{fragments/layout :: nav(active='household')}"></header>
 <main class="event-main">
-    <a class="back-link" th:href="${returnTo} ?: @{/household(week=${task.dueOn})}">
+    <a class="back-link" th:href="${returnTo} ?: @{/household(date=${task.dueOn})}">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
         <span th:text="${returnTo != null} ? 'Zurück' : 'Zum Wochenplan'">Zum Wochenplan</span>
     </a>

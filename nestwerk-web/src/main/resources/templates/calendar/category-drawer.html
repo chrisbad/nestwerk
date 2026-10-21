@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Details of one event category, loaded into the drawer; expects ${c} -->
+<div th:fragment="content">
+    <form th:action="@{/calendar/categories/{id}(id=${c.id})}" method="post">
+    <input th:replace="~{fragments/layout :: backField}">
+        <div class="dialog-head">
+            <h2 th:id="'edit-category-title-' + ${c.id}">Kategorie bearbeiten</h2>
+            <button type="button" class="icon-button" data-close-dialog>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span class="visually-hidden">Schließen</span>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <div class="field">
+                <label th:for="'cat-name-' + ${c.id}">Name</label>
+                <input th:id="'cat-name-' + ${c.id}" type="text" name="name" maxlength="60" th:value="${c.name}" required>
+            </div>
+            <fieldset th:replace="~{calendar/fragments :: palette(${c.color})}"></fieldset>
+        </div>
+        <div class="dialog-foot">
+            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+            <button type="submit" class="button">Speichern</button>
+        </div>
+    </form>
+    <form data-confirm-tone="danger" class="dialog-section dialog-section-last" th:action="@{/calendar/categories/{id}/delete(id=${c.id})}"
+          method="post" th:attr="data-confirm=|Kategorie „${c.name}“ löschen?|">
+    <input th:replace="~{fragments/layout :: backField}">
+        <p class="muted">Die Termine bleiben erhalten, nur ohne Kategorie.</p>
+        <button type="submit" class="button button-danger">Kategorie löschen</button>
+    </form>
+</div>
+</body>
+</html>

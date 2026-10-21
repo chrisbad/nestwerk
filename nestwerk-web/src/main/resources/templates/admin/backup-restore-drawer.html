@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Confirmation to restore one backup, loaded into the drawer; expects ${f} -->
+<div th:fragment="content">
+        <div class="dialog-head">
+            <h2 th:id="'restore-title'">Wiederherstellen</h2>
+            <button type="button" class="icon-button" data-close-dialog>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span class="visually-hidden">Schließen</span>
+            </button>
+        </div>
+        <form class="dialog-section dialog-section-last" method="post"
+              th:action="@{/admin/backup/files/{n}/restore(n=${f.name})}">
+            <p><strong>Alle aktuellen Daten werden durch den Stand der Sicherung ersetzt.</strong> Vorher legt Nestwerk
+                automatisch eine Sicherheitskopie an. Danach melden sich alle neu an.</p>
+            <div class="field">
+                <label th:for="'restore-confirm'">Zum Bestätigen den Dateinamen eintippen:
+                    <code th:text="${f.name}">datei</code></label>
+                <input th:id="'restore-confirm'" class="input" type="text" name="confirm" required
+                       autocomplete="off" th:attr="pattern=${#strings.replace(f.name, '.', '\.')}">
+            </div>
+            <div class="dialog-foot">
+                <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+                <button type="submit" class="button">Wiederherstellen</button>
+            </div>
+        </form>
+    
+</div>
+</body>
+</html>

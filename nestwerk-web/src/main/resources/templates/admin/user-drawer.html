@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Details of one user, loaded into the drawer; expects ${user} and ${roles} -->
+<div th:fragment="content">
+            <div class="dialog-head">
+                <h2 th:id="'edit-user-title-' + ${user.id}">
+                    <span class="person">
+                        <span class="avatar" aria-hidden="true"
+                              th:text="${#strings.toUpperCase(#strings.substring(user.username, 0, 1))}">A</span>
+                        <span th:text="${user.username}">admin</span>
+                    </span>
+                </h2>
+                <button type="button" class="icon-button" data-close-dialog>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                    <span class="visually-hidden">Schließen</span>
+                </button>
+            </div>
+
+            <form class="dialog-section" th:action="@{/admin/users/{id}/roles(id=${user.id})}" method="post">
+                <fieldset class="field choices">
+                    <legend>Rollen</legend>
+                    <label class="choice" th:each="r : ${roles}">
+                        <input type="checkbox" name="roleIds" th:value="${r.id}" th:checked="${user.hasRoleId(r.id)}">
+                        <span th:text="${r.name}">Rolle</span>
+                    </label>
+                </fieldset>
+                <div class="form-actions">
+                    <button type="submit" class="button">Rollen speichern</button>
+                </div>
+            </form>
+
+            <form class="dialog-section" th:action="@{/admin/users/{id}/password(id=${user.id})}" method="post">
+                <div class="field">
+                    <label th:for="'pw-' + ${user.id}">Neues Passwort <span class="hint">mindestens 8 Zeichen</span></label>
+                    <div class="password">
+                        <input th:id="'pw-' + ${user.id}" type="password" name="password" minlength="8"
+                               autocomplete="new-password" required>
+                        <button th:replace="~{fragments/layout :: passwordToggle}"></button>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="button button-ghost">Passwort zurücksetzen</button>
+                </div>
+            </form>
+
+            <form class="dialog-section dialog-section-last" th:action="@{/admin/users/{id}/enabled(id=${user.id})}" method="post"
+                  th:attr="data-confirm=${user.enabled} ? |„${user.username}“ deaktivieren?| : null,data-confirm-label=${user.enabled} ? 'Deaktivieren' : null">
+                <input type="hidden" name="enabled" th:value="${!user.enabled}">
+                <p class="muted" th:text="${user.enabled} ? 'Deaktivierte Benutzer können sich nicht mehr anmelden.' : 'Dieser Benutzer kann sich derzeit nicht anmelden.'">Hinweis</p>
+                <button type="submit" class="button" th:classappend="${user.enabled} ? 'button-ghost' : ''"
+                        th:text="${user.enabled} ? 'Deaktivieren' : 'Aktivieren'">Deaktivieren</button>
+            </form>
+        
+</div>
+</body>
+</html>

@@ -272,6 +272,14 @@ public class AdminBackupController {
                 .body(new FileSystemResource(file));
     }
 
+    /** Confirmation form for the drawer: restoring replaces all current data. */
+    @GetMapping("/admin/backup/files/{name}/restore-form")
+    String restoreForm(@PathVariable String name, Model model) {
+        backups.file(name, requireManage());
+        model.addAttribute("f", new FileRow(name, "", ""));
+        return "admin/backup-restore-drawer :: content";
+    }
+
     @PostMapping("/admin/backup/files/{name}/delete")
     String delete(@PathVariable String name, RedirectAttributes redirect) {
         backups.delete(name, requireManage());

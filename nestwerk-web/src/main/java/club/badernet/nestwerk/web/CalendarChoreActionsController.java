@@ -59,6 +59,34 @@ public class CalendarChoreActionsController {
         return ActionResult.of("Erledigt – danke!");
     }
 
+    /**
+     * Plans a chore once for a day, e.g. one "on demand". Without {@code member} the task is the viewer's own, with
+     * an empty one it is open for anybody to take.
+     */
+    @PostMapping("/plan")
+    ActionResult plan(@RequestParam Long choreId,
+                      @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime start,
+                      @RequestParam(required = false) String member) {
+        User actor = requireModule();
+        Long memberId = member == null ? access.memberId(actor).orElse(null) : parseMember(member);
+        tasks.planOnce(choreId, date, start, memberId, actor);
+        return ActionResult.of("Die Hausarbeit ist eingeplant.");
+    }
+
+    /** Books a chore that was not planned (done just now or earlier today). */
+    @PostMapping("/book")
+    ActionResult book(@RequestParam Long choreId, @RequestParam(required = false) Long doer,
+                      @RequestParam(name = "helpers", required = false) Set<Long> helpers,
+                      @RequestParam(required = false) ChoreEffort effort,
+                      @RequestParam(required = false) Integer minutes,
+                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+                      LocalDateTime performedAt) {
+        tasks.bookAdHoc(choreId, requireModule(), doer, helpers,
+                new ChoreTaskService.Booking(effort, minutes, performedAt));
+        return ActionResult.of("Gebucht – danke!");
+    }
+
     @PostMapping("/{id}/undo")
     ActionResult undo(@PathVariable Long id) {
         tasks.undo(id, requireModule());

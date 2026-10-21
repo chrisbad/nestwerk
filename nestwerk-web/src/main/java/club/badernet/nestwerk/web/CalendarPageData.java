@@ -5,6 +5,7 @@ import club.badernet.nestwerk.calendar.CalendarGrid;
 import club.badernet.nestwerk.calendar.EventCategory;
 import club.badernet.nestwerk.calendar.EventCategoryService;
 import club.badernet.nestwerk.calendar.Occurrence;
+import club.badernet.nestwerk.household.ChoreService;
 import club.badernet.nestwerk.household.ChoreTask;
 import club.badernet.nestwerk.household.ChoreTaskService;
 import club.badernet.nestwerk.household.HouseholdAccess;
@@ -42,11 +43,13 @@ public class CalendarPageData {
     private final TodoQuery todoQuery;
     private final TodoAccess todoAccess;
     private final ChoreTaskService choreTasks;
+    private final ChoreService choreService;
     private final HouseholdAccess householdAccess;
 
     public CalendarPageData(CalendarEventService events, EventCategoryService categories,
                             FamilyMemberService members, CalendarSettings settings, TodoQuery todoQuery,
-                            TodoAccess todoAccess, ChoreTaskService choreTasks, HouseholdAccess householdAccess) {
+                            TodoAccess todoAccess, ChoreTaskService choreTasks, ChoreService choreService,
+                            HouseholdAccess householdAccess) {
         this.events = events;
         this.categories = categories;
         this.members = members;
@@ -54,6 +57,7 @@ public class CalendarPageData {
         this.todoQuery = todoQuery;
         this.todoAccess = todoAccess;
         this.choreTasks = choreTasks;
+        this.choreService = choreService;
         this.householdAccess = householdAccess;
     }
 
@@ -94,25 +98,37 @@ public class CalendarPageData {
         return todoAccess.can(viewer, "EDIT", todo);
     }
 
-    /** Open chores with a planned time if the viewer may use the household plan. */
-    public Map<LocalDate, List<CalendarChore>> addChores(Model model, LocalDate from, LocalDate to, User viewer) {
-        Map<LocalDate, List<CalendarChore>> byDay = new LinkedHashMap<>();
-        if (householdAccess.mayOpen(viewer.getUsername())) {
+    /**
+     * Open chores of the period if the viewer may use the household plan. Chores with a planned time and a
+     * responsible person are placed in the time grid, all others stay in the all-day row.
+     */
+    public CalendarChores addChores(Model model, LocalDate from, LocalDate to, User viewer) {
+        Map<LocalDate, List<CalendarChore>> timed = new LinkedHashMap<>();
+        Map<LocalDate, List<UntimedChore>> untimed = new LinkedHashMap<>();
+        boolean show = householdAccess.mayOpen(viewer.getUsername());
+        if (show) {
             Map<Long, FamilyMember> people = memberById();
             for (ChoreTask t : choreTasks.between(viewer, from, to)) {
-                if (!t.isOpen() || t.getPlannedAt() == null || t.getAssigneeMemberId() == null) {
+                if (!t.isOpen()) {
                     continue;
                 }
-                FamilyMember who = people.get(t.getAssigneeMemberId());
-                byDay.computeIfAbsent(t.getDueOn(), d -> new ArrayList<>()).add(new CalendarChore(t.getId(),
-                        t.getChore().getTitle() + (who == null ? "" : " · " + who.getName()), t.getDueOn(),
-                        t.getPlannedAt(), Math.max(MIN_CHORE_MINUTES, t.getChore().getMinutesMedium()),
-                        who == null ? null : who.getColor(), householdAccess.can(viewer, "ASSIGN", t),
-                        t.getAssigneeMemberId()));
+                FamilyMember who = t.getAssigneeMemberId() == null ? null : people.get(t.getAssigneeMemberId());
+                if (t.getPlannedAt() != null && who != null) {
+                    timed.computeIfAbsent(t.getDueOn(), d -> new ArrayList<>()).add(new CalendarChore(t.getId(),
+                            t.getChore().getTitle() + " · " + who.getName(), t.getDueOn(), t.getPlannedAt(),
+                            Math.max(MIN_CHORE_MINUTES, t.getChore().getMinutesMedium()), who.getColor(),
+                            householdAccess.can(viewer, "ASSIGN", t), t.getAssigneeMemberId()));
+                } else {
+                    untimed.computeIfAbsent(t.getDueOn(), d -> new ArrayList<>()).add(new UntimedChore(t.getId(),
+                            t.getChore().getTitle() + " · " + (who == null ? "offen" : who.getName()), t.getDueOn(),
+                            who == null ? null : who.getColor(), who == null ? null : who.getId()));
+                }
             }
         }
-        model.addAttribute("choresByDay", byDay);
-        return byDay;
+        model.addAttribute("showChores", show);
+        model.addAttribute("choresByDay", timed);
+        model.addAttribute("untimedChoresByDay", untimed);
+        return new CalendarChores(timed, untimed);
     }
 
     /** Members, categories, the view name and today for toolbar, legend and colours. */
@@ -122,6 +138,21 @@ public class CalendarPageData {
         model.addAttribute("canManageCategories", categories.canManage(viewer));
         model.addAttribute("view", view);
         model.addAttribute("today", today());
+        model.addAttribute("showTodos", todoAccess.mayOpen(viewer.getUsername()));
+        boolean chores = householdAccess.mayOpen(viewer.getUsername());
+        model.addAttribute("showChores", chores);
+        model.addAttribute("quickChores", chores ? quickChores(viewer) : List.<QuickChore>of());
+        model.addAttribute("ownMemberId", householdAccess.memberId(viewer).orElse(null));
+    }
+
+    /** Active chores the viewer may plan or book, by title; for the quick dialog of the toolbar. */
+    private List<QuickChore> quickChores(User viewer) {
+        return choreService.visible(viewer).stream()
+                .filter(chore -> choreTasks.canBook(viewer, chore))
+                .map(chore -> new QuickChore(chore.getId(), chore.getTitle(), chore.getMinutesEasy(),
+                        chore.getMinutesMedium(), chore.getMinutesHard()))
+                .sorted(java.util.Comparator.comparing(QuickChore::title, String.CASE_INSENSITIVE_ORDER))
+                .toList();
     }
 
     /** Categories by id, sorted by name. */

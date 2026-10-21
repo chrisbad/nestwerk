@@ -27,6 +27,7 @@
                 <div class="day-events" th:attr="data-drop-date=${cell.date}">
                     <th:block th:each="o : ${cell.occurrences}"><a th:replace="~{calendar/fragments :: occurrence(${o})}"></a></th:block>
                     <th:block th:each="c : ${choresByDay[cell.date]}"><a th:replace="~{calendar/fragments :: chore(${c})}"></a></th:block>
+                    <th:block th:each="c : ${untimedChoresByDay[cell.date]}"><a th:replace="~{calendar/fragments :: untimedChore(${c})}"></a></th:block>
                 <th:block th:each="t : ${todosByDay[cell.date]}"><a th:replace="~{calendar/fragments :: todo(${t})}"></a></th:block>
                 </div>
             </div>

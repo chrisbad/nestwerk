@@ -34,10 +34,13 @@ public class CalendarGridController {
         this.currentUser = currentUser;
     }
 
+    /** The day in lanes: time runs sideways and every person has a lane, whatever the split cookie says. */
     @GetMapping("/day")
-    String day(@RequestParam(required = false) String date,
-               @CookieValue(name = GridSplit.COOKIE, required = false) String split, Model model) {
-        return grid(model, CalendarView.DAY, pageData.parseDate(date), GridSplit.fromCookie(split));
+    String day(@RequestParam(required = false) String date, Model model) {
+        LocalDate focus = pageData.parseDate(date);
+        grid(model, CalendarView.DAY, focus, GridSplit.BY_PERSON);
+        model.addAttribute("lanes", true);
+        return "calendar/lanes";
     }
 
     @GetMapping("/days3")

@@ -93,7 +93,7 @@ public class HouseholdAccountController {
         } catch (IllegalArgumentException e) {
             redirect.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:" + TodoController.safeBack(back, "/household/stats");
+        return "redirect:" + SafeRedirect.target(back, "/household/stats");
     }
 
     private static CreditRow row(ChoreCredit c, Map<Long, FamilyMember> members) {
