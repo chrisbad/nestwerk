@@ -4247,3 +4247,74 @@ form.is-allday [data-time-field] { display: none; }
 .cal-menu-panel .segmented { justify-self: start; }
 .occ-meal { border-style: dotted; background: color-mix(in srgb, var(--honey, #f0c56f) 12%, var(--surface)); }
 .person .avatar[style*="background-color"] { background-image: none; }
+
+/* Kalender-Ebenen: Termine, ToDos und Hausarbeiten einzeln ausblenden */
+.cal-layers { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.cal-layers-title { font-size: var(--step--1); color: var(--ink-soft); margin-right: 0.25rem; }
+.hide-todos .occ-todo { display: none; }
+.hide-chores .occ-chore { display: none; }
+.hide-events .occ:not(.occ-todo):not(.occ-chore):not(.occ-meal) { display: none; }
+.my-chore { display: flex; align-items: center; gap: 0.5rem; }
+.my-chore > .occ { flex: 1; min-width: 0; }
+.my-chore form { margin: 0; }
+.segmented-choice label { cursor: pointer; }
+.hide-chores .my-chore { display: none; }
+.chore-rows li { display: flex; align-items: center; gap: 0.75rem; padding-right: 1rem; }
+.chore-rows li > a { flex: 1; min-width: 0; }
+.chore-row-book { flex: none; }
+
+/* Haushalt: Tag und Woche; bei genug Platz nebeneinander, sonst untereinander */
+.household-layout { display: grid; gap: 1.75rem; }
+.household-layout .plan-nav { margin: 0 0 1rem; flex-wrap: wrap; }
+.household-layout .plan-nav h2 { margin: 0 auto 0 0; font-size: var(--step-1); }
+/* the room of the page decides, not the screen: both parts side by side only when the week stays readable */
+.household-page { container: household / inline-size; }
+@container household (min-width: 72rem) {
+    .household-layout { grid-template-columns: 18rem minmax(0, 1fr); align-items: start; }
+    .household-day { position: sticky; top: 1rem; }
+}
+.household-week { overflow-x: auto; }
+.household-week .plan-grid { min-width: 52rem; }
+.household-week .plan-row { grid-template-columns: 6rem repeat(7, minmax(6.4rem, 1fr)); }
+.household-week .chore-title { hyphens: auto; font-size: 0.8rem; }
+.household-who { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; }
+.household-who .chip-toggle[data-who]:not([data-who="open"])[aria-pressed="true"] { border-color: var(--member-color, var(--moss)); box-shadow: inset 3px 0 0 var(--member-color, var(--moss)); }
+.chore-chip[hidden], .household-day .chore-section[hidden] { display: none; }
+a.plan-day { text-decoration: none; color: inherit; }
+a.plan-day:hover { text-decoration: underline; }
+a.plan-day[aria-current="date"] { color: var(--ink); text-decoration: underline; }
+.plan-daygroup h3 a { color: inherit; text-decoration: none; }
+.household-day .chore-section h3 { font-size: var(--step-0); margin-bottom: 0.5rem; }
+
+/* Startseite: Schultag je Kind, kompakt */
+.school-kids { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.75rem; }
+.school-kid {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.6rem 0.75rem 0.7rem 0.9rem;
+    border-radius: var(--radius-field);
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    box-shadow: inset 4px 0 0 var(--member-color, var(--line));
+}
+.school-kid-name { font-size: var(--step-0); }
+.school-note { margin: 0; font-size: var(--step--1); }
+.school-lessons { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.school-lesson {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: var(--sage);
+    font-size: var(--step--1);
+}
+.school-time { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.school-subject { font-weight: 600; }
+.school-lesson.is-cancelled { opacity: 0.7; }
+.school-lesson.is-cancelled .school-subject { text-decoration: line-through; }
+.school-lesson.is-changed { background: var(--honey-soft); }
+.school-flag { font-size: 0.72rem; font-weight: 600; color: var(--brick); }
+.school-lesson.is-changed .school-flag { color: var(--ink); }
+.household-week .plan-cell .chore-chip { flex-direction: column; gap: 0.25rem; }
+.segmented-choice { margin: 0.75rem 0; }

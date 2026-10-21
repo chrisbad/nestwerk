@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- Booking form of one chore, loaded into the side panel; expects ${chore}, ${ownMember}, ${completeAny}, ${allMembers} -->
+<div th:fragment="content">
+    <form method="post" th:action="@{/household/chores/{id}/book(id=${chore.id})}">
+        <input type="hidden" name="back" value="/household/chores">
+        <div class="dialog-head">
+            <h2 th:text="${chore.title} + ' buchen'">Spülmaschine buchen</h2>
+            <button type="button" class="icon-button" data-close-dialog>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                <span class="visually-hidden">Schließen</span>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <p class="muted">Gebucht wird sofort, auch wenn die Hausarbeit nicht eingeplant ist.</p>
+            <div class="field" th:if="${completeAny or ownMember == null}">
+                <label for="book-doer">Erledigt von</label>
+                <select id="book-doer" name="doer" class="input">
+                    <option th:each="m : ${allMembers.values()}" th:value="${m.id}" th:text="${m.name}"
+                            th:selected="${m.id == ownMember}">Lena</option>
+                </select>
+            </div>
+            <div th:replace="~{household/fragments :: book-fields('drawer-book', ${chore.minutesEasy}, ${chore.minutesMedium}, ${chore.minutesHard})}"></div>
+            <fieldset th:replace="~{household/fragments :: helper-fields}"></fieldset>
+        </div>
+        <div class="dialog-foot">
+            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+            <button type="submit" class="button">Buchen</button>
+        </div>
+    </form>
+</div>
+</body>
+</html>

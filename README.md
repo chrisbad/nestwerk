@@ -115,6 +115,16 @@ neu eintragen.
 - **Einstellungs-Register:** `/settings` listet alle Einstellungen, die der Benutzer sehen darf, in einer durchsuchbaren,
   filter- und sortierbaren Tabelle (Komponente `data-table`, Zustand in der Adresse). Neue Einstellungen werden in
   `Settings` eingetragen; MCP: `list_settings`. Benutzer, Mitglieder und Kategorien nutzen dieselbe Tabelle.
+- **Ebenen und Hausarbeiten im Kalender:** „Anzeige“ blendet Termine, ToDos und Hausarbeiten einzeln aus (pro Gerät).
+  Offene Hausarbeiten ohne Uhrzeit oder Person stehen in der Leiste „ganztägig“. „Hausarbeit“ in der Leiste plant eine
+  Hausarbeit einmalig ein (`ChoreTaskService.planOnce`, auch für „Bei Bedarf“) oder bucht sie ungeplant; MCP:
+  `plan_chore_task`, `book_chore`, `complete_chore_task`.
+- **Haushalt:** `/household` zeigt den Tag (Standard: eigene Aufgaben, weitere Personen per Filter-Chip, Auswahl in der
+  Adresse `?who=` und im Gerät) und die Woche; nebeneinander, sobald die Seite breit genug ist (Container Query),
+  sonst untereinander. `?date=` wählt den Tag, `?week=` und `/household/today` leiten weiter. In der Liste der
+  Hausarbeiten bucht „Buchen“ im Seitenpanel auch ungeplante Hausarbeiten.
+- **Startseite:** Die Kachel „Heute in der Schule“ zeigt je Kind die Stunden des Tages als kurze Chips (ausfallende
+  durchgestrichen), Schulfrei-Grund und Klassenarbeit des Tages.
 - **Seitenpanel:** Zeilen öffnen ihre Einzelheiten in einem gemeinsamen Panel (`drawer.js`), das ein Fragment per
   `GET …/{id}/edit` nachlädt, statt dass jede Zeile einen eigenen Dialog mitbringt. Die Zurück-Taste schließt es.
 

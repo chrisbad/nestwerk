@@ -79,6 +79,21 @@
                                               th:if="${e.editable and !lane.continuesAfter and !splitByPerson}"></span>
                                     </a>
                                 </th:block>
+                                <th:block th:if="${lane.entry.kind == 'chore'}" th:with="c=${lane.entry.chore}">
+                                    <a class="occ occ-allday occ-chore tgrid-item"
+                                       th:style="${c.color != null} ? |--occ-color: ${c.color}|"
+                                       th:href="@{/household/tasks/{id}(id=${c.id})}" th:title="${c.title}"
+                                       th:attr="data-grid-item='chore-day', data-editable='false',
+                                                data-sheet-url=@{/calendar/chores/{id}/sheet(id=${c.id})},
+                                                data-member=${lane.memberId}, data-title=${c.title}">
+                                        <span class="occ-title">
+                                            <svg class="occ-lock" viewBox="0 0 24 24" role="img" aria-label="Hausarbeit">
+                                                <path d="M4.5 20V10l7.5-6 7.5 6v10z"/><path d="M9.5 20v-5h5v5"/>
+                                            </svg>
+                                            <span th:text="${c.title}">Bad putzen · offen</span>
+                                        </span>
+                                    </a>
+                                </th:block>
                                 <th:block th:if="${lane.entry.kind == 'todo'}" th:with="t=${lane.entry.todo}">
                                     <a class="occ occ-allday occ-todo tgrid-item"
                                        th:classappend="${'occ-todo-' + #strings.toLowerCase(t.priority.name()) + (lane.entry.editable ? ' is-editable' : '')}"

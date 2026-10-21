@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="de" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Haushalt')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: nav(active='household')}"></header>
+<main class="household-page" data-swipe-area>
+    <div th:replace="~{household/fragments :: head('Haushalt', ${focusLabel})}"></div>
+
+    <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
+
+    <div class="household-layout">
+        <!-- The day: by default the own tasks, further people can be added with the chips -->
+        <section class="household-day" aria-labelledby="household-day-title" data-household-day
+                 th:attr="data-own-member=${ownMember}">
+            <div class="plan-nav household-day-nav">
+                <h2 id="household-day-title" th:text="${focusIsToday} ? 'Heute' : ${focusLabel}">Heute</h2>
+                <a class="icon-button" th:href="@{/household(date=${focus.minusDays(1)})}" title="Vorheriger Tag">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+                    <span class="visually-hidden">Vorheriger Tag</span>
+                </a>
+                <a class="button button-ghost button-small" th:href="@{/household}" th:unless="${focusIsToday}">Heute</a>
+                <a class="icon-button" th:href="@{/household(date=${focus.plusDays(1)})}" title="Nächster Tag">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+                    <span class="visually-hidden">Nächster Tag</span>
+                </a>
+            </div>
+
+            <div class="household-who" role="group" aria-label="Wessen Aufgaben?" th:unless="${#lists.isEmpty(filterMembers)}">
+                <button type="button" class="chip-toggle" th:each="m : ${filterMembers}" th:text="${m.name}"
+                        th:attr="data-who=${m.id}" th:style="|--member-color: ${m.color}|" aria-pressed="false">Lena</button>
+                <button type="button" class="chip-toggle" data-who="open" aria-pressed="false" th:if="${hasOpenTasks}">Offen</button>
+                <button type="button" class="chip-toggle chip-toggle-all" data-who-all>Alle</button>
+            </div>
+
+            <section class="chore-section is-overdue" th:unless="${#lists.isEmpty(overdue)}">
+                <h3>Überfällig</h3>
+                <ul class="chore-list">
+                    <th:block th:each="c : ${overdue}" th:with="showAssignee=true, showDay=true">
+                        <li th:replace="~{household/fragments :: chip}"></li>
+                    </th:block>
+                </ul>
+            </section>
+
+            <section class="chore-section">
+                <ul class="chore-list" th:unless="${#lists.isEmpty(dayChips)}">
+                    <th:block th:each="c : ${dayChips}" th:with="showAssignee=true">
+                        <li th:replace="~{household/fragments :: chip}"></li>
+                    </th:block>
+                </ul>
+                <p class="sheet sheet-empty" th:if="${#lists.isEmpty(dayChips)}">Für diesen Tag ist nichts geplant.</p>
+                <p class="sheet sheet-empty" data-who-empty hidden>Für die gewählten Personen steht an diesem Tag nichts an.</p>
+            </section>
+        </section>
+
+        <!-- The week of the shown day -->
+        <section class="household-week" aria-labelledby="household-week-title">
+            <div class="plan-nav">
+                <h2 id="household-week-title" th:text="${'KW ' + weekNumber + ': ' + weekRange}">KW 43</h2>
+                <a class="icon-button" th:href="@{/household(date=${focus.minusWeeks(1)})}" title="Vorige Woche" data-swipe-prev>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
+                    <span class="visually-hidden">Vorige Woche</span>
+                </a>
+                <a class="button button-ghost button-small" th:href="@{/household}" th:unless="${isCurrentWeek}">Diese Woche</a>
+                <a class="icon-button" th:href="@{/household(date=${focus.plusWeeks(1)})}" title="Nächste Woche" data-swipe-next>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+                    <span class="visually-hidden">Nächste Woche</span>
+                </a>
+            </div>
+
+            <div class="plan-grid" role="table" aria-label="Wochenplan nach Personen" data-plan-grid>
+                <div class="plan-row plan-row-head" role="row">
+                    <span class="plan-who" role="columnheader"><span class="visually-hidden">Person</span></span>
+                    <a class="plan-day" role="columnheader" th:each="d : ${days}" th:classappend="${d.today} ? 'is-today'"
+                       th:href="@{/household(date=${d.date})}" th:attr="aria-current=${d.date == focus} ? 'date' : null"
+                       th:text="${d.label}">Mo 13.10.</a>
+                </div>
+                <div class="plan-row" role="row" th:each="r : ${rows}" th:attr="data-member-id=${r.memberId} ?: 'open'"
+                     th:style="${r.color != null} ? |--member-color: ${r.color}|" th:classappend="${r.color == null} ? 'is-open-row'">
+                    <span class="plan-who" role="rowheader">
+                        <strong th:text="${r.label}">Lena</strong>
+                        <span class="muted" th:if="${r.minutes > 0}" th:text="${r.minutes} + ' Min'">90 Min</span>
+                    </span>
+                    <ul class="plan-cell chore-list" role="cell" th:each="cell, it : ${r.cells}" th:attr="data-day=${it.index}"
+                        th:classappend="${days[it.index].today} ? 'is-today'">
+                        <th:block th:each="c : ${cell}">
+                            <li th:replace="~{household/fragments :: chip}"></li>
+                        </th:block>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="plan-days">
+                <section class="plan-daygroup" th:each="g : ${byDay}" th:classappend="${g.day.today} ? 'is-today'">
+                    <h3><a th:href="@{/household(date=${g.day.date})}" th:text="${g.day.label}">heute</a></h3>
+                    <ul class="chore-list" th:unless="${#lists.isEmpty(g.chips)}">
+                        <th:block th:each="c : ${g.chips}" th:with="showAssignee=true">
+                            <li th:replace="~{household/fragments :: chip}"></li>
+                        </th:block>
+                    </ul>
+                    <p class="muted" th:if="${#lists.isEmpty(g.chips)}">Nichts geplant.</p>
+                </section>
+            </div>
+        </section>
+    </div>
+
+    <p class="sheet sheet-empty" th:if="${#lists.isEmpty(rows)}">
+        Noch keine Familienmitglieder. Lege sie unter „Mitglieder“ an, dann kannst du Hausarbeiten verteilen.
+    </p>
+    <p class="hint household-hint">Geplant wird drei Wochen im Voraus.</p>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

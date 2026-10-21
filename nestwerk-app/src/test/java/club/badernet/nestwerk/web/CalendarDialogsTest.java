@@ -158,6 +158,77 @@ class CalendarDialogsTest {
                 .andExpect(content().string(containsString("Ganze Hausarbeit löschen")));
     }
 
+    private Chore onDemandChore(String title) {
+        Chore chore = chores.create(new ChoreInput(title, null, null, 10, 20, 30, ChoreKind.ON_DEMAND, null, null,
+                null, null, Distribution.OPEN, List.of()), admin);
+        entityManager.flush();
+        return chore;
+    }
+
+    @Test
+    void choreOnDemandCanBePlannedOnceFromTheCalendar() throws Exception {
+        Chore chore = onDemandChore("Fenster putzen");
+
+        mockMvc.perform(post("/calendar/actions/chores/plan").with(csrf()).with(asAdmin())
+                        .param("choreId", chore.getId().toString()).param("date", WEDNESDAY.toString())
+                        .param("start", "17:30").param("member", lena.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value(containsString("eingeplant")));
+
+        assertThat(tasks.findAllByChoreId(chore.getId())).singleElement().satisfies(task -> {
+            assertThat(task.getDueOn()).isEqualTo(WEDNESDAY);
+            assertThat(task.getPlannedAt()).isEqualTo(LocalTime.of(17, 30));
+            assertThat(task.getAssigneeMemberId()).isEqualTo(lena.getId());
+        });
+    }
+
+    @Test
+    void plannedWithoutPersonTheChoreIsOpenToTake() throws Exception {
+        Chore chore = onDemandChore("Keller aufräumen");
+
+        mockMvc.perform(post("/calendar/actions/chores/plan").with(csrf()).with(asAdmin())
+                        .param("choreId", chore.getId().toString()).param("date", WEDNESDAY.toString())
+                        .param("member", ""))
+                .andExpect(status().isOk());
+
+        assertThat(tasks.findAllByChoreId(chore.getId())).singleElement()
+                .satisfies(task -> assertThat(task.getAssigneeMemberId()).isNull());
+    }
+
+    @Test
+    void choreCanBeBookedWithoutAPlanFromTheCalendar() throws Exception {
+        Chore chore = onDemandChore("Staubsaugen");
+
+        mockMvc.perform(post("/calendar/actions/chores/book").with(csrf()).with(asAdmin())
+                        .param("choreId", chore.getId().toString()).param("doer", lena.getId().toString())
+                        .param("effort", "EASY").param("minutes", "12"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value(containsString("Gebucht")));
+
+        assertThat(tasks.findAllByChoreId(chore.getId())).singleElement()
+                .satisfies(task -> assertThat(task.getStatus()).isEqualTo(ChoreTaskStatus.DONE));
+    }
+
+    @Test
+    void planningInThePastIsRejected() throws Exception {
+        Chore chore = onDemandChore("Garage fegen");
+
+        mockMvc.perform(post("/calendar/actions/chores/plan").with(csrf()).with(asAdmin())
+                        .param("choreId", chore.getId().toString()).param("date", MONDAY.minusDays(1).toString()))
+                .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    void toolbarOffersTheQuickChoreDialogWithTheBookableChores() throws Exception {
+        onDemandChore("Wäsche falten");
+
+        mockMvc.perform(get("/calendar/week").param("date", WEDNESDAY.toString()).with(asAdmin()))
+                .andExpect(content().string(containsString("data-open-dialog=\"chore-quick\"")))
+                .andExpect(content().string(containsString("id=\"chore-quick\"")))
+                .andExpect(content().string(containsString("Wäsche falten")))
+                .andExpect(content().string(containsString("data-chore-mode")));
+    }
+
     @Test
     void choreCanBeBookedFromTheCalendar() throws Exception {
         ChoreTask task = plannedChore(1);

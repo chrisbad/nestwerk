@@ -82,7 +82,7 @@ class CalendarTodoTest {
                 .andExpect(content().string(containsString("/todos/" + t.getId())))
                 .andExpect(content().string(containsString("Reifen wechseln")))
                 .andExpect(content().string(not(containsString("Geschenk für Papa"))))
-                .andExpect(content().string(containsString("data-toggle-todos")));
+                .andExpect(content().string(containsString("data-layer=\"todos\"")));
     }
 
     @Test

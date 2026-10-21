@@ -5,7 +5,11 @@ import club.badernet.nestwerk.household.DeviceService;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberService;
 import club.badernet.nestwerk.role.RoleRepository;
+import club.badernet.nestwerk.school.ChangeKind;
+import club.badernet.nestwerk.school.ExamKind;
+import club.badernet.nestwerk.school.ExamService;
 import club.badernet.nestwerk.school.GradeKind;
+import club.badernet.nestwerk.school.Lesson;
 import club.badernet.nestwerk.school.LessonInput;
 import club.badernet.nestwerk.school.GradeService;
 import club.badernet.nestwerk.school.HomeworkService;
@@ -56,6 +60,8 @@ class SchoolTabletHomeTest {
     @Autowired HomeworkService homework;
     @Autowired GradeService grades;
     @Autowired Clock clock;
+    @Autowired ExamService exams;
+    Long lenaMemberId;
 
     User admin;
 
@@ -65,6 +71,7 @@ class SchoolTabletHomeTest {
         users.create("mama", "passwort1", Set.of(roles.findByNameIgnoreCase("Benutzer").orElseThrow().getId()));
         LocalDate today = LocalDate.now(clock);
         FamilyMember lena = members.create("Lena", "#aabbcc", null);
+        lenaMemberId = lena.getId();
         SchoolYear year = school.startYear(school.createProfile(lena.getId(), null).getId(), "aktuell", null,
                 "3a", today.minusMonths(1), today.plusMonths(6));
         SchoolSubject math = timetable.addSubject(year.getId(), "Mathe", "#4d74ff", admin);
@@ -92,9 +99,53 @@ class SchoolTabletHomeTest {
         mockMvc.perform(get("/").with(user("mama")))
                 .andExpect(content().string(containsString("Heute in der Schule")))
                 .andExpect(content().string(containsString("Lena")))
-                .andExpect(content().string(containsString("Seite 12 lesen")))
+                .andExpect(content().string(containsString("school-lesson")))
+                .andExpect(content().string(containsString("08:00")))
+                .andExpect(content().string(containsString("Mathe")))
                 .andExpect(content().string(containsString("data-area=\"school\"")))
                 .andExpect(content().string(not(containsString("geheime Note"))));
+    }
+
+    @Test
+    void homeTileIsCompactAndLeavesOutHomework() throws Exception {
+        mockMvc.perform(get("/").with(user("mama")))
+                .andExpect(content().string(not(containsString("Seite 12 lesen"))));
+    }
+
+    @Test
+    void cancelledLessonsAreMarkedOnTheHomeTile() throws Exception {
+        Lesson lesson = timetable.lessons(school.activeYear(school.profileOf(lenaMemberId).orElseThrow().getId()).orElseThrow().getId()).getFirst();
+        timetable.markLesson(lesson.getId(), LocalDate.now(clock), ChangeKind.CANCELLED, null, admin);
+
+        mockMvc.perform(get("/").with(user("mama")))
+                .andExpect(content().string(containsString("is-cancelled")))
+                .andExpect(content().string(containsString("entfällt")));
+    }
+
+    @Test
+    void everyChildGetsItsOwnCard() throws Exception {
+        LocalDate today = LocalDate.now(clock);
+        FamilyMember tim = members.create("Tim", "#ccbbaa", null);
+        SchoolYear year = school.startYear(school.createProfile(tim.getId(), null).getId(), "aktuell", null, "1b",
+                today.minusMonths(1), today.plusMonths(6));
+        SchoolSubject art = timetable.addSubject(year.getId(), "Kunst", "#ff7a4d", admin);
+        timetable.addLesson(year.getId(), LessonInput.timed(art.getId(), today.getDayOfWeek(), LocalTime.of(9, 0),
+                LocalTime.of(9, 45), null, WeekKind.EVERY), admin);
+
+        String page = mockMvc.perform(get("/").with(user("mama"))).andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(page).contains("Kunst", "Mathe");
+        org.assertj.core.api.Assertions.assertThat(page.split("class=\"school-kid\"", -1)).hasSize(3);
+    }
+
+    @Test
+    void anExamTodayIsNamedOnTheHomeTile() throws Exception {
+        Long yearId = school.activeYear(school.profileOf(lenaMemberId).orElseThrow().getId()).orElseThrow().getId();
+        SchoolSubject math = timetable.subjects(yearId).getFirst();
+        exams.create(yearId, math.getId(), ExamKind.TEST, "Bruchrechnen", LocalDate.now(clock), 0, admin);
+
+        mockMvc.perform(get("/").with(user("mama")))
+                .andExpect(content().string(containsString("heute: Bruchrechnen")));
     }
 
     @Test

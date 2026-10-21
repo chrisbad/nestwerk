@@ -74,8 +74,9 @@ public class TimeGridPage {
         }
         pageData.addTodos(model, first, last, viewer).values()
                 .forEach(list -> list.forEach(t -> allDay.add(new GridEntry.DueTodo(t, pageData.canEdit(t, viewer)))));
-        pageData.addChores(model, first, last, viewer).values()
-                .forEach(list -> list.forEach(c -> timed.add(new GridEntry.Chore(c))));
+        CalendarChores chores = pageData.addChores(model, first, last, viewer);
+        chores.timed().values().forEach(list -> list.forEach(c -> timed.add(new GridEntry.Chore(c))));
+        chores.untimed().values().forEach(list -> list.forEach(c -> allDay.add(new GridEntry.DayChore(c))));
 
         List<GridPerson> columns = split == GridSplit.BY_PERSON ? persons(people) : List.of(GridPerson.ALL);
         List<Map<LocalDate, List<TimeGridLayout.Placed<GridEntry>>>> placed = columns.stream()
@@ -199,6 +200,7 @@ public class TimeGridPage {
         return switch (entry) {
             case GridEntry.Event e -> e.startsAt().atZone(zone);
             case GridEntry.Chore c -> c.chore().startsAt().atZone(zone);
+            case GridEntry.DayChore c -> c.chore().day().atStartOfDay(zone);
             case GridEntry.DueTodo t -> t.todo().getDueOn().atStartOfDay(zone);
         };
     }
@@ -207,6 +209,7 @@ public class TimeGridPage {
         return switch (entry) {
             case GridEntry.Event e -> e.endsAt().atZone(zone);
             case GridEntry.Chore c -> c.chore().endsAt().atZone(zone);
+            case GridEntry.DayChore c -> c.chore().day().plusDays(1).atStartOfDay(zone);
             case GridEntry.DueTodo t -> t.todo().getDueOn().plusDays(1).atStartOfDay(zone);
         };
     }
@@ -215,6 +218,7 @@ public class TimeGridPage {
         return switch (entry) {
             case GridEntry.Event e -> e.startsAt().toLocalDate();
             case GridEntry.Chore c -> c.chore().day();
+            case GridEntry.DayChore c -> c.chore().day();
             case GridEntry.DueTodo t -> t.todo().getDueOn();
         };
     }
@@ -223,6 +227,7 @@ public class TimeGridPage {
         return switch (entry) {
             case GridEntry.Event e -> e.lastDay();
             case GridEntry.Chore c -> c.chore().day();
+            case GridEntry.DayChore c -> c.chore().day();
             case GridEntry.DueTodo t -> t.todo().getDueOn();
         };
     }

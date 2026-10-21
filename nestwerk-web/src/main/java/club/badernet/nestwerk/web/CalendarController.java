@@ -133,9 +133,11 @@ public class CalendarController {
         List<LocalDate> days = CalendarView.AGENDA.days(start);
         Map<LocalDate, List<Occurrence>> byDay = pageData.occurrences(days, viewer);
         Map<LocalDate, List<Todo>> todos = pageData.addTodos(model, days.getFirst(), days.getLast(), viewer);
+        CalendarChores chores = pageData.addChores(model, days.getFirst(), days.getLast(), viewer);
         Map<LocalDate, List<Occurrence>> nonEmpty = new LinkedHashMap<>();
         byDay.forEach((d, l) -> {
-            if (!l.isEmpty() || todos.containsKey(d)) {
+            if (!l.isEmpty() || todos.containsKey(d) || chores.timed().containsKey(d)
+                    || chores.untimed().containsKey(d)) {
                 nonEmpty.put(d, l);
             }
         });

@@ -59,6 +59,20 @@ public sealed interface GridEntry {
         }
     }
 
+    /** An open chore without planned time or person: shown in the all-day row, cannot be dragged. */
+    record DayChore(UntimedChore chore) implements GridEntry {
+
+        @Override
+        public String kind() {
+            return "chore";
+        }
+
+        @Override
+        public Set<Long> memberIds() {
+            return chore.memberId() == null ? Set.of() : Set.of(chore.memberId());
+        }
+    }
+
     /** A due to-do; {@code editable}: the viewer may move it to another day. */
     record DueTodo(Todo todo, boolean editable) implements GridEntry {
 

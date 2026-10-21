@@ -304,6 +304,15 @@ class McpToolsTest {
         assertThat(householdTools.bookChore(as(admin), onDemand.choreId(), kidM.getId(), null, "EASY", null).status())
                 .isNotEqualTo("OPEN");
 
+        HouseholdTools.ChoreTaskItem once = householdTools.planChoreTask(as(admin), onDemand.choreId(),
+                today.plusDays(3).toString(), "18:15", kidM.getId());
+        assertThat(once.status()).isEqualTo("OPEN");
+        assertThat(once.dueOn()).isEqualTo(today.plusDays(3));
+        assertThat(once.plannedAt()).isEqualTo("18:15");
+        assertThat(once.assignee()).isEqualTo("Kind");
+        assertThatThrownBy(() -> householdTools.planChoreTask(as(admin), onDemand.choreId(),
+                today.minusDays(1).toString(), null, null)).isInstanceOf(Tools.ToolException.class);
+
         assertThat(householdTools.setChoreActive(as(admin), created.choreId(), false).active()).isFalse();
         assertThat(householdTools.setChoreActive(as(admin), created.choreId(), true).active()).isTrue();
         assertThatThrownBy(() -> householdTools.createChore(as(kid), "Verboten", null, null, null, null, null, null,

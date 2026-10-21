@@ -262,6 +262,26 @@ public class HouseholdTools {
         });
     }
 
+    @McpTool(name = "plan_chore_task", description = "Plant eine Hausarbeit einmalig für einen Tag ein, unabhängig "
+            + "von ihrem Rhythmus (so bekommt auch eine Hausarbeit „bei Bedarf“ einen Termin), wie „Hausarbeit“ im "
+            + "Kalender. Uhrzeit und Mitglied sind optional; ohne memberId ist die Aufgabe offen zum Nehmen. Für "
+            + "andere zuzuweisen braucht das Recht zum Zuweisen. Abhaken mit complete_chore_task.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public ChoreTaskItem planChoreTask(McpTransportContext context,
+                                       @McpToolParam(description = "ID der Hausarbeit (choreId) aus list_chores")
+                                       Long choreId,
+                                       @McpToolParam(description = "Tag JJJJ-MM-TT, nicht in der Vergangenheit")
+                                       String day,
+                                       @McpToolParam(description = "Uhrzeit HH:MM", required = false) String time,
+                                       @McpToolParam(description = "Zuständiges Mitglied (ID aus list_members)",
+                                               required = false) Long memberId) {
+        return tools.write(context, user -> {
+            ChoreTask task = tasks.planOnce(Tools.required(choreId, "choreId"),
+                    Tools.required(Tools.date(day, "day"), "day"), Tools.time(time, "time"), memberId, user);
+            return item(tasks.get(task.getId(), user), names());
+        });
+    }
+
     @McpTool(name = "assign_chore_task", description = "Weist eine offene Aufgabe einem Mitglied zu bzw. gibt sie "
             + "ab (memberId weglassen = niemand, offen zum Nehmen).",
             annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,

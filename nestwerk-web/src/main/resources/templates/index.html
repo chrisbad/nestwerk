@@ -58,7 +58,7 @@
     <section class="home-todos panel" th:if="${showHousehold}" data-panel="household">
         <div class="home-todos-head">
             <h2><span class="panel-grip" data-panel-grip title="Ziehen zum Umsortieren" aria-hidden="true"></span>Meine Hausarbeiten</h2>
-            <a th:href="@{/household/today}">Alle für heute</a>
+            <a th:href="@{/household}">Alle für heute</a>
         </div>
         <ul class="chore-list" th:unless="${#lists.isEmpty(myChores)}">
             <th:block th:each="c : ${myChores}" th:with="back='/', showDay=true">
@@ -67,24 +67,29 @@
         </ul>
         <p class="sheet sheet-empty" th:if="${#lists.isEmpty(myChores)}">Heute ist im Haushalt nichts mehr für dich offen.</p>
     </section>
-    <section class="home-todos panel" th:if="${showSchool and !#lists.isEmpty(schoolDays)}" data-panel="school">
+    <section class="home-todos panel home-school" th:if="${showSchool and !#lists.isEmpty(schoolDays)}" data-panel="school">
         <div class="home-todos-head">
             <h2><span class="panel-grip" data-panel-grip title="Ziehen zum Umsortieren" aria-hidden="true"></span>Heute in der Schule</h2>
             <a th:href="@{/school}">Zur Schule</a>
         </div>
-        <ul class="plain-list">
-            <li th:each="c : ${schoolDays}" th:style="|border-left: 4px solid ${c.member.color}; padding-left: .6rem|">
-                <strong th:text="${c.member.name}">Lena</strong>
-                <span th:if="${c.free != null}" th:text="|Schulfrei: ${c.free}|">Schulfrei</span>
-                <span th:if="${c.free == null and c.span() != null}"
-                      th:text="|${#lists.size(c.lessons)} Stunden, ${c.span()}|">5 Stunden, 08:00–12:30</span>
-                <span th:if="${c.free == null and c.span() == null}" class="muted">Keine Schule</span>
-                <span class="badge badge-warn" th:each="e : ${c.lessons}" th:if="${e.cancelled()}"
-                      th:text="|${e.subject.name} entfällt|">Mathe entfällt</span>
-                <span class="badge" th:each="h : ${c.homework}" th:classappend="${h.overdue} ? 'badge-warn'"
-                      th:text="|${h.title} (${#temporals.format(h.dueOn, 'dd.MM.')})|">Seite 12 (05.08.)</span>
-                <span class="muted" th:if="${c.nextExam != null}"
-                      th:text="|${c.nextExam.kind.label()} am ${#temporals.format(c.nextExam.day, 'dd.MM.')}|">Klassenarbeit am 20.10.</span>
+        <ul class="school-kids">
+            <li class="school-kid" th:each="c : ${schoolDays}" th:style="|--member-color: ${c.member.color}|">
+                <strong class="school-kid-name" th:text="${c.member.name}">Lena</strong>
+                <p class="school-note" th:if="${c.free != null}" th:text="|Schulfrei: ${c.free}|">Schulfrei: Ferien</p>
+                <p class="school-note muted" th:if="${c.free == null and #lists.isEmpty(c.lessons)}">Heute keine Schule</p>
+                <ol class="school-lessons" th:if="${c.free == null and !#lists.isEmpty(c.lessons)}">
+                    <li class="school-lesson" th:each="e : ${c.lessons}"
+                        th:classappend="${e.cancelled() ? 'is-cancelled' : (e.substituted() or e.roomChanged() ? 'is-changed' : '')}"
+                        th:title="${e.room() != null} ? |Raum ${e.room()}| : null">
+                        <span class="school-time" th:text="${#temporals.format(e.lesson.startsAt, 'HH:mm')}">08:00</span>
+                        <span class="school-subject" th:text="${e.subject != null} ? ${e.subject.name} : 'Stunde'">Mathe</span>
+                        <span class="school-flag" th:if="${e.cancelled()}">entfällt</span>
+                        <span class="school-flag" th:if="${e.substituted()}">Vertretung</span>
+                        <span class="school-flag" th:if="${e.roomChanged()}" th:text="|Raum ${e.room()}|">Raum 12</span>
+                    </li>
+                </ol>
+                <p class="school-note school-exam" th:if="${c.nextExam != null and c.nextExam.day == today}"
+                   th:text="|${c.nextExam.kind.label()} heute: ${c.nextExam.title}|">Klassenarbeit heute</p>
             </li>
         </ul>
     </section>

@@ -44,6 +44,13 @@
                                th:title="${o.title}">
                                 <span class="occ-title"><span th:text="${o.title}">Urlaub</span></span>
                             </a>
+                            <a th:if="${item.entry.kind == 'chore'}" th:with="c=${item.entry.chore}"
+                               class="occ occ-allday occ-chore lanes-allday"
+                               th:style="${c.color != null} ? |--occ-color: ${c.color}|"
+                               th:href="@{/household/tasks/{id}(id=${c.id})}" th:title="${c.title}"
+                               th:attr="data-sheet-url=@{/calendar/chores/{id}/sheet(id=${c.id})}">
+                                <span class="occ-title"><span th:text="${c.title}">Bad putzen · offen</span></span>
+                            </a>
                             <a th:if="${item.entry.kind == 'todo'}" th:with="t=${item.entry.todo}"
                                class="occ occ-allday occ-todo lanes-allday"
                                th:classappend="${'occ-todo-' + #strings.toLowerCase(t.priority.name())}"

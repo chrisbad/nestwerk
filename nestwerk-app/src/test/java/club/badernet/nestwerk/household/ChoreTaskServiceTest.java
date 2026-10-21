@@ -355,4 +355,75 @@ class ChoreTaskServiceTest {
         assertThat(service.mine(kid, today)).extracting(ChoreTask::getId)
                 .containsExactlyInAnyOrder(own.getId(), open.getId());
     }
+
+    @Test
+    void planOnceGivesAnOnDemandChoreADayWithoutChangingItsRhythm() {
+        Chore c = staged(ChoreKind.ON_DEMAND, null);
+
+        ChoreTask planned = service.planOnce(c.getId(), today.plusDays(2), LocalTime.of(17, 30), kidM.getId(), kid);
+        entityManager.flush();
+
+        assertThat(planned.isOpen()).isTrue();
+        assertThat(planned.getDueOn()).isEqualTo(today.plusDays(2));
+        assertThat(planned.getPlannedAt()).isEqualTo(LocalTime.of(17, 30));
+        assertThat(planned.getAssigneeMemberId()).isEqualTo(kidM.getId());
+        assertThat(tasks.findAllByChoreId(c.getId())).hasSize(1);
+        planner.planAll(today);
+        assertThat(tasks.findAllByChoreId(c.getId())).hasSize(1);
+    }
+
+    @Test
+    void plannedOnceTaskCanBeCompletedAndUndoingRemovesIt() {
+        Chore c = staged(ChoreKind.ON_DEMAND, null);
+        ChoreTask planned = service.planOnce(c.getId(), today, null, kidM.getId(), kid);
+
+        service.complete(planned.getId(), kid, null, Set.of(), null);
+        entityManager.flush();
+        assertThat(credits.findAllByTaskId(planned.getId())).hasSize(1);
+
+        service.undo(planned.getId(), kid);
+        entityManager.flush();
+        assertThat(tasks.findAllByChoreId(c.getId())).isEmpty();
+    }
+
+    @Test
+    void planOnceWithoutMemberLeavesTheTaskOpenToTake() {
+        Chore c = staged(ChoreKind.ON_DEMAND, null);
+
+        ChoreTask planned = service.planOnce(c.getId(), today.plusDays(1), null, null, papa);
+
+        assertThat(planned.getAssigneeMemberId()).isNull();
+        assertThat(planned.getPlannedAt()).isNull();
+    }
+
+    @Test
+    void planOnceRejectsThePastAndUnknownMembers() {
+        Chore c = staged(ChoreKind.ON_DEMAND, null);
+
+        assertThatThrownBy(() -> service.planOnce(c.getId(), today.minusDays(1), null, null, kid))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Vergangenheit");
+        assertThatThrownBy(() -> service.planOnce(c.getId(), today, null, 999_999L, mama))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Familienmitglied");
+        assertThatThrownBy(() -> service.planOnce(c.getId(), null, null, null, kid))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Tag");
+    }
+
+    @Test
+    void planningForSomebodyElseNeedsTheAssignRight() {
+        Chore c = staged(ChoreKind.ON_DEMAND, null);
+
+        assertThatThrownBy(() -> service.planOnce(c.getId(), today, null, papaM.getId(), kid))
+                .isInstanceOf(AccessDeniedException.class);
+        ChoreTask byParent = service.planOnce(c.getId(), today, null, kidM.getId(), mama);
+
+        assertThat(byParent.getAssigneeMemberId()).isEqualTo(kidM.getId());
+    }
+
+    @Test
+    void strangerCannotPlanOnce() {
+        Chore c = staged(ChoreKind.ON_DEMAND, null);
+
+        assertThatThrownBy(() -> service.planOnce(c.getId(), today, null, null, stranger))
+                .isInstanceOf(ChoreNotFoundException.class);
+    }
 }
