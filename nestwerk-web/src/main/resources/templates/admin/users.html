@@ -9,11 +9,11 @@
             <h1>Benutzer</h1>
             <p>Wer sich bei Nestwerk anmelden kann.</p>
         </div>
-        <div class="page-actions">
+        <div class="page-actions" data-table-for="users">
             <label class="search">
                 <span class="visually-hidden">Benutzer suchen</span>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
-                <input class="input" type="search" placeholder="Suchen" data-filter-table="users-table">
+                <input class="input" type="search" placeholder="Suchen" data-table-search autocomplete="off">
             </label>
             <button type="button" class="button" data-open-dialog="create-user">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -27,27 +27,34 @@
         <p hidden data-toast="error" data-form-error th:if="${error}" th:text="${error}"></p>
 
         <div class="sheet">
-            <table class="table" id="users-table" th:unless="${#lists.isEmpty(users)}">
+            <table class="table data-table" id="users-table" data-table="users" data-table-persist data-sort-default="name"
+                   th:unless="${#lists.isEmpty(users)}">
                 <thead>
-                <tr><th scope="col">Name</th><th scope="col">Rollen</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Aktionen</span></th></tr>
+                <tr>
+                    <th scope="col" data-col="name" data-sort="text">Name</th>
+                    <th scope="col" data-col="roles" data-sort="text">Rollen</th>
+                    <th scope="col" data-col="status" data-sort="text">Status</th>
+                    <th scope="col"><span class="visually-hidden">Aktionen</span></th>
+                </tr>
                 </thead>
                 <tbody>
                 <tr th:each="user : ${users}" th:classappend="${user.username == created} ? 'is-new'">
-                    <td>
+                    <td data-col="name" data-label="Name" th:attr="data-value=${user.username}">
                         <span class="person">
                             <span class="avatar" aria-hidden="true"
                                   th:text="${#strings.toUpperCase(#strings.substring(user.username, 0, 1))}">A</span>
                             <span th:text="${user.username}">admin</span>
                         </span>
                     </td>
-                    <td>
+                    <td data-col="roles" data-label="Rollen"
+                        th:attr="data-value=${#strings.listJoin(#lists.sort(user.roles.![name]), ', ')}">
                         <span class="badges">
                             <span th:each="r : ${user.roles}" class="badge"
                                   th:classappend="${r.allPermissions} ? 'badge-admin'" th:text="${r.name}">Rolle</span>
                             <span th:if="${#sets.isEmpty(user.roles)}" class="muted">Keine Rolle</span>
                         </span>
                     </td>
-                    <td>
+                    <td data-col="status" data-label="Status" th:attr="data-value=${user.enabled} ? 'ACTIVE' : 'DISABLED'">
                         <span class="status" th:if="${user.enabled}">Aktiv</span>
                         <span class="status status-off" th:unless="${user.enabled}">Deaktiviert</span>
                     </td>
@@ -58,7 +65,7 @@
                 </tr>
                 </tbody>
             </table>
-            <p class="filter-empty" hidden data-filter-empty="users-table">Kein Benutzer passt zur Suche.</p>
+            <p class="filter-empty" hidden data-table-empty="users">Kein Benutzer passt zur Suche.</p>
             <p class="sheet-empty" th:if="${#lists.isEmpty(users)}">
                 Noch keine Benutzer. Lege das erste Konto über „Benutzer anlegen“ an.
             </p>

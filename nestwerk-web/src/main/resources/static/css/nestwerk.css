@@ -4134,3 +4134,88 @@ form.is-allday [data-time-field] { display: none; }
     opacity: 1;
     box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
 }
+
+/* Sortier- und filterbare Tabellen (data-table.js) */
+.table-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+.table-tools .search { flex: 1 1 16rem; min-width: 12rem; }
+.table-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.chip-toggle {
+    padding: 0.35rem 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--step--1);
+    cursor: pointer;
+}
+.chip-toggle:hover { border-color: var(--moss); }
+.chip-toggle[aria-pressed="true"] { background: var(--sage); border-color: var(--moss); font-weight: 600; }
+.table-selects { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; }
+.field-inline { display: inline-flex; align-items: center; gap: 0.5rem; }
+.table-count { margin: 0; white-space: nowrap; }
+.data-table th[data-sort]:not([data-sort="none"]) { cursor: pointer; user-select: none; }
+.data-table th[data-sort]:not([data-sort="none"])::after { content: " ↕"; color: var(--ink-soft); opacity: 0.5; }
+.data-table th[aria-sort="ascending"]::after { content: " ↑"; opacity: 1; }
+.data-table th[aria-sort="descending"]::after { content: " ↓"; opacity: 1; }
+.data-table tbody tr[data-open] { cursor: pointer; }
+.data-table tbody tr[hidden] { display: none; }
+.data-table td, .data-table th { overflow-wrap: break-word; }
+.data-table th { white-space: nowrap; }
+.data-table td[data-col="area"], .data-table td[data-col="scope"], .data-table td[data-col="status"] { white-space: nowrap; }
+.table-selects select { min-width: 8rem; }
+.table-note { display: block; font-size: var(--step--1); margin-top: 0.15rem; font-weight: 400; }
+.status-attention { color: var(--brick); font-weight: 600; }
+.table-empty { padding: 1rem 0; }
+@media (max-width: 40rem) {
+    /* Karten statt Spalten: jede Zeile wird zu einem Block, die Spaltenköpfe stehen vor dem Wert */
+    .data-table thead { display: none; }
+    .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; }
+    .data-table tbody tr { padding: 0.75rem 1rem; border-top: 1px solid var(--line); }
+    .data-table td { padding: 0.15rem 0; border: 0; }
+    .data-table td[data-label]::before {
+        content: attr(data-label) ": ";
+        color: var(--ink-soft);
+        font-size: var(--step--1);
+    }
+    .data-table td[data-col="title"]::before { content: none; }
+    .data-table td[data-col="summary"]:empty { display: none; }
+    .data-table .cell-actions { margin-top: 0.5rem; }
+}
+.table-tools [hidden] { display: none; }
+
+/* Befehlspalette (Strg + K) und Plus-Menü */
+.cmd { width: min(36rem, calc(100vw - 2rem)); padding: 0; }
+.cmd-box { display: grid; gap: 0.75rem; padding: 1rem; }
+.cmd-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; max-height: min(24rem, 55vh); overflow-y: auto; }
+.cmd-item {
+    display: grid;
+    grid-template-columns: 7.5rem 1fr;
+    gap: 0.1rem 0.75rem;
+    align-items: baseline;
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.75rem;
+    cursor: pointer;
+}
+.cmd-item.is-active, .cmd-item:hover { background: color-mix(in srgb, var(--sage) 55%, transparent); }
+.cmd-group { color: var(--ink-soft); font-size: var(--step--1); }
+.cmd-label { font-weight: 600; overflow-wrap: anywhere; }
+.cmd-note { grid-column: 2; font-size: var(--step--1); }
+.cmd-hint { margin: 0; font-size: var(--step--1); }
+@media (max-width: 40rem) {
+    .cmd-item { grid-template-columns: 1fr; }
+    .cmd-note { grid-column: 1; }
+}
+.quick-button { background: var(--moss); color: var(--on-accent, #fff); }
+.cmd-box .input { width: 100%; }
+@media (max-width: 40rem) {
+    /* auf dem Handy liegt die Suche im „Mehr“-Blatt, damit die Kopfzeile nicht überläuft */
+    .nav-tools > [data-open-cmd] { display: none; }
+}
+.cmd:not([open]) { display: none; }

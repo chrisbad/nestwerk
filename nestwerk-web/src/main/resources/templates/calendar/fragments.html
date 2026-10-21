@@ -62,6 +62,8 @@
            title="Alle sichtbaren Termine als iCal-Datei herunterladen">Export</a>
         <a class="button button-ghost button-small" th:href="@{/import/calendar}"
            sec:authorize="hasAuthority('CALENDAR_EVENT_CREATE')" title="Termine aus einer iCal-Datei übernehmen">Import</a>
+        <a class="button button-ghost button-small" th:href="@{/settings?f.area=CALENDAR}" data-excursion
+           title="Einstellungen des Kalenders: Kategorien, Zeiten, Import">Einstellungen</a>
         <a class="button" th:href="@{/calendar/events/new(date=${date}, back=${here})}"
            sec:authorize="hasAuthority('CALENDAR_EVENT_CREATE')">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -148,7 +150,7 @@
             <span th:text="${entry.value.name}">Name</span>
         </li>
     </ul>
-    <a class="cal-legend-manage" th:if="${canManageCategories}" th:href="@{/calendar/categories}">Kategorien verwalten</a>
+    <a class="cal-legend-manage" th:if="${canManageCategories}" th:href="@{/calendar/categories}" data-excursion>Kategorien verwalten</a>
 </div>
 
 <!-- A due to-do as all-day entry with check mark -->

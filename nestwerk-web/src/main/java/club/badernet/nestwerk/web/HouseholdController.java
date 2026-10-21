@@ -323,7 +323,7 @@ public class HouseholdController {
     @GetMapping("/tasks/{id}")
     String task(@PathVariable Long id, @RequestParam(required = false) String back, Model model) {
         User viewer = requireModule();
-        model.addAttribute("returnTo", TodoController.safeBack(back, null));
+        model.addAttribute("returnTo", SafeRedirect.target(back, null));
         ChoreTask task = tasks.get(id, viewer);
         HouseholdViews.Context ctx = views.context(viewer);
         model.addAttribute("task", task);
@@ -428,13 +428,13 @@ public class HouseholdController {
                           RedirectAttributes redirect) {
         if (htmx != null) {
             model.addAttribute("c", views.chip(tasks.get(id, actor), views.context(actor)));
-            model.addAttribute("back", TodoController.safeBack(back, "/household"));
+            model.addAttribute("back", SafeRedirect.target(back, "/household"));
             model.addAttribute("toast", message);
             model.addAttribute("toastType", ok ? "success" : "error");
             return "household/fragments :: chip";
         }
         redirect.addFlashAttribute(ok ? "success" : "error", message);
-        return "redirect:" + TodoController.safeBack(back, "/household/tasks/" + id);
+        return "redirect:" + SafeRedirect.target(back, "/household/tasks/" + id);
     }
 
     private void prepareForm(Model model, User viewer, Chore chore) {

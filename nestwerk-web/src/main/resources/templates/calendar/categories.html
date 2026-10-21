@@ -4,10 +4,7 @@
 <body>
 <header th:replace="~{fragments/layout :: nav(active='calendar')}"></header>
 <main>
-    <a class="back-link" th:href="@{/calendar/week}">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
-        Zum Kalender
-    </a>
+    <a th:replace="~{fragments/layout :: backLink(@{/calendar}, 'Kalender', 'calendar')}"></a>
     <div class="page-head">
         <div>
             <h1>Terminkategorien</h1>
@@ -43,6 +40,7 @@
 <dialog th:each="c : ${categories}" th:id="'edit-category-' + ${c.id}" class="dialog"
         th:attr="aria-labelledby='edit-category-title-' + ${c.id}">
     <form th:action="@{/calendar/categories/{id}(id=${c.id})}" method="post">
+    <input th:replace="~{fragments/layout :: backField}">
         <div class="dialog-head">
             <h2 th:id="'edit-category-title-' + ${c.id}">Kategorie bearbeiten</h2>
             <button type="button" class="icon-button" data-close-dialog>
@@ -64,6 +62,7 @@
     </form>
     <form data-confirm-tone="danger" class="dialog-section dialog-section-last" th:action="@{/calendar/categories/{id}/delete(id=${c.id})}"
           method="post" th:attr="data-confirm=|Kategorie „${c.name}“ löschen?|">
+    <input th:replace="~{fragments/layout :: backField}">
         <p class="muted">Die Termine bleiben erhalten, nur ohne Kategorie.</p>
         <button type="submit" class="button button-danger">Kategorie löschen</button>
     </form>
@@ -71,6 +70,7 @@
 
 <dialog id="create-category" class="dialog" aria-labelledby="create-category-title">
     <form th:action="@{/calendar/categories}" method="post">
+    <input th:replace="~{fragments/layout :: backField}">
         <div class="dialog-head">
             <h2 id="create-category-title">Kategorie anlegen</h2>
             <button type="button" class="icon-button" data-close-dialog>

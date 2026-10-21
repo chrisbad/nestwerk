@@ -73,7 +73,7 @@ public class NotificationController {
             redirect.addFlashAttribute("error", "Das ToDo „" + n.getTitle() + "“ gibt es nicht mehr.");
             return "redirect:/notifications";
         }
-        return "redirect:" + TodoController.safeBack(n.getLink(), "/notifications");
+        return "redirect:" + SafeRedirect.target(n.getLink(), "/notifications");
     }
 
     @PostMapping("/read-all")

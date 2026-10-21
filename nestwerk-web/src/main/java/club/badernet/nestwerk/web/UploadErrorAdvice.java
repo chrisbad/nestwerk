@@ -26,6 +26,6 @@ public class UploadErrorAdvice {
                 // ungültiger Referer: zur Startseite
             }
         }
-        return "redirect:" + TodoController.safeBack(back, "/");
+        return "redirect:" + SafeRedirect.target(back, "/");
     }
 }

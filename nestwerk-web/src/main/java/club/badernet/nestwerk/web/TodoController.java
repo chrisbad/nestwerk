@@ -237,7 +237,7 @@ public class TodoController {
     String detail(@PathVariable Long id, @RequestParam(required = false) String timeline,
                   @RequestParam(required = false) String back, Model model) {
         User viewer = requireModule();
-        model.addAttribute("returnTo", safeBack(back, null));
+        model.addAttribute("returnTo", SafeRedirect.target(back, null));
         Todo todo = todos.get(id, viewer);
         TodoViews.Labels labels = views.labels(viewer);
         model.addAttribute("todo", todo);
@@ -488,7 +488,7 @@ public class TodoController {
             case WEEK -> "Wiedervorlage in einer Woche.";
             case MONTH -> "Wiedervorlage in einem Monat.";
         });
-        return "redirect:" + safeBack(back, "/todos/" + id);
+        return "redirect:" + SafeRedirect.target(back, "/todos/" + id);
     }
 
     @PostMapping("/{id}/notification-override")
@@ -598,7 +598,7 @@ public class TodoController {
             return "todos/fragments :: row";
         }
         redirect.addFlashAttribute(error == null ? "success" : "error", error == null ? message : error);
-        return "redirect:" + safeBack(back, "/todos/" + id);
+        return "redirect:" + SafeRedirect.target(back, "/todos/" + id);
     }
 
     private void prepareForm(Model model, User viewer, TodoForm form, Todo todo) {
@@ -638,14 +638,6 @@ public class TodoController {
         }
         java.util.regex.Matcher m = java.util.regex.Pattern.compile("^\\s*#?(\\d{1,18})\\b").matcher(target);
         return m.find() ? Long.valueOf(m.group(1)) : null;
-    }
-
-    /** Nur lokale Pfade als Rücksprung zulassen. */
-    static String safeBack(String back, String fallback) {
-        if (back != null && back.startsWith("/") && !back.startsWith("//") && !back.contains("\\")) {
-            return back;
-        }
-        return fallback;
     }
 
     private static String blankToNull(String text) {

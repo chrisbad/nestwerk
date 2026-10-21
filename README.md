@@ -101,6 +101,21 @@ Danach gelten die Benutzer und Passwörter aus der Sicherung. Zugangsdaten der S
 mit dem alten `NESTWERK_SECRET_KEY` verschlüsselt. Den Wert aus der alten `.env` übernehmen oder die Zugangsdaten
 neu eintragen.
 
+### Kalender, Navigation und Einstellungen
+
+- **Start:** Wer das Recht hat, landet nach der Anmeldung im Kalender, in der Ansicht „Meine“ (heutige Termine, ToDos
+  und Hausarbeiten der eigenen Person, Überfälliges oben). „Tag“ zeigt die Zeit von links nach rechts mit einer Bahn je
+  Person und erlaubt Anlegen, Verschieben und Ändern per Ziehen; „3 Tage“ und „Woche“ bleiben senkrecht.
+- **Navigation:** Alle Menüeinträge kommen aus einer Registry (`Navigation`) mit Sichtbarkeitsregel; Seitenleiste,
+  Tab-Leiste, „Mehr“-Blatt und Benutzermenü werden daraus erzeugt. Das Plus-Menü legt von überall Termine, ToDos, Zeiten
+  und Einkaufsartikel an, Strg + K öffnet die Schnellsuche.
+- **Ausflug und Rückkehr:** Seiten, die vom Kalender aus geöffnet werden (Einstellungen, Kategorien, Schnellanlegen),
+  bekommen den Ursprung als `back`-Parameter (`SafeRedirect` lässt nur lokale Pfade zu). Der Pfeil oben auf der Seite
+  und alle Formulare führen dorthin zurück; ohne Ursprung gilt die zuletzt besuchte Kalenderansicht.
+- **Einstellungs-Register:** `/settings` listet alle Einstellungen, die der Benutzer sehen darf, in einer durchsuchbaren,
+  filter- und sortierbaren Tabelle (Komponente `data-table`, Zustand in der Adresse). Neue Einstellungen werden in
+  `Settings` eingetragen; MCP: `list_settings`.
+
 ### Benachrichtigungen
 
 Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich:
@@ -179,7 +194,7 @@ feste Haushalts-Termine entfernen. Termine lassen sich wie im Kalender auf neue 
 - **Umfang:** ToDos mit Unterstruktur, Verknüpfungen, Beobachtern, Wiedervorlage und Verlauf; Termine samt
   einzelner Serienvorkommen; Kontakte; Haushaltsplan mit Auswertung, Gutschrift-Korrekturen, Belohnungen und
   iCal-Abos; Küche inklusive Einstellungen, Rezept-Import per Adresse und Barcode-Suche; Zeiten (Blocker) und
-  Ruhe-Ziele; Benachrichtigungs-Einstellungen; Anhänge (Text lesen, kleine Dateien hinzufügen); Export und Import
+  Ruhe-Ziele; Benachrichtigungs-Einstellungen; das Einstellungs-Register (`list_settings`); Anhänge (Text lesen, kleine Dateien hinzufügen); Export und Import
   als Text mit Vorschau.
 - **Verwaltung:** Mit den passenden Verwaltungsrechten auch Benutzerrollen, Familienmitglieder, Rollen und
   Zugriffsregeln, Sicherungsplan, Updates und globale Benachrichtigungs-Einstellungen. Es gelten dieselben Regeln
