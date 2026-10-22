@@ -144,6 +144,17 @@ class CalendarGridControllerTest {
     }
 
     @Test
+    void weekViewOffersHandlesAtBothEndsOfAnAllDayEvent() throws Exception {
+        events.create(new EventInput("Urlaub", null, null, TUESDAY, null, TUESDAY.plusDays(1), null, true, null,
+                false, Set.of(), false, null), editor);
+
+        mockMvc.perform(get("/calendar/week").param("date", TUESDAY.toString()).with(as("editor"))
+                        .cookie(new jakarta.servlet.http.Cookie(GridSplit.COOKIE, "none")))
+                .andExpect(content().string(containsString("tgrid-handle-left\" data-handle=\"start\"")))
+                .andExpect(content().string(containsString("tgrid-handle-right\" data-handle=\"end\"")));
+    }
+
+    @Test
     void dayViewKeepsForeignEntriesReadOnly() throws Exception {
         event("Meins", 15, null);
 

@@ -75,6 +75,8 @@
                                             <span th:text="${o.title}">Urlaub</span>
                                         </span>
                                         <th:block th:unless="${splitByPerson}"><span th:replace="~{calendar/fragments :: memberDots(${o.memberIds}, ${e.categoryName != null})}"></span></th:block>
+                                        <span class="tgrid-handle tgrid-handle-left" data-handle="start" aria-hidden="true"
+                                              th:if="${e.editable and !lane.continuesBefore and !splitByPerson}"></span>
                                         <span class="tgrid-handle tgrid-handle-right" data-handle="end" aria-hidden="true"
                                               th:if="${e.editable and !lane.continuesAfter and !splitByPerson}"></span>
                                     </a>
