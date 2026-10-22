@@ -5,7 +5,7 @@
 
     const KEY = "nestwerk-cal-layers";
     const LEGACY_TODO_KEY = "nestwerk-cal-todos";
-    const LAYERS = ["events", "todos", "chores"];
+    const LAYERS = ["events", "todos", "chores", "busy"];
 
     function read() {
         const shown = Object.fromEntries(LAYERS.map(layer => [layer, true]));

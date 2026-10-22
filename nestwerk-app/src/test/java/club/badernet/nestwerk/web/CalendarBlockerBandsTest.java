@@ -70,10 +70,21 @@ class CalendarBlockerBandsTest {
     void affectedPersonSeesTitles() throws Exception {
         mockMvc.perform(get("/calendar/week").param("date", "2026-10-13")
                         .with(user("lena").authorities(new SimpleGrantedAuthority("CALENDAR_VIEW"))))
-                .andExpect(content().string(containsString("class=\"band")))
+                .andExpect(content().string(containsString("tgrid-busy-label")))
                 .andExpect(content().string(containsString("Büro")))
                 .andExpect(content().string(containsString("Therapie")))
                 .andExpect(content().string(containsString("08:00–16:00")));
+        mockMvc.perform(get("/calendar/month").param("date", "2026-10-13")
+                        .with(user("lena").authorities(new SimpleGrantedAuthority("CALENDAR_VIEW"))))
+                .andExpect(content().string(containsString("class=\"band")))
+                .andExpect(content().string(containsString("08:00–16:00")));
+    }
+
+    @Test
+    void weekHeaderNoLongerCarriesTheBlockerBands() throws Exception {
+        mockMvc.perform(get("/calendar/week").param("date", "2026-10-13")
+                        .with(user("lena").authorities(new SimpleGrantedAuthority("CALENDAR_VIEW"))))
+                .andExpect(content().string(not(containsString("class=\"bands"))));
     }
 
     @Test

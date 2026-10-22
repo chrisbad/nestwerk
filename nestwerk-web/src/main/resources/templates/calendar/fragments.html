@@ -41,6 +41,8 @@
                             th:if="${showTodos}">ToDos</button>
                     <button type="button" class="chip-toggle" data-layer="chores" aria-pressed="true"
                             th:if="${showChores}">Hausarbeiten</button>
+                    <button type="button" class="chip-toggle" data-layer="busy" aria-pressed="true"
+                            th:if="${gridDays != null}">Sperrzeiten</button>
                 </div>
             <div class="segmented segmented-slots" role="group" aria-label="Raster" th:if="${gridDays != null}">
                 <button type="button" data-slot-choice="coarse" aria-pressed="true"
