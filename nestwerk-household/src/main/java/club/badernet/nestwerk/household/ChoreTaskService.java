@@ -1,5 +1,7 @@
 package club.badernet.nestwerk.household;
 
+import club.badernet.nestwerk.blocker.TimeRange;
+import club.badernet.nestwerk.calendar.ChoreOverlaps;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
 import club.badernet.nestwerk.user.User;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -53,11 +55,12 @@ public class ChoreTaskService {
     private final ChorePlanner planner;
     private final HouseholdAccess access;
     private final HouseholdNotifier notifier;
+    private final ChoreOverlaps overlaps;
     private final Clock clock;
 
     public ChoreTaskService(ChoreTaskRepository tasks, ChoreService chores, ChoreCreditRepository credits,
                             FamilyMemberRepository members, ChorePlanner planner, HouseholdAccess access,
-                            HouseholdNotifier notifier, Clock clock) {
+                            HouseholdNotifier notifier, ChoreOverlaps overlaps, Clock clock) {
         this.tasks = tasks;
         this.chores = chores;
         this.credits = credits;
@@ -65,6 +68,7 @@ public class ChoreTaskService {
         this.planner = planner;
         this.access = access;
         this.notifier = notifier;
+        this.overlaps = overlaps;
         this.clock = clock;
     }
 
@@ -149,6 +153,7 @@ public class ChoreTaskService {
         if (memberId != null && !memberId.equals(own)) {
             requireMayAssign(chore, memberId, actor);
         }
+        requireNoOverlap(chore, memberId, day, time, null);
         ChoreTask task = tasks.save(ChoreTask.scheduledOnce(chore, day, time, memberId));
         if (memberId != null && !memberId.equals(own)) {
             notifier.assigned(task, actor);
@@ -198,6 +203,7 @@ public class ChoreTaskService {
 
     private void finish(ChoreTask task, Long doer, Set<Long> helperIds, Long userId, CleanBooking booking) {
         requireNotBookedYet(task.getChore(), booking.day());
+        requireNoOverlap(task.getChore(), doer, booking.day(), booking.time(), task.getId(), booking.minutes());
         Set<Long> people = new LinkedHashSet<>();
         people.add(doer);
         if (helperIds != null) {
@@ -218,6 +224,21 @@ public class ChoreTaskService {
         if (task.getChore().getKind() == ChoreKind.INTERVAL) {
             planner.plan(task.getChore(), today());
         }
+    }
+
+    private void requireNoOverlap(Chore chore, Long memberId, LocalDate day, LocalTime time, Long ignoreTaskId) {
+        requireNoOverlap(chore, memberId, day, time, ignoreTaskId, Availability.minutes(chore));
+    }
+
+    /** Rejects a chore at a time where it would lie over something that must not be overlapped. */
+    private void requireNoOverlap(Chore chore, Long memberId, LocalDate day, LocalTime time, Long ignoreTaskId,
+                                  int minutes) {
+        if (memberId == null || time == null) {
+            return;
+        }
+        Instant start = day.atTime(time).atZone(clock.getZone()).toInstant();
+        overlaps.requireFreeForChore(chore.getTitle(), chore.isNoOverlap(), memberId,
+                new TimeRange(start, start.plusSeconds(minutes * 60L)), ignoreTaskId);
     }
 
     private void requireNotBookedYet(Chore chore, LocalDate day) {
@@ -324,6 +345,7 @@ public class ChoreTaskService {
         if (!access.can(actor, "ASSIGN", task)) {
             throw new AccessDeniedException("Keine Berechtigung, diese Hausarbeit zu verschieben");
         }
+        requireNoOverlap(task.getChore(), task.getAssigneeMemberId(), day, plannedAt, task.getId());
         task.moveManually(day, plannedAt);
     }
 

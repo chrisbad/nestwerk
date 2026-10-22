@@ -129,6 +129,14 @@
                                  th:style="|--start: ${b.startMinute}; --dur: ${b.endMinute - b.startMinute}; --stripe: ${b.stripe}; --stripes: ${b.stripes};${b.color != null ? ' --busy-color: ' + b.color + ';' : ''}|">
                                 <span class="tgrid-busy-label" th:text="${b.label}" th:title="|${b.label}, ${b.times}|">Lena · Arbeit</span>
                             </div>
+                            <div class="tgrid-zone tgrid-zone-overlap" th:each="z : ${col.overlaps}"
+                                 th:style="|--start: ${z.startMinute}; --dur: ${z.endMinute - z.startMinute}|"
+                                 th:attr="data-member=${z.memberId}, data-strength='overlap', data-overlap-key=${z.key},
+                                          data-overlap-kind=${z.kind}, data-overlap-flag=${z.flag},
+                                          data-start-minute=${z.startMinute}, data-end-minute=${z.endMinute},
+                                          data-label=${z.label}" aria-hidden="true">
+                                <span class="tgrid-zone-label" th:text="${z.label}">Lena · überschneidet sich mit dem Termin</span>
+                            </div>
                             <div class="tgrid-zone" th:each="z : ${col.zones}" th:classappend="'tgrid-zone-' + ${z.strength}"
                                  th:style="|--start: ${z.startMinute}; --dur: ${z.endMinute - z.startMinute}|"
                                  th:attr="data-member=${z.memberId}, data-strength=${z.strength},
@@ -150,7 +158,8 @@
                                             data-recurring=${o.recurring}, data-editable=${e.editable},
                                             data-start=${#temporals.format(e.startsAt, 'yyyy-MM-dd''T''HH:mm')},
                                             data-end=${#temporals.format(e.endsAt, 'yyyy-MM-dd''T''HH:mm')},
-                                            data-members=${e.memberList()}, data-member=${col.memberId}, data-title=${o.title}">
+                                            data-members=${e.memberList()}, data-member=${col.memberId}, data-title=${o.title},
+                                            data-overlap-key=|event:${o.eventId}|, data-no-overlap=${o.noOverlap}">
                                     <span class="occ-time" data-item-time
                                           ><span th:text="${#temporals.format(e.startsAt, 'HH:mm')}">10:00</span><span class="occ-time-end" th:text="|–${#temporals.format(e.endsAt, 'HH:mm')}|">–11:00</span></span>
                                     <span class="occ-title">
@@ -178,7 +187,8 @@
                                             data-sheet-url=@{/calendar/chores/{id}/sheet(id=${c.id})},
                                             data-start=${#temporals.format(c.startsAt(), 'yyyy-MM-dd''T''HH:mm')},
                                             data-end=${#temporals.format(c.endsAt(), 'yyyy-MM-dd''T''HH:mm')},
-                                            data-members=${c.memberId}, data-member=${col.memberId}, data-title=${c.title}">
+                                            data-members=${c.memberId}, data-member=${col.memberId}, data-title=${c.title},
+                                            data-overlap-key=|chore:${c.id}|, data-no-overlap=${c.noOverlap}">
                                     <span class="occ-time" data-item-time th:text="${c.time}">18:30–18:55</span>
                                     <span class="occ-title">
                                         <svg class="occ-lock" viewBox="0 0 24 24" role="img" aria-label="Hausarbeit">

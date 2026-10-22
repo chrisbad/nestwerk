@@ -460,9 +460,28 @@
         root.classList.add("is-grid-dragging");
         root.querySelectorAll(".tgrid-zone").forEach(zone =>
             zone.classList.toggle("is-relevant", drag.members.includes(zone.dataset.member)));
+        markOverlapZones(root, item);
         try { root.setPointerCapture?.(g.id); } catch (e) { /* capture is optional */ }
         helpers().haptic(10);
         update();
+    }
+
+    /**
+     * Times of other events and chores a dragged entry must not be put over: a chore must not lie over a flagged
+     * entry or, when flagged itself, over any entry; an event only matters for chores. Candidates count whoever
+     * the entry is given to; they are only drawn in the columns of the entry's persons.
+     */
+    function markOverlapZones(root, item) {
+        const kind = item?.dataset.gridItem;
+        const own = item?.dataset.overlapKey;
+        const flagged = item?.dataset.noOverlap === "true";
+        root.querySelectorAll(".tgrid-zone[data-overlap-key]").forEach(zone => {
+            const candidate = Boolean(own) && zone.dataset.overlapKey !== own
+                && (kind === "chore" || zone.dataset.overlapKind === "chore")
+                && (flagged || zone.dataset.overlapFlag === "true");
+            zone.classList.toggle("is-overlap-candidate", candidate);
+            zone.classList.toggle("is-relevant", candidate && drag.members.includes(zone.dataset.member));
+        });
     }
 
     /** Computes the snapped result of the drag (times and person column) and draws the ghost. */
@@ -634,7 +653,7 @@
         const end = result.allDay ? absolute(result.last, DAY_MINUTES) : result.end;
         for (const column of columns(root)) {
             const dayStart = absolute(column.dataset.date, 0);
-            for (const zone of column.querySelectorAll('.tgrid-zone[data-strength="block"]')) {
+            for (const zone of column.querySelectorAll('.tgrid-zone[data-strength="block"], .tgrid-zone.is-overlap-candidate')) {
                 if (!members.includes(zone.dataset.member)) continue;
                 const from = dayStart + +zone.dataset.startMinute;
                 const to = dayStart + +zone.dataset.endMinute;
@@ -707,8 +726,8 @@
         d.label?.remove();
         d.item?.classList.remove("is-lifted");
         d.root.classList.remove("is-grid-dragging");
-        d.root.querySelectorAll(".tgrid-zone.is-relevant, .tgrid-zone.is-hit")
-            .forEach(zone => zone.classList.remove("is-relevant", "is-hit"));
+        d.root.querySelectorAll(".tgrid-zone.is-relevant, .tgrid-zone.is-hit, .tgrid-zone.is-overlap-candidate")
+            .forEach(zone => zone.classList.remove("is-relevant", "is-hit", "is-overlap-candidate"));
         lastDragEnd = Date.now();
         helpers().markDragged();
     }

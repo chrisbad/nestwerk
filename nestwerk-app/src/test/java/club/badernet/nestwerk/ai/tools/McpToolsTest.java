@@ -154,6 +154,24 @@ class McpToolsTest {
     }
 
     @Test
+    void overlapIsRejectedWithAClearMessageViaTools() {
+        CalendarTools.Event operation = calendarTools.createEvent(as(mama), "Operation", "2030-05-06", "10:00", null,
+                "11:00", null, null, null, null, null, null, List.of(mamaM.getId()), null, true);
+        HouseholdTools.ChoreItem window = householdTools.createChore(as(admin), "Fenster", null, null, "ON_DEMAND",
+                null, null, null, null, "OPEN", null, null, null, null, null, null, null, null);
+
+        assertThatThrownBy(() -> householdTools.planChoreTask(as(admin), window.choreId(), "2030-05-06", "10:30",
+                mamaM.getId())).isInstanceOf(Tools.ToolException.class)
+                .hasMessageContaining("Operation").hasMessageContaining("überschneidet");
+        assertThat(householdTools.planChoreTask(as(admin), window.choreId(), "2030-05-06", "12:00",
+                mamaM.getId()).plannedAt()).startsWith("12:00");
+
+        assertThatThrownBy(() -> calendarTools.rescheduleEvent(as(mama), operation.eventId(),
+                "2030-05-06T12:10", "2030-05-06T13:00", null, null, null, null))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Fenster");
+    }
+
+    @Test
     void managesSingleOccurrencesAndMovesEvents() {
         CalendarTools.Event series = calendarTools.createEvent(as(mama), "Chor", "2030-03-04", "18:00", null,
                 "19:00", null, null, null, "FREQ=WEEKLY", null, null, null, null, null);

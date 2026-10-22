@@ -257,6 +257,36 @@ class CalendarDialogsTest {
     }
 
     @Test
+    void movingAChoreOntoAnEventThatForbidsOverlapIsRejectedWithTheReason() throws Exception {
+        ChoreTask task = plannedChore(1);
+        events.create(new EventInput("Operation", null, null, WEDNESDAY, LocalTime.of(10, 0), WEDNESDAY,
+                LocalTime.of(11, 0), false, null, false, Set.of(lena.getId()), false, null, true), admin);
+
+        mockMvc.perform(post("/calendar/actions/chores/{id}/update", task.getId()).with(csrf()).with(asAdmin())
+                        .param("date", WEDNESDAY.toString()).param("start", "10:30"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsString("Operation")));
+
+        assertThat(tasks.findById(task.getId()).orElseThrow().getDueOn()).isEqualTo(MONDAY);
+    }
+
+    @Test
+    void gridMarksTheTimesOfEventsAndChoresAsOverlapZones() throws Exception {
+        ChoreTask task = plannedChore(1);
+        CalendarEvent flagged = events.create(new EventInput("Operation", null, null, MONDAY, LocalTime.of(10, 0),
+                MONDAY, LocalTime.of(11, 0), false, null, false, Set.of(lena.getId()), false, null, true), admin);
+
+        mockMvc.perform(get("/calendar/week").param("date", MONDAY.toString()).with(asAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("tgrid-zone-overlap")))
+                .andExpect(content().string(containsString("data-overlap-key=\"event:" + flagged.getId() + "\"")))
+                .andExpect(content().string(containsString("data-overlap-key=\"chore:" + task.getId() + "\"")))
+                .andExpect(content().string(containsString("data-overlap-flag=\"true\"")))
+                .andExpect(content().string(containsString("data-no-overlap=\"true\"")))
+                .andExpect(content().string(containsString("überschneidet sich mit dem Termin „Operation“")));
+    }
+
+    @Test
     void cancellingADateKeepsTheChoreAndItsOtherDates() throws Exception {
         ChoreTask task = plannedChore(2);
 

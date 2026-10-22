@@ -3714,6 +3714,10 @@ html { scroll-behavior: smooth; }
     background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--brick) 28%, transparent) 0 6px,
         transparent 6px 12px);
 }
+.tgrid-zone-overlap {
+    background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--brick) 28%, transparent) 0 6px,
+        transparent 6px 12px);
+}
 .tgrid-zone-warn { background: color-mix(in srgb, var(--honey) 16%, transparent); }
 .is-grid-dragging .tgrid-zone.is-relevant { opacity: 1; }
 .tgrid-zone.is-hit { box-shadow: inset 0 0 0 2px var(--brick); }
