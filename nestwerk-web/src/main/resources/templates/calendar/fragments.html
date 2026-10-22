@@ -225,6 +225,17 @@
     </form>
 </dialog>
 
+<!-- One-tap actions of an entry at the top of its dialog; they come from the domain services' item actions -->
+<div th:fragment="quickBar(actions)" class="quick-actions" role="group" aria-label="Schnellaktionen"
+     th:if="${actions != null and !#lists.isEmpty(actions)}">
+    <form th:each="a : ${actions}" method="post" th:action="${a.url}" data-grid-form="quick"
+          th:attr="data-confirm=${a.confirm}, data-confirm-label=${a.confirmLabel}, data-confirm-tone=${a.danger} ? 'danger'">
+        <input type="hidden" th:each="p : ${a.params}" th:name="${p.key}" th:value="${p.value}">
+        <button type="submit" class="button button-small" th:classappend="${a.danger} ? 'button-danger' : 'button-ghost'"
+                th:text="${a.label}">Abhaken</button>
+    </form>
+</div>
+
 <!-- Blocker and school bands of a day -->
 <ul th:fragment="bands(list, compact)" class="bands" th:classappend="${compact} ? 'bands-compact'"
     th:if="${list != null and !list.isEmpty()}">

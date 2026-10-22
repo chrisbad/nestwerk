@@ -15,6 +15,8 @@
         </button>
     </div>
 
+    <div th:replace="~{calendar/fragments :: quickBar(${quickActions})}"></div>
+
     <form th:action="@{/calendar/actions/events/{id}/update(id=${event.id})}" method="post"
           data-grid-form="update" th:with="locked=${!canEdit}">
         <input type="hidden" name="recurrenceId" th:value="${occurrenceId}" th:if="${occurrenceId != null}">
@@ -80,21 +82,6 @@
             <button type="submit" class="button" th:if="${canEdit}">Speichern</button>
         </div>
     </form>
-
-    <div class="dialog-section dialog-section-last sheet-danger" th:if="${canEdit or canDelete}">
-        <form th:if="${recurring and canEdit and occurrenceId != null}" method="post" data-grid-form="cancel"
-              th:action="@{/calendar/actions/events/{id}/occurrence/cancel(id=${event.id})}"
-              data-confirm="Dieses Vorkommen absagen?" data-confirm-label="Absagen">
-            <input type="hidden" name="recurrenceId" th:value="${occurrenceId}">
-            <button type="submit" class="button button-ghost">Dieses Vorkommen absagen</button>
-        </form>
-        <form data-confirm-tone="danger" th:if="${canDelete}" method="post" data-grid-form="delete"
-              th:action="@{/calendar/actions/events/{id}/delete(id=${event.id})}"
-              th:attr="data-confirm=${recurring} ? |Die ganze Serie „${event.title}“ löschen?| : |„${event.title}“ löschen?|">
-            <button type="submit" class="button button-danger"
-                    th:text="${recurring} ? 'Ganze Serie löschen' : 'Termin löschen'">Termin löschen</button>
-        </form>
-    </div>
 </div>
 
 </body>

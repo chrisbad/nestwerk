@@ -380,6 +380,34 @@ html:not([data-theme-mode]) .theme-icon-dark { display: block !important; }
 }
 .menu-item:hover { background: var(--surface-2); padding-left: 1rem; }
 
+/* Context menu of calendar entries: next to the pointer, as a menu for keyboard and screen reader */
+.context-menu {
+    position: fixed;
+    z-index: 1100;
+    min-width: 13rem;
+    max-width: calc(100vw - 1rem);
+    padding: 0.4rem;
+    background: var(--glass);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-float);
+    animation: pop 0.18s var(--spring);
+}
+.context-menu .menu-item { overflow-wrap: anywhere; }
+.context-menu .menu-item:hover, .context-menu .menu-item:focus-visible { background: var(--surface-2); padding-left: 0.75rem; }
+.menu-item-danger { color: var(--brick); }
+
+/* One-tap actions at the top of an entry's dialog */
+.quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0 1.5rem 1rem;
+}
+.quick-actions form { margin: 0; }
+
 /* Tab-Leiste (Handy) */
 
 .tabbar {
