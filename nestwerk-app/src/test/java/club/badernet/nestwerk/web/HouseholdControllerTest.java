@@ -109,13 +109,13 @@ class HouseholdControllerTest {
     }
 
     @Test
-    void weekShowsTasksInTheMembersRow() throws Exception {
+    void planShowsTheTasksOfTheDay() throws Exception {
         todaysTask("Spülmaschine ausräumen", kidM.getId());
 
         mockMvc.perform(get("/household").with(as("mama")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Spülmaschine ausräumen")))
-                .andExpect(content().string(containsString("plan-grid")))
+                .andExpect(content().string(not(containsString("plan-grid"))))
                 .andExpect(content().string(containsString("data-open-dialog=\"book-")))
                 .andExpect(content().string(containsString("15 Min")))
                 .andExpect(content().string(containsString("Lena")));
@@ -245,7 +245,7 @@ class HouseholdControllerTest {
     }
 
     @Test
-    void planShowsTheDayWithPersonFilterNextToTheWeek() throws Exception {
+    void planShowsTheDayWithPersonFilter() throws Exception {
         todaysTask("Zimmer aufräumen", kidM.getId());
         todaysTask("Steuer", mamaM.getId());
 
@@ -258,7 +258,18 @@ class HouseholdControllerTest {
                 .andExpect(content().string(containsString("data-member=\"" + kidM.getId() + "\"")))
                 .andExpect(content().string(containsString("Zimmer aufräumen")))
                 .andExpect(content().string(containsString("Steuer")))
-                .andExpect(content().string(containsString("plan-grid")));
+                .andExpect(content().string(not(containsString("plan-grid"))));
+    }
+
+    @Test
+    void planLinksToTheWeekInTheCalendarForTheShownDay() throws Exception {
+        String day = today.plusDays(2).toString();
+
+        mockMvc.perform(get("/household").param("date", day).with(as("kind")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("href=\"/calendar/week?date=" + day + "\"")))
+                .andExpect(content().string(containsString("data-swipe-prev")))
+                .andExpect(content().string(containsString("data-swipe-next")));
     }
 
     @Test

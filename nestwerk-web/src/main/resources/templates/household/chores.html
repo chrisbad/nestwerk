@@ -55,7 +55,7 @@
             <p class="table-count muted" data-table-count aria-live="polite"></p>
             <button type="button" class="button button-ghost button-small" data-table-reset hidden>Filter zurücksetzen</button>
         </div>
-        <div class="sheet">
+        <div class="sheet table-scroll">
             <table class="table data-table" data-table="chores" data-table-persist data-sort-default="area">
                 <thead>
                 <tr>
@@ -82,16 +82,18 @@
                     <td data-col="status" data-label="Status" th:attr="data-value=${r.chore().active} ? 'ACTIVE' : 'INACTIVE'"
                         th:text="${r.chore().active} ? 'Aktiv' : 'Deaktiviert'">Aktiv</td>
                     <td class="cell-actions">
-                        <button type="button" class="button button-ghost button-small" th:if="${r.canBook}"
-                                th:attr="data-drawer-url=@{/household/chores/{id}/book-form(id=${r.chore().id})}, data-drawer-title=|${r.chore().title} buchen|">Buchen</button>
-                        <a class="button button-ghost button-small" th:if="${r.canEdit}"
-                           th:href="@{/household/chores/{id}/edit(id=${r.chore().id})}">Bearbeiten</a>
-                        <form th:if="${r.canDelete}" method="post" data-confirm-tone="danger"
-                              th:action="@{/household/chores/{id}/delete(id=${r.chore().id})}"
-                              th:attr="data-confirm=|Hausarbeit „${r.chore().title}“ löschen?|">
-                            <input type="hidden" name="back" value="/household/chores">
-                            <button type="submit" class="button button-danger button-small">Löschen</button>
-                        </form>
+                        <div class="row-actions">
+                            <button type="button" class="button button-ghost button-small" th:if="${r.canBook}"
+                                    th:attr="data-drawer-url=@{/household/chores/{id}/book-form(id=${r.chore().id})}, data-drawer-title=|${r.chore().title} buchen|">Buchen</button>
+                            <a class="button button-ghost button-small" th:if="${r.canEdit}"
+                               th:href="@{/household/chores/{id}/edit(id=${r.chore().id})}">Bearbeiten</a>
+                            <form th:if="${r.canDelete}" method="post" data-confirm-tone="danger"
+                                  th:action="@{/household/chores/{id}/delete(id=${r.chore().id})}"
+                                  th:attr="data-confirm=|Hausarbeit „${r.chore().title}“ löschen?|">
+                                <input type="hidden" name="back" value="/household/chores">
+                                <button type="submit" class="button button-danger button-small">Löschen</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 </tbody>

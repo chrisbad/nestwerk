@@ -1868,44 +1868,11 @@ form.inline { display: inline; margin: 0; }
 .effort-hard i { background: var(--honey); }
 
 .chore-overdue, .chore-section { margin-bottom: 1.75rem; }
-.chore-overdue h2, .chore-section h2, .plan-daygroup h2 { font-size: var(--step-1); margin-bottom: 0.6rem; }
+.chore-overdue h2, .chore-section h2 { font-size: var(--step-1); margin-bottom: 0.6rem; }
 .chore-section.is-overdue h2 { color: var(--brick); }
 .chore-overdue .chore-list { grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
 
-.plan-grid { display: grid; gap: 0.35rem; }
-.plan-row {
-    --member-color: var(--line);
-    display: grid;
-    grid-template-columns: 8.5rem repeat(7, minmax(0, 1fr));
-    gap: 0.35rem;
-    align-items: stretch;
-}
-.plan-row-head { position: sticky; top: 0; z-index: 1; background: var(--bg); }
 .plan-day { padding: 0.35rem 0.4rem; font-size: var(--step--1); font-weight: 650; color: var(--ink-soft); }
-.plan-day.is-today { color: var(--ink); border-bottom: 3px solid var(--honey); }
-.plan-who {
-    display: grid;
-    align-content: start;
-    gap: 0.1rem;
-    padding: 0.5rem 0.6rem;
-    border-left: 4px solid var(--member-color);
-    border-radius: var(--radius-field);
-    background: color-mix(in srgb, var(--member-color) 14%, var(--surface));
-}
-.plan-row-head .plan-who { background: none; border: 0; }
-.plan-row.is-open-row .plan-who { background: var(--sage); border-left-style: dashed; }
-.plan-who strong { font-family: var(--font-display); font-weight: 650; overflow-wrap: anywhere; }
-.plan-who .muted { font-size: var(--step--1); }
-.plan-cell { align-content: start; min-height: 3rem; padding: 0.25rem; border-radius: var(--radius-field); background: color-mix(in srgb, var(--surface) 55%, transparent); }
-.plan-cell.is-today { background: var(--honey-soft); }
-.plan-cell .chore-chip { padding: 0.35rem 0.4rem; gap: 0.35rem; border-left-width: 1px; }
-.plan-cell .chore-check { width: 1.3rem; height: 1.3rem; }
-.plan-cell .chore-title { font-size: var(--step--1); }
-
-.plan-days { display: none; }
-.plan-daygroup { margin-bottom: 1.25rem; }
-.plan-daygroup.is-today h2 { color: var(--moss); }
-.plan-daygroup.is-today h2::after { content: ""; display: block; width: 2.5rem; height: 3px; margin-top: 0.2rem; background: var(--honey); border-radius: 2px; }
 
 .data-table tr.is-inactive { opacity: 0.6; }
 
@@ -2063,10 +2030,6 @@ form.inline { display: inline; margin: 0; }
     .stats-table th, .stats-table td { padding: 0.5rem 0.45rem; }
     .stats-table tbody th { min-width: 5.5rem; }
     .stats-minutes { font-size: var(--step-0); }
-}
-@media (max-width: 56rem) {
-    .plan-grid { display: none; }
-    .plan-days { display: block; }
 }
 
 /* ==========================================================================
@@ -2537,14 +2500,6 @@ a { color: var(--moss); }
 .chore-check { border-color: color-mix(in srgb, var(--moss) 70%, var(--line)); transition: transform 0.3s var(--spring), background-color 0.2s; }
 .chore-check:hover { transform: scale(1.1); }
 .chore-check.is-checked { background: var(--grad-fresh); border-color: transparent; color: #062a1f; box-shadow: var(--glow-fresh); }
-.plan-grid[data-plan-grid] .chore-chip { cursor: grab; }
-.plan-cell { background: color-mix(in srgb, var(--surface) 65%, transparent); border: 1px solid transparent; transition: background-color 0.2s, border-color 0.2s; }
-.plan-cell.is-today { background: color-mix(in srgb, var(--moss) 10%, var(--surface)); border-color: color-mix(in srgb, var(--moss) 30%, transparent); }
-.plan-day.is-today { color: var(--ink); border-bottom: 0; }
-.plan-day.is-today::after { content: ""; display: block; height: 3px; margin-top: 0.25rem; border-radius: 3px; background: var(--grad-violet); box-shadow: var(--glow-violet); }
-.plan-row-head { background: transparent; backdrop-filter: blur(10px); }
-.plan-who { background: color-mix(in srgb, var(--member-color) 18%, var(--surface)); }
-.plan-daygroup.is-today h2::after { background: var(--grad-violet); }
 .balance { border-top: 0; box-shadow: inset 0 3px 0 var(--member-color), inset 0 0 0 1px var(--line); }
 .balance-value { background: linear-gradient(135deg, var(--ink), var(--member-color)); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .reward-cost { background: var(--grad-warm); color: #24150a; }
@@ -4165,8 +4120,11 @@ form.is-allday [data-time-field] { display: none; }
 .table-selects select { min-width: 8rem; }
 .data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 /* several actions per row wrap instead of widening the table */
-.data-table .cell-actions { white-space: normal; width: auto; min-width: 9rem; }
-.data-table .cell-actions > * { margin: 0.15rem 0 0.15rem 0.25rem; vertical-align: middle; }
+.data-table .cell-actions { white-space: normal; width: auto; min-width: 22rem; }
+/* wide tables scroll inside their frame instead of being clipped */
+.table-scroll { overflow-x: auto; }
+.row-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.35rem; }
+.row-actions form { margin: 0; }
 .table-note { display: block; font-size: var(--step--1); margin-top: 0.15rem; font-weight: 400; }
 .status-attention { color: var(--brick); font-weight: 600; }
 .table-empty { padding: 1rem 0; }
@@ -4185,7 +4143,8 @@ form.is-allday [data-time-field] { display: none; }
     .data-table td[data-col="summary"]:empty { display: none; }
     .data-table .cell-actions { margin-top: 0.5rem; }
     .data-table .num { text-align: left; }
-    .data-table .cell-actions > * { margin: 0.15rem 0.25rem 0.15rem 0; }
+    .data-table .cell-actions { min-width: 0; }
+    .row-actions { justify-content: flex-start; }
 }
 .table-tools [hidden] { display: none; }
 
@@ -4259,27 +4218,12 @@ form.is-allday [data-time-field] { display: none; }
 .segmented-choice label { cursor: pointer; }
 .hide-chores .my-chore { display: none; }
 
-/* Haushalt: Tag und Woche; bei genug Platz nebeneinander, sonst untereinander */
-.household-layout { display: grid; gap: 1.75rem; }
-.household-layout .plan-nav { margin: 0 0 1rem; flex-wrap: wrap; }
-.household-layout .plan-nav h2 { margin: 0 auto 0 0; font-size: var(--step-1); }
-/* the room of the page decides, not the screen: both parts side by side only when the week stays readable */
-.household-page { container: household / inline-size; }
-@container household (min-width: 72rem) {
-    .household-layout { grid-template-columns: 18rem minmax(0, 1fr); align-items: start; }
-    .household-day { position: sticky; top: 1rem; }
-}
-.household-week { overflow-x: auto; }
-.household-week .plan-grid { min-width: 52rem; }
-.household-week .plan-row { grid-template-columns: 6rem repeat(7, minmax(6.4rem, 1fr)); }
-.household-week .chore-title { hyphens: auto; font-size: 0.8rem; }
+/* Household: the day with the person filter */
+.household-day-nav { margin: 0 0 1rem; flex-wrap: wrap; }
+.household-day-nav h2 { margin: 0 auto 0 0; font-size: var(--step-1); }
 .household-who { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1rem; }
 .household-who .chip-toggle[data-who]:not([data-who="open"])[aria-pressed="true"] { border-color: var(--member-color, var(--moss)); box-shadow: inset 3px 0 0 var(--member-color, var(--moss)); }
 .chore-chip[hidden], .household-day .chore-section[hidden] { display: none; }
-a.plan-day { text-decoration: none; color: inherit; }
-a.plan-day:hover { text-decoration: underline; }
-a.plan-day[aria-current="date"] { color: var(--ink); text-decoration: underline; }
-.plan-daygroup h3 a { color: inherit; text-decoration: none; }
 .household-day .chore-section h3 { font-size: var(--step-0); margin-bottom: 0.5rem; }
 
 /* Startseite: Schultag je Kind, kompakt */
@@ -4312,5 +4256,4 @@ a.plan-day[aria-current="date"] { color: var(--ink); text-decoration: underline;
 .school-lesson.is-changed { background: var(--honey-soft); }
 .school-flag { font-size: 0.72rem; font-weight: 600; color: var(--brick); }
 .school-lesson.is-changed .school-flag { color: var(--ink); }
-.household-week .plan-cell .chore-chip { flex-direction: column; gap: 0.25rem; }
 .segmented-choice { margin: 0.75rem 0; }
