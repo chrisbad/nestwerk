@@ -294,31 +294,15 @@
     function openQuick(root, range, member) {
         const dialog = root.querySelector("#grid-quick");
         if (!dialog) return;
-        const form = dialog.querySelector("form");
-        form.reset();
-        const set = (name, value) => { form.elements[name].value = value; };
         const allDay = Boolean(range.allDay);
-        set("allDay", String(allDay));
-        form.classList.toggle("is-allday", allDay);
-        form.querySelectorAll("[data-time-field]").forEach(input => {
-            input.required = !allDay;
-            input.disabled = allDay;
-        });
-        if (allDay) {
-            set("startDate", range.first);
-            set("endDate", range.last);
-        } else {
-            set("startDate", dateOf(range.start));
-            set("startTime", clock(minuteOf(range.start)));
-            set("endDate", dateOf(range.end));
-            set("endTime", clock(minuteOf(range.end)));
-        }
-        // created in a person's column: that person is preselected
-        form.querySelectorAll("[data-quick-member]").forEach(box => {
-            box.checked = Boolean(member) && box.value === member;
-        });
-        dialog.showModal();
-        form.elements.title.focus();
+        const context = allDay
+            ? { allDay, startDate: range.first, endDate: range.last, member: member || "" }
+            : {
+                allDay, startDate: dateOf(range.start), startTime: clock(minuteOf(range.start)),
+                endDate: dateOf(range.end), endTime: clock(minuteOf(range.end)), member: member || ""
+            };
+        // tapping a free time is most often a new event; the dialog offers the other types as tabs
+        window.NestwerkCreate.open(dialog, context, "event");
     }
 
     /** The link "Mehr Details" takes what was entered so far to the full form and comes back to this view. */

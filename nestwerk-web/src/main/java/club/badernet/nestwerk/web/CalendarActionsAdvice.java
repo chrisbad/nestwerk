@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /** Turns failures of the calendar's JSON actions into a short message for the toast. */
 @RestControllerAdvice(assignableTypes = {CalendarActionsController.class, CalendarChoreActionsController.class,
-        CalendarTodoActionsController.class})
+        CalendarTodoActionsController.class, CalendarBlockerActionsController.class})
 class CalendarActionsAdvice {
 
     @ExceptionHandler({IllegalArgumentException.class, ChoreConflictException.class, TodoConflictException.class})
