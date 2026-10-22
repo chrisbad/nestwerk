@@ -13,6 +13,8 @@
         </button>
     </div>
 
+    <div th:replace="~{calendar/fragments :: quickBar(${quickActions})}"></div>
+
     <form class="dialog-section" th:if="${canChangeStatus}" method="post" data-grid-form="todo-status"
           th:action="@{/calendar/actions/todos/{id}/status(id=${todo.id})}">
         <div class="segmented segmented-choice segmented-status" role="group" aria-label="Status">

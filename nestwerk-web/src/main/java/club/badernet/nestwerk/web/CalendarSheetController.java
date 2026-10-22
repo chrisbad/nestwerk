@@ -10,6 +10,8 @@ import club.badernet.nestwerk.household.ChoreTask;
 import club.badernet.nestwerk.household.ChoreTaskService;
 import club.badernet.nestwerk.household.Distribution;
 import club.badernet.nestwerk.household.HouseholdAccess;
+import club.badernet.nestwerk.item.CalendarItems;
+import club.badernet.nestwerk.item.ItemType;
 import club.badernet.nestwerk.security.CurrentUser;
 import club.badernet.nestwerk.settings.CalendarSettings;
 import club.badernet.nestwerk.todo.AssigneeRef;
@@ -53,12 +55,13 @@ public class CalendarSheetController {
     private final TodoService todos;
     private final TodoAccess todoAccess;
     private final CurrentUser currentUser;
+    private final CalendarItems items;
     private final CalendarSettings settings;
 
     public CalendarSheetController(CalendarPageData pageData, CalendarEventService events,
                                    ChoreTaskService choreTasks, HouseholdAccess householdAccess,
                                    HouseholdViews householdViews, TodoService todos, TodoAccess todoAccess,
-                                   CurrentUser currentUser, CalendarSettings settings) {
+                                   CurrentUser currentUser, CalendarSettings settings, CalendarItems items) {
         this.pageData = pageData;
         this.events = events;
         this.choreTasks = choreTasks;
@@ -68,6 +71,7 @@ public class CalendarSheetController {
         this.todoAccess = todoAccess;
         this.currentUser = currentUser;
         this.settings = settings;
+        this.items = items;
     }
 
     /** An occurrence: details, quick edit and delete. */
@@ -98,6 +102,9 @@ public class CalendarSheetController {
         model.addAttribute("recurring", recurring);
         model.addAttribute("canEdit", events.canEdit(event, viewer));
         model.addAttribute("canDelete", events.canDelete(event, viewer));
+        model.addAttribute("quickActions", items.find(ItemType.EVENT, id, viewer)
+                .map(item -> EntryAction.inDialog(item, shown == null ? null : shown.recurrenceId()))
+                .orElse(List.of()));
         model.addAttribute("memberById", pageData.memberById());
         model.addAttribute("allCategories", List.copyOf(pageData.categoryById(viewer).values()));
         return "calendar/sheet :: event";
@@ -127,6 +134,8 @@ public class CalendarSheetController {
         model.addAttribute("canAssign", open && householdAccess.can(viewer, "ASSIGN", task));
         model.addAttribute("assignAny", householdAccess.canAny(viewer, "ASSIGN"));
         model.addAttribute("canSkip", householdViews.chip(task, ctx).canSkip());
+        model.addAttribute("quickActions", items.find(ItemType.CHORE, taskId, viewer)
+                .map(item -> EntryAction.inDialog(item, null)).orElse(List.of()));
         model.addAttribute("canCancel", open && householdAccess.can(viewer, "EDIT", chore));
         model.addAttribute("canEditChore", householdAccess.can(viewer, "EDIT", chore));
         model.addAttribute("canDeleteChore", householdAccess.can(viewer, "DELETE", chore));
@@ -155,6 +164,8 @@ public class CalendarSheetController {
         model.addAttribute("canAssign", todoAccess.can(viewer, "ASSIGN", todo));
         model.addAttribute("canChangeStatus", todoAccess.can(viewer, "CHANGE_STATUS", todo));
         model.addAttribute("canDelete", todoAccess.can(viewer, "DELETE", todo));
+        model.addAttribute("quickActions", items.find(ItemType.TODO, id, viewer)
+                .map(item -> EntryAction.inDialog(item, null)).orElse(List.of()));
         return "calendar/todo-sheet :: todo";
     }
 }

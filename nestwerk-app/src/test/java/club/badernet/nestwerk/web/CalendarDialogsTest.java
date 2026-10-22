@@ -286,6 +286,101 @@ class CalendarDialogsTest {
                 .andExpect(content().string(containsString("überschneidet sich mit dem Termin „Operation“")));
     }
 
+    /* --- Quick actions: context menu and bar in the dialog ------------------------------------------------------ */
+
+    @Test
+    void contextMenuOffersTheChoreActionsTheViewerMayUse() throws Exception {
+        ChoreTask task = plannedChore(1);
+
+        mockMvc.perform(get("/calendar/items/chores/{id}/actions", task.getId()).with(asAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].key").value(org.hamcrest.Matchers.contains("complete", "skip", "edit")))
+                .andExpect(jsonPath("$[0].url").value("/calendar/actions/chores/" + task.getId() + "/complete"))
+                .andExpect(jsonPath("$[1].label").value("Nicht nötig"));
+
+        mockMvc.perform(post("/calendar/actions/chores/{id}/skip", task.getId()).with(csrf()).with(asAdmin()))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/calendar/items/chores/{id}/actions", task.getId()).with(asAdmin()))
+                .andExpect(jsonPath("$[*].key").value(org.hamcrest.Matchers.contains("undo")))
+                .andExpect(jsonPath("$[0].label").value("Wieder nötig"));
+    }
+
+    @Test
+    void contextMenuOfASeriesOffersToCancelOneOccurrenceOrDeleteAll() throws Exception {
+        CalendarEvent series = events.create(new EventInput("Chor", null, null, WEDNESDAY, LocalTime.of(19, 0),
+                WEDNESDAY, LocalTime.of(20, 0), false, "FREQ=WEEKLY", false, Set.of(), false, null), admin);
+        String occurrence = series.getStartsAt().toString();
+
+        mockMvc.perform(get("/calendar/items/events/{id}/actions", series.getId()).param("occurrence", occurrence)
+                        .with(asAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].key").value(org.hamcrest.Matchers.contains("edit", "cancel-occurrence",
+                        "delete")))
+                .andExpect(jsonPath("$[1].params.recurrenceId").value(occurrence))
+                .andExpect(jsonPath("$[2].label").value("Ganze Serie löschen"))
+                .andExpect(jsonPath("$[2].danger").value(true))
+                .andExpect(jsonPath("$[2].confirm").value(containsString("Chor")));
+    }
+
+    @Test
+    void contextMenuOfATodoCanCheckItOff() throws Exception {
+        Todo todo = dueTodo(Set.of());
+
+        mockMvc.perform(get("/calendar/items/todos/{id}/actions", todo.getId()).with(asAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].key").value("complete"))
+                .andExpect(jsonPath("$[0].url").value("/calendar/actions/todos/" + todo.getId() + "/status"))
+                .andExpect(jsonPath("$[0].params.status").value("DONE"));
+    }
+
+    @Test
+    void contextMenuRejectsUnknownEntriesAndKinds() throws Exception {
+        mockMvc.perform(get("/calendar/items/chores/{id}/actions", 999_999L).with(asAdmin()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/calendar/items/kitchen/{id}/actions", 1L).with(asAdmin()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/calendar/items/chores/{id}/actions", 1L).with(user("niemand")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void dialogsStartWithTheQuickActionBar() throws Exception {
+        ChoreTask task = plannedChore(1);
+        Todo todo = dueTodo(Set.of());
+
+        mockMvc.perform(get("/calendar/chores/{id}/sheet", task.getId()).with(asAdmin()))
+                .andExpect(content().string(containsString("class=\"quick-actions\"")))
+                .andExpect(content().string(containsString("/calendar/actions/chores/" + task.getId() + "/skip")))
+                .andExpect(content().string(containsString("Nicht nötig")));
+        mockMvc.perform(get("/calendar/todos/{id}/sheet", todo.getId()).with(asAdmin()))
+                .andExpect(content().string(containsString("class=\"quick-actions\"")))
+                .andExpect(content().string(containsString("name=\"status\" value=\"DONE\"")));
+    }
+
+    @Test
+    void theEventDialogHasDeleteInItsBarAndNothingForViewersWithoutTheRight() throws Exception {
+        CalendarEvent single = events.create(new EventInput("Zahnarzt", null, null, WEDNESDAY, LocalTime.of(9, 0),
+                WEDNESDAY, LocalTime.of(10, 0), false, null, false, Set.of(), false, null), admin);
+
+        mockMvc.perform(get("/calendar/events/{id}/sheet", single.getId()).with(asAdmin()))
+                .andExpect(content().string(containsString("class=\"quick-actions\"")))
+                .andExpect(content().string(containsString("Termin löschen")))
+                .andExpect(content().string(containsString("data-confirm-tone=\"danger\"")));
+        mockMvc.perform(get("/calendar/events/{id}/sheet", single.getId())
+                        .with(user("anderer").authorities(new SimpleGrantedAuthority("CALENDAR_VIEW"))))
+                .andExpect(content().string(not(containsString("class=\"quick-actions\""))));
+    }
+
+    @Test
+    void theContextMenuScriptIsLoadedOnEveryPage() throws Exception {
+        mockMvc.perform(get("/calendar/week").with(asAdmin()))
+                .andExpect(content().string(containsString("/js/calendar-menu.js")));
+        mockMvc.perform(get("/js/calendar-menu.js").with(asAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("role\", \"menu\"")))
+                .andExpect(content().string(containsString("contextmenu")));
+    }
+
     @Test
     void cancellingADateKeepsTheChoreAndItsOtherDates() throws Exception {
         ChoreTask task = plannedChore(2);
