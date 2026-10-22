@@ -18,7 +18,16 @@ public record GridDay(LocalDate date, boolean today, boolean weekend, List<Block
      * {@code null} for the only column of an unsplit grid and for "Alle".
      */
     public record Column(Long memberId, List<TimeGridLayout.Placed<GridEntry>> entries, List<GridZone> zones,
-                         List<GridBlock> blocks) {
+                         List<GridBlock> blocks, List<OverlapZone> overlaps) {
+    }
+
+    /**
+     * The time of an event or chore of one person, drawn red while another entry is dragged that must not overlap
+     * it. {@code key} identifies the occupant (to skip the dragged entry itself), {@code kind} is {@code event} or
+     * {@code chore}, {@code flag} tells that the occupant forbids overlap itself.
+     */
+    public record OverlapZone(int startMinute, int endMinute, Long memberId, String key, String kind, boolean flag,
+                              String label) {
     }
 
     /**

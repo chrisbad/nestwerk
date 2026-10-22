@@ -92,6 +92,7 @@ public class TimeGridPage {
                 .map(person -> TimeGridLayout.layout(of(person, split, timed, people), days, this::start, this::end))
                 .toList();
         Map<LocalDate, List<GridDay.GridZone>> zonesByDay = zones(days, viewer);
+        Map<LocalDate, List<GridDay.OverlapZone>> overlapsByDay = overlapZones(timed, days, people);
         Map<LocalDate, List<BlockerBands.Band>> bandsByDay = bands.sourceBands(first, last, viewer);
         Map<LocalDate, List<BusyBlock>> blocksByDay = busyBlocks.between(first, last, viewer).stream()
                 .collect(Collectors.groupingBy(b -> b.start().atZone(zone).toLocalDate()));
@@ -99,7 +100,7 @@ public class TimeGridPage {
         List<GridDay> gridDays = days.stream().map(d -> new GridDay(d, d.equals(today), isWeekend(d),
                 bandsByDay.getOrDefault(d, List.of()), dayColumns(d, columns, split, placed,
                         zonesByDay.getOrDefault(d, List.of()), blocks(blocksByDay.getOrDefault(d, List.of()),
-                                people)))).toList();
+                                people), overlapsByDay.getOrDefault(d, List.of())))).toList();
         List<AllDayItem> items = allDayItems(allDay, days, columns, split, people);
 
         model.addAttribute("gridDays", gridDays);
@@ -140,7 +141,8 @@ public class TimeGridPage {
 
     private static List<GridDay.Column> dayColumns(LocalDate day, List<GridPerson> columns, GridSplit split,
                                                    List<Map<LocalDate, List<TimeGridLayout.Placed<GridEntry>>>> placed,
-                                                   List<GridDay.GridZone> zones, List<MemberBlock> blocks) {
+                                                   List<GridDay.GridZone> zones, List<MemberBlock> blocks,
+                                                   List<GridDay.OverlapZone> overlaps) {
         List<GridDay.Column> result = new ArrayList<>();
         for (int i = 0; i < columns.size(); i++) {
             Long member = columns.get(i).memberId();
@@ -149,7 +151,10 @@ public class TimeGridPage {
             List<GridDay.GridBlock> ownBlocks = blocks.stream()
                     .filter(b -> split == GridSplit.NONE || b.memberId().equals(member))
                     .map(MemberBlock::block).toList();
-            result.add(new GridDay.Column(member, placed.get(i).getOrDefault(day, List.of()), own, ownBlocks));
+            List<GridDay.OverlapZone> ownOverlaps = split == GridSplit.NONE ? overlaps
+                    : overlaps.stream().filter(z -> z.memberId().equals(member)).toList();
+            result.add(new GridDay.Column(member, placed.get(i).getOrDefault(day, List.of()), own, ownBlocks,
+                    ownOverlaps));
         }
         return List.copyOf(result);
     }
@@ -192,6 +197,38 @@ public class TimeGridPage {
                 o.end().withZoneSameInstant(zone).toLocalDateTime(), color,
                 category == null ? null : category.getName(), events.canEdit(o.createdBy(), viewer),
                 events.canDelete(o.createdBy(), viewer));
+    }
+
+    /** One person's share of a timed event or chore, as a candidate for the overlap zones. */
+    private record Occupied(GridEntry entry, Long memberId, String key, String kind, boolean flag, String label) {
+    }
+
+    /** The times of the timed events and chores per member and day; the grid shows the relevant ones while dragging. */
+    private Map<LocalDate, List<GridDay.OverlapZone>> overlapZones(List<GridEntry> timed, List<LocalDate> days,
+                                                                   Map<Long, FamilyMember> people) {
+        List<Occupied> occupied = new ArrayList<>();
+        for (GridEntry entry : timed) {
+            for (Long member : entry.memberIds()) {
+                if (!people.containsKey(member)) {
+                    continue;
+                }
+                switch (entry) {
+                    case GridEntry.Event e -> occupied.add(new Occupied(e, member, "event:" + e.occurrence().eventId(),
+                            "event", e.occurrence().noOverlap(), "dem Termin „" + e.occurrence().title() + "“"));
+                    case GridEntry.Chore c -> occupied.add(new Occupied(c, member, "chore:" + c.chore().id(), "chore",
+                            c.chore().noOverlap(), "der Hausarbeit „" + c.chore().title() + "“"));
+                    default -> {
+                    }
+                }
+            }
+        }
+        Map<LocalDate, List<GridDay.OverlapZone>> result = new LinkedHashMap<>();
+        TimeGridLayout.layout(occupied, days, o -> start(o.entry()), o -> end(o.entry())).forEach((day, list) ->
+                result.put(day, list.stream().map(p -> new GridDay.OverlapZone(p.startMinute(), p.endMinute(),
+                        p.entry().memberId(), p.entry().key(), p.entry().kind(), p.entry().flag(),
+                        people.get(p.entry().memberId()).getName() + " · überschneidet sich mit "
+                                + p.entry().label())).toList()));
+        return result;
     }
 
     /** A drawn block with the person it belongs to, to pick it for the person's column. */

@@ -4,6 +4,7 @@ import club.badernet.nestwerk.calendar.CalendarEvent;
 import club.badernet.nestwerk.calendar.CalendarEventRepository;
 import club.badernet.nestwerk.settings.CalendarSettings;
 import club.badernet.nestwerk.calendar.Occurrence;
+import club.badernet.nestwerk.calendar.PlannedRange;
 import club.badernet.nestwerk.calendar.RecurrenceExpander;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,6 +62,34 @@ public class BusyTimes {
                 for (Long member : involved) {
                     if (memberIds.contains(member)) {
                         result.computeIfAbsent(member, k -> new ArrayList<>()).add(range);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Events of the members in the period as planned ranges with title and overlap flag. All-day events only count
+     * when they are an absence or forbid overlap themselves; a birthday does not keep chores away all day.
+     */
+    @Transactional(readOnly = true)
+    public List<PlannedRange> plannedEvents(Collection<Long> memberIds, Instant from, Instant to,
+                                            Long ignoreEventId) {
+        List<PlannedRange> result = new ArrayList<>();
+        if (memberIds.isEmpty()) {
+            return result;
+        }
+        for (CalendarEvent event : events.findCandidates(from, to, 0L, true)) {
+            if (event.getId().equals(ignoreEventId) || event.isAllDay() && !event.isAbsence() && !event.isNoOverlap()) {
+                continue;
+            }
+            for (Occurrence o : expander.expand(event, from, to)) {
+                TimeRange range = new TimeRange(o.start().toInstant(), o.end().toInstant());
+                for (Long member : event.getMemberIds()) {
+                    if (memberIds.contains(member)) {
+                        result.add(new PlannedRange(member, range, "dem Termin „" + o.title() + "“",
+                                event.isNoOverlap()));
                     }
                 }
             }
