@@ -34,7 +34,7 @@ public class HouseholdTools {
     public record ChoreItem(Long choreId, String title, String area, String description, String kind, String rrule,
                             LocalDate startsOn, String dueTime, Integer intervalDays, String distribution,
                             List<String> members, int minutesEasy, int minutesMedium, int minutesHard,
-                            boolean active, List<String> dates) {
+                            boolean active, List<String> dates, boolean oncePerDay) {
     }
 
     private static final int MAX_DAYS = 31;
@@ -162,7 +162,9 @@ public class HouseholdTools {
                                  @McpToolParam(description = "Frühester Beginn HH:MM", required = false)
                                  String windowStart,
                                  @McpToolParam(description = "Spätestes Ende HH:MM", required = false)
-                                 String windowEnd) {
+                                 String windowEnd,
+                                 @McpToolParam(description = "true = höchstens eine Buchung pro Tag (Standard false)",
+                                         required = false) Boolean oncePerDay) {
         return tools.write(context, user -> {
             ChoreKind k = Tools.enumValue(ChoreKind.class, kind, "kind");
             Distribution d = Tools.enumValue(Distribution.class, distribution, "distribution");
@@ -172,7 +174,8 @@ public class HouseholdTools {
                     rrule == null || rrule.isBlank() ? "FREQ=WEEKLY" : rrule, Tools.date(startsOn, "startsOn"),
                     Tools.time(dueTime, "dueTime"), intervalDays == null ? 7 : intervalDays,
                     d == null ? Distribution.ROTATION : d, memberIds == null ? List.of() : memberIds,
-                    Tools.time(windowStart, "windowStart"), Tools.time(windowEnd, "windowEnd")), user);
+                    Tools.time(windowStart, "windowStart"), Tools.time(windowEnd, "windowEnd"),
+                    Boolean.TRUE.equals(oncePerDay)), user);
             return chore(chores.get(created.getId(), user), names());
         });
     }
@@ -208,7 +211,9 @@ public class HouseholdTools {
                                  @McpToolParam(description = "Frühester Beginn HH:MM", required = false)
                                  String windowStart,
                                  @McpToolParam(description = "Spätestes Ende HH:MM", required = false)
-                                 String windowEnd) {
+                                 String windowEnd,
+                                 @McpToolParam(description = "true = höchstens eine Buchung pro Tag", required = false)
+                                 Boolean oncePerDay) {
         return tools.write(context, user -> {
             Long id = Tools.required(choreId, "choreId");
             Chore c = chores.get(id, user);
@@ -225,7 +230,8 @@ public class HouseholdTools {
                     intervalDays == null ? c.getIntervalDays() : intervalDays,
                     d == null ? c.getDistribution() : d, memberIds == null ? c.getMemberIds() : memberIds,
                     windowStart == null ? c.getWindowStart() : Tools.time(windowStart, "windowStart"),
-                    windowEnd == null ? c.getWindowEnd() : Tools.time(windowEnd, "windowEnd")), user);
+                    windowEnd == null ? c.getWindowEnd() : Tools.time(windowEnd, "windowEnd"),
+                    oncePerDay == null ? c.isOncePerDay() : oncePerDay), user);
             return chore(chores.get(id, user), names());
         });
     }
@@ -373,7 +379,7 @@ public class HouseholdTools {
                 c.getRrule(), c.getStartsOn(), c.getDueTime() == null ? null : c.getDueTime().toString(),
                 c.getIntervalDays(), c.getDistribution().name(),
                 c.getMemberIds().stream().map(m -> names.getOrDefault(m, "?") + " (" + m + ")").toList(),
-                c.getMinutesEasy(), c.getMinutesMedium(), c.getMinutesHard(), c.isActive(), dates);
+                c.getMinutesEasy(), c.getMinutesMedium(), c.getMinutesHard(), c.isActive(), dates, c.isOncePerDay());
     }
 
     private Map<Long, String> names() {

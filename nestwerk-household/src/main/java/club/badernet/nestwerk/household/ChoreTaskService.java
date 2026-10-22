@@ -197,6 +197,7 @@ public class ChoreTaskService {
     }
 
     private void finish(ChoreTask task, Long doer, Set<Long> helperIds, Long userId, CleanBooking booking) {
+        requireNotBookedYet(task.getChore(), booking.day());
         Set<Long> people = new LinkedHashSet<>();
         people.add(doer);
         if (helperIds != null) {
@@ -216,6 +217,13 @@ public class ChoreTaskService {
         }
         if (task.getChore().getKind() == ChoreKind.INTERVAL) {
             planner.plan(task.getChore(), today());
+        }
+    }
+
+    private void requireNotBookedYet(Chore chore, LocalDate day) {
+        if (chore.isOncePerDay() && tasks.existsByChoreIdAndStatusAndDueOn(chore.getId(), ChoreTaskStatus.DONE, day)) {
+            throw new ChoreConflictException("„" + chore.getTitle() + "“ wurde an diesem Tag schon gebucht und lässt "
+                    + "sich nur einmal pro Tag buchen.");
         }
     }
 

@@ -295,6 +295,64 @@ class ChoreTaskServiceTest {
         assertThat(tasks.findAllByChoreId(c.getId())).isEmpty();
     }
 
+    private Chore onDemandChore(boolean oncePerDay) {
+        return chores.create(new ChoreInput("Spülmaschine", null, null, 10, 10, 10, ChoreKind.ON_DEMAND,
+                "FREQ=DAILY", today, null, null, null, List.of(), null, null, oncePerDay), admin);
+    }
+
+    @Test
+    void oncePerDayChoreRejectsSecondBookingOnTheSameDay() {
+        Chore c = onDemandChore(true);
+        service.bookAdHoc(c.getId(), kid, null, Set.of(), ChoreTaskService.Booking.now());
+        entityManager.flush();
+
+        assertThatThrownBy(() -> service.bookAdHoc(c.getId(), kid, null, Set.of(), ChoreTaskService.Booking.now()))
+                .isInstanceOf(ChoreConflictException.class)
+                .hasMessageContaining("einmal pro Tag");
+        entityManager.flush();
+        assertThat(credits.findAll().stream().filter(cr -> cr.getTask().getChore().getId().equals(c.getId())))
+                .hasSize(1);
+    }
+
+    @Test
+    void choreWithoutLimitCanBeBookedSeveralTimesPerDay() {
+        Chore c = onDemandChore(false);
+
+        service.bookAdHoc(c.getId(), kid, null, Set.of(), ChoreTaskService.Booking.now());
+        service.bookAdHoc(c.getId(), kid, null, Set.of(), ChoreTaskService.Booking.now());
+        entityManager.flush();
+
+        assertThat(tasks.findAllByChoreIdAndStatus(c.getId(), ChoreTaskStatus.DONE)).hasSize(2);
+    }
+
+    @Test
+    void oncePerDayChoreAllowsBookingAgainAfterUndo() {
+        Chore c = onDemandChore(true);
+        ChoreTask first = service.bookAdHoc(c.getId(), kid, null, Set.of(), ChoreTaskService.Booking.now());
+        entityManager.flush();
+        service.undo(first.getId(), kid);
+        entityManager.flush();
+
+        service.bookAdHoc(c.getId(), kid, null, Set.of(), ChoreTaskService.Booking.now());
+        entityManager.flush();
+
+        assertThat(tasks.findAllByChoreIdAndStatus(c.getId(), ChoreTaskStatus.DONE)).hasSize(1);
+    }
+
+    @Test
+    void oncePerDayChoreRejectsCheckingOffAPlannedTaskThatWasAlreadyBooked() {
+        Chore c = chores.create(new ChoreInput("Pflanzen gießen", null, null, 10, 10, 10, ChoreKind.RECURRING,
+                "FREQ=DAILY;COUNT=1", today, null, null, Distribution.FIXED, List.of(kidM.getId()), null, null, true),
+                admin);
+        entityManager.flush();
+        service.bookAdHoc(c.getId(), kid, null, Set.of(), ChoreTaskService.Booking.now());
+        entityManager.flush();
+        ChoreTask planned = tasks.findAllByChoreIdAndStatus(c.getId(), ChoreTaskStatus.OPEN).getFirst();
+
+        assertThatThrownBy(() -> service.complete(planned.getId(), kid, null, Set.of(), ChoreTaskService.Booking.now()))
+                .isInstanceOf(ChoreConflictException.class);
+    }
+
     @Test
     void adHocBookingOfIntervalChoreReplacesTheOpenTask() {
         Chore c = staged(ChoreKind.INTERVAL, 7);

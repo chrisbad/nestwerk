@@ -109,7 +109,7 @@ class HouseholdAccountToolsTest {
     void removesFixedChoreDates() {
         LocalDate day = LocalDate.now(clock).plusDays(3);
         HouseholdTools.ChoreItem chore = householdTools.createChore(as(admin), "Biotonne", null, null, "DATES", null,
-                null, null, null, "FIXED", List.of(kidM.getId()), null, null, null, null, null);
+                null, null, null, "FIXED", List.of(kidM.getId()), null, null, null, null, null, null);
         householdTools.addChoreDate(as(admin), chore.choreId(), day.toString(), null);
 
         accountTools.removeChoreDate(as(admin), chore.choreId(), day.toString(), null);

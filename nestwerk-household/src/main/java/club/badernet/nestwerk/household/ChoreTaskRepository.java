@@ -14,6 +14,8 @@ public interface ChoreTaskRepository extends JpaRepository<ChoreTask, Long> {
 
     Optional<ChoreTask> findByChoreIdAndSlotKey(Long choreId, String slotKey);
 
+    boolean existsByChoreIdAndStatusAndDueOn(Long choreId, ChoreTaskStatus status, LocalDate day);
+
     List<ChoreTask> findAllByChoreIdAndStatus(Long choreId, ChoreTaskStatus status);
 
     List<ChoreTask> findAllByDueOnBetweenAndStatusNot(LocalDate from, LocalDate to, ChoreTaskStatus status);

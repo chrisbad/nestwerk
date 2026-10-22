@@ -275,7 +275,7 @@ class McpToolsTest {
         LocalDate today = LocalDate.now(clock);
         HouseholdTools.ChoreItem created = householdTools.createChore(as(admin), "Bad putzen", "Bad", null, null,
                 "FREQ=DAILY;COUNT=3", today.toString(), null, null, "FIXED", List.of(kidM.getId()), null, null, null,
-                null, null);
+                null, null, null);
         entityManager.flush();
 
         assertThat(created.kind()).isEqualTo("RECURRING");
@@ -287,7 +287,7 @@ class McpToolsTest {
         assertThat(planned).hasSize(3);
 
         assertThat(householdTools.updateChore(as(admin), created.choreId(), null, null, null, null, null, null, null,
-                null, null, null, 5, 8, 12, null, null).minutesMedium()).isEqualTo(8);
+                null, null, null, 5, 8, 12, null, null, null).minutesMedium()).isEqualTo(8);
         // Ändern plant die offenen Aufgaben neu, die IDs sind danach andere
         Long taskId = householdTools.listChoreTasks(as(admin), today.toString(), today.plusDays(2).toString())
                 .getFirst().taskId();
@@ -295,12 +295,12 @@ class McpToolsTest {
                 .isEqualTo("Mama");
 
         HouseholdTools.ChoreItem dated = householdTools.createChore(as(admin), "Sperrmüll", null, null, "DATES", null,
-                null, null, null, "OPEN", null, null, null, null, null, null);
+                null, null, null, "OPEN", null, null, null, null, null, null, null);
         assertThat(householdTools.addChoreDate(as(admin), dated.choreId(), today.plusDays(5).toString(), "10:00")
                 .dates()).containsExactly(today.plusDays(5) + " 10:00");
 
         HouseholdTools.ChoreItem onDemand = householdTools.createChore(as(admin), "Staubsaugen", null, null,
-                "ON_DEMAND", null, null, null, null, "OPEN", null, null, null, null, null, null);
+                "ON_DEMAND", null, null, null, null, "OPEN", null, null, null, null, null, null, null);
         assertThat(householdTools.bookChore(as(admin), onDemand.choreId(), kidM.getId(), null, "EASY", null).status())
                 .isNotEqualTo("OPEN");
 
@@ -316,7 +316,24 @@ class McpToolsTest {
         assertThat(householdTools.setChoreActive(as(admin), created.choreId(), false).active()).isFalse();
         assertThat(householdTools.setChoreActive(as(admin), created.choreId(), true).active()).isTrue();
         assertThatThrownBy(() -> householdTools.createChore(as(kid), "Verboten", null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null)).isInstanceOf(Tools.ToolException.class);
+                null, null, null, null, null, null, null, null, null)).isInstanceOf(Tools.ToolException.class);
+    }
+
+    @Test
+    void oncePerDayChoreRejectsSecondBookingViaTools() {
+        HouseholdTools.ChoreItem chore = householdTools.createChore(as(admin), "Spülmaschine", null, null,
+                "ON_DEMAND", null, null, null, null, "OPEN", null, null, null, null, null, null, true);
+        assertThat(chore.oncePerDay()).isTrue();
+
+        householdTools.bookChore(as(admin), chore.choreId(), kidM.getId(), null, "EASY", null);
+
+        assertThatThrownBy(() -> householdTools.bookChore(as(admin), chore.choreId(), kidM.getId(), null, "EASY", null))
+                .isInstanceOf(Tools.ToolException.class)
+                .hasMessageContaining("einmal pro Tag");
+        assertThat(householdTools.updateChore(as(admin), chore.choreId(), null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, false).oncePerDay()).isFalse();
+        assertThat(householdTools.bookChore(as(admin), chore.choreId(), kidM.getId(), null, "EASY", null).status())
+                .isNotEqualTo("OPEN");
     }
 
     @Test

@@ -124,6 +124,13 @@
         </fieldset>
 
         <fieldset class="event-fields">
+            <div class="field">
+                <label class="choice">
+                    <input type="checkbox" th:field="*{oncePerDay}">
+                    <span>Nur einmal pro Tag buchbar</span>
+                </label>
+                <p class="hint">Eine zweite Buchung am selben Tag wird abgelehnt.</p>
+            </div>
             <div class="kind-section" data-kind-section="DATES RECURRING INTERVAL">
                 <fieldset class="field choices">
                     <legend>Wer bekommt sie?</legend>
