@@ -48,11 +48,13 @@ public class CalendarEventService {
     private final CalendarAccess access;
     private final ApplicationEventPublisher publisher;
     private final BlockerConflicts blockers;
+    private final ChoreOverlaps overlaps;
 
     public CalendarEventService(CalendarEventRepository events, FamilyMemberRepository members,
                                 EventCategoryRepository categories, RecurrenceExpander expander,
                                 CalendarSettings settings, CalendarAccess access,
-                                ApplicationEventPublisher publisher, BlockerConflicts blockers) {
+                                ApplicationEventPublisher publisher, BlockerConflicts blockers,
+                                ChoreOverlaps overlaps) {
         this.events = events;
         this.members = members;
         this.categories = categories;
@@ -60,6 +62,7 @@ public class CalendarEventService {
         this.zone = settings.zone();
         this.access = access;
         this.publisher = publisher;
+        this.overlaps = overlaps;
         this.blockers = blockers;
     }
 
@@ -102,6 +105,7 @@ public class CalendarEventService {
                 times.start(), times.end(), in.allDay(), zone.getId(), actor.getId());
         applyDetails(event, in);
         refuseBlocked(conflicts(event, null, actor));
+        requireNoChoreOverlap(event.getTitle(), event.isNoOverlap(), event);
         CalendarEvent saved = events.save(event);
         if (saved.isAbsence()) {
             publisher.publishEvent(new AbsenceChangedEvent(saved.getId()));
@@ -120,6 +124,7 @@ public class CalendarEventService {
         boolean seriesChanged = !times.start().equals(event.getStartsAt())
                 || !Objects.equals(normalizeRule(in.rrule()), event.getRrule());
         refuseBlocked(conflicts(in, id, actor));
+        requireNoChoreOverlap(requireTitle(in.title()), in.noOverlap(), draft(in, actor));
         event.setTitle(requireTitle(in.title()));
         event.setTimes(times.start(), times.end(), in.allDay());
         applyDetails(event, in);
@@ -163,6 +168,7 @@ public class CalendarEventService {
         TimeRange times = change.in(zone);
         List<Conflict> found = blockers.check(event.getMemberIds(), List.of(times), actor, event.getId());
         refuseBlocked(found);
+        requireNoChoreOverlap(event.getTitle(), event.isNoOverlap(), event.getMemberIds(), List.of(times));
         boolean wasAbsence = event.isAbsence();
         event.setTimes(times.start(), times.end(), change.allDay());
         event.markChanged();
@@ -194,6 +200,7 @@ public class CalendarEventService {
         TimeRange times = change.in(zone);
         List<Conflict> found = blockers.check(event.getMemberIds(), List.of(times), actor, event.getId());
         refuseBlocked(found);
+        requireNoChoreOverlap(event.getTitle(), event.isNoOverlap(), event.getMemberIds(), List.of(times));
         Optional<CalendarEventException> current = event.exceptionFor(recurrenceId);
         // the series title is not copied, so that renaming the series still reaches this occurrence
         String newTitle = title == null ? current.map(CalendarEventException::getTitle).orElse(null)
@@ -231,6 +238,7 @@ public class CalendarEventService {
         draft.setMemberIds(event.getMemberIds());
         List<Conflict> found = conflicts(draft, event.getId(), actor);
         refuseBlocked(found);
+        requireNoChoreOverlap(event.getTitle(), event.isNoOverlap(), draft);
         boolean wasAbsence = event.isAbsence();
         event.setTimes(draft.getStartsAt(), draft.getEndsAt(), false);
         event.moveExceptionsTo(start, zone);
@@ -267,6 +275,7 @@ public class CalendarEventService {
         draft.setMemberIds(ids);
         List<Conflict> forMembers = conflicts(draft, event.getId(), actor);
         refuseBlocked(forMembers);
+        requireNoChoreOverlap(event.getTitle(), event.isNoOverlap(), draft);
         forMembers.stream().filter(c -> !found.contains(c)).forEach(found::add);
         event.markChanged();
         absenceChanged(event, wasAbsence);
@@ -296,6 +305,7 @@ public class CalendarEventService {
         CalendarEvent event = editableSeries(id, recurrenceId, actor);
         TimeRange times = new TimeChange.Timed(in.start(), in.end()).in(zone);
         refuseBlocked(blockers.check(event.getMemberIds(), List.of(times), actor, event.getId()));
+        requireNoChoreOverlap(event.getTitle(), event.isNoOverlap(), event.getMemberIds(), List.of(times));
         event.overrideOccurrence(recurrenceId, requireTitle(in.title()), description(in.description()),
                 location(in.location()), times.start(), times.end());
         event.markChanged();
@@ -375,6 +385,7 @@ public class CalendarEventService {
         event.setLocation(location(in.location()));
         event.setPrivateEvent(in.privateEvent());
         event.setAbsence(in.absence());
+        event.setNoOverlap(in.noOverlap());
         if (in.categoryId() != null && !categories.existsById(in.categoryId())) {
             throw new IllegalArgumentException("Unbekannte Terminkategorie ausgewählt.");
         }
@@ -397,18 +408,27 @@ public class CalendarEventService {
      */
     @Transactional(readOnly = true)
     public List<Conflict> conflicts(EventInput in, Long eventId, User actor) {
+        return conflicts(draft(in, actor), eventId, actor);
+    }
+
+    private CalendarEvent draft(EventInput in, User actor) {
         TimeRange times = in.timeChange().in(zone);
         CalendarEvent draft = new CalendarEvent("check", "Prüfung", times.start(), times.end(), in.allDay(),
                 zone.getId(), actor.getId());
         draft.setRrule(normalizeRule(in.rrule()));
         draft.setMemberIds(in.memberIds() == null ? Set.of() : new HashSet<>(in.memberIds()));
-        return conflicts(draft, eventId, actor);
+        return draft;
     }
 
     private List<Conflict> conflicts(CalendarEvent draft, Long eventId, User actor) {
         if (draft.getMemberIds().isEmpty()) {
             return List.of();
         }
+        return blockers.check(draft.getMemberIds(), occurrenceRanges(draft), actor, eventId);
+    }
+
+    /** The time of the event, for a series of its occurrences in the next eight weeks. */
+    private List<TimeRange> occurrenceRanges(CalendarEvent draft) {
         List<TimeRange> ranges = new ArrayList<>();
         if (draft.getRrule() == null) {
             ranges.add(new TimeRange(draft.getStartsAt(), draft.getEndsAt()));
@@ -417,7 +437,17 @@ public class CalendarEventService {
                 ranges.add(new TimeRange(o.start().toInstant(), o.end().toInstant()));
             }
         }
-        return blockers.check(draft.getMemberIds(), ranges, actor, eventId);
+        return ranges;
+    }
+
+    private void requireNoChoreOverlap(String title, boolean flagged, CalendarEvent draft) {
+        requireNoChoreOverlap(title, flagged, draft.getMemberIds(), occurrenceRanges(draft));
+    }
+
+    /** Rejects times over planned chores when the event or such a chore forbids overlap. */
+    private void requireNoChoreOverlap(String title, boolean flagged, java.util.Collection<Long> memberIds,
+                                       List<TimeRange> ranges) {
+        overlaps.requireFreeForEvent(title, flagged, memberIds, ranges);
     }
 
     private static void refuseBlocked(List<Conflict> found) {

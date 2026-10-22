@@ -75,6 +75,12 @@ public class Chore {
     @Column(name = "interval_days")
     private Integer intervalDays;
 
+    @Column(name = "once_per_day", nullable = false)
+    private boolean oncePerDay;
+
+    @Column(name = "no_overlap", nullable = false)
+    private boolean noOverlap;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private Distribution distribution;
@@ -135,6 +141,8 @@ public class Chore {
         this.windowStart = in.windowStart();
         this.windowEnd = in.windowEnd();
         this.intervalDays = in.intervalDays();
+        this.oncePerDay = in.oncePerDay();
+        this.noOverlap = in.noOverlap();
         this.distribution = in.distribution();
         this.memberIds.clear();
         this.memberIds.addAll(in.memberIds());
@@ -169,6 +177,8 @@ public class Chore {
     public LocalTime getWindowStart() { return windowStart; }
     public LocalTime getWindowEnd() { return windowEnd; }
     public Integer getIntervalDays() { return intervalDays; }
+    public boolean isOncePerDay() { return oncePerDay; }
+    public boolean isNoOverlap() { return noOverlap; }
     public Distribution getDistribution() { return distribution; }
     public boolean isActive() { return active; }
     public String getIcalUrl() { return icalUrl; }

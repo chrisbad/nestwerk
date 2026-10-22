@@ -80,7 +80,7 @@
                                     </a>
                                 </th:block>
                                 <th:block th:if="${lane.entry.kind == 'chore'}" th:with="c=${lane.entry.chore}">
-                                    <a class="occ occ-allday occ-chore tgrid-item"
+                                    <a class="occ occ-allday occ-chore tgrid-item" th:classappend="${c.skipped} ? 'is-skipped'"
                                        th:style="${c.color != null} ? |--occ-color: ${c.color}|"
                                        th:href="@{/household/tasks/{id}(id=${c.id})}" th:title="${c.title}"
                                        th:attr="data-grid-item='chore-day', data-editable='false',
@@ -125,6 +125,18 @@
                              th:attr="data-date=${d.date}, data-member=${col.memberId},
                                       data-member-name=${splitByPerson} ? ${persons[ci.index].name} : null"
                              th:classappend="${(d.today ? 'is-today ' : '') + (d.weekend ? 'is-weekend ' : '') + (ci.first and splitByPerson ? 'is-day-start' : '')}">
+                            <div class="tgrid-busy" th:each="b : ${col.blocks}" th:classappend="'tgrid-busy-' + ${b.kind}"
+                                 th:style="|--start: ${b.startMinute}; --dur: ${b.endMinute - b.startMinute}; --stripe: ${b.stripe}; --stripes: ${b.stripes};${b.color != null ? ' --busy-color: ' + b.color + ';' : ''}|">
+                                <span class="tgrid-busy-label" th:text="${b.label}" th:title="|${b.label}, ${b.times}|">Lena · Arbeit</span>
+                            </div>
+                            <div class="tgrid-zone tgrid-zone-overlap" th:each="z : ${col.overlaps}"
+                                 th:style="|--start: ${z.startMinute}; --dur: ${z.endMinute - z.startMinute}|"
+                                 th:attr="data-member=${z.memberId}, data-strength='overlap', data-overlap-key=${z.key},
+                                          data-overlap-kind=${z.kind}, data-overlap-flag=${z.flag},
+                                          data-start-minute=${z.startMinute}, data-end-minute=${z.endMinute},
+                                          data-label=${z.label}" aria-hidden="true">
+                                <span class="tgrid-zone-label" th:text="${z.label}">Lena · überschneidet sich mit dem Termin</span>
+                            </div>
                             <div class="tgrid-zone" th:each="z : ${col.zones}" th:classappend="'tgrid-zone-' + ${z.strength}"
                                  th:style="|--start: ${z.startMinute}; --dur: ${z.endMinute - z.startMinute}|"
                                  th:attr="data-member=${z.memberId}, data-strength=${z.strength},
@@ -146,7 +158,8 @@
                                             data-recurring=${o.recurring}, data-editable=${e.editable},
                                             data-start=${#temporals.format(e.startsAt, 'yyyy-MM-dd''T''HH:mm')},
                                             data-end=${#temporals.format(e.endsAt, 'yyyy-MM-dd''T''HH:mm')},
-                                            data-members=${e.memberList()}, data-member=${col.memberId}, data-title=${o.title}">
+                                            data-members=${e.memberList()}, data-member=${col.memberId}, data-title=${o.title},
+                                            data-overlap-key=|event:${o.eventId}|, data-no-overlap=${o.noOverlap}">
                                     <span class="occ-time" data-item-time
                                           ><span th:text="${#temporals.format(e.startsAt, 'HH:mm')}">10:00</span><span class="occ-time-end" th:text="|–${#temporals.format(e.endsAt, 'HH:mm')}|">–11:00</span></span>
                                     <span class="occ-title">
@@ -167,14 +180,15 @@
                                 </a>
                                 <a th:if="${p.entry.kind == 'chore'}" th:with="c=${p.entry.chore}"
                                    class="occ occ-chore tgrid-item tgrid-event"
-                                   th:classappend="${(p.durationMinutes() < 40 ? 'is-short ' : '') + (c.movable ? 'is-editable' : '')}"
+                                   th:classappend="${(p.durationMinutes() < 40 ? 'is-short ' : '') + (c.movable ? 'is-editable ' : '') + (c.skipped ? 'is-skipped' : '')}"
                                    th:style="|--start: ${p.startMinute}; --dur: ${p.durationMinutes()}; --col: ${p.column}; --cols: ${p.columns};${c.color != null ? ' --occ-color: ' + c.color + ';' : ''}|"
                                    th:href="@{/household/tasks/{id}(id=${c.id})}" th:title="|${c.time} ${c.title}|"
                                    th:attr="data-grid-item='chore', data-chore-id=${c.id}, data-editable=${c.movable},
                                             data-sheet-url=@{/calendar/chores/{id}/sheet(id=${c.id})},
                                             data-start=${#temporals.format(c.startsAt(), 'yyyy-MM-dd''T''HH:mm')},
                                             data-end=${#temporals.format(c.endsAt(), 'yyyy-MM-dd''T''HH:mm')},
-                                            data-members=${c.memberId}, data-member=${col.memberId}, data-title=${c.title}">
+                                            data-members=${c.memberId}, data-member=${col.memberId}, data-title=${c.title},
+                                            data-overlap-key=|chore:${c.id}|, data-no-overlap=${c.noOverlap}">
                                     <span class="occ-time" data-item-time th:text="${c.time}">18:30–18:55</span>
                                     <span class="occ-title">
                                         <svg class="occ-lock" viewBox="0 0 24 24" role="img" aria-label="Hausarbeit">
@@ -197,8 +211,6 @@
         Einträge gedrückt halten zum Verschieben – auch in die Spalte einer anderen Person –, an den Griffen oben und
         unten ziehen für Beginn und Ende. Mit zwei Fingern zoomen.
     </p>
-
-    <div th:replace="~{calendar/fragments :: quickDialog}"></div>
 
     <div th:replace="~{calendar/fragments :: sheetDialog}"></div>
 

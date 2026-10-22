@@ -3,7 +3,7 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <body>
 
-<!-- Toolbar: title, paging, choice of view, grid snapping, new event -->
+<!-- Toolbar: title, paging, choice of view, grid snapping, "Neu" -->
 <div th:fragment="toolbar(title, view, date, prevUrl, todayUrl, nextUrl)" class="cal-toolbar"
      th:with="here=${view == 'agenda'} ? @{/calendar/agenda(from=${date})} : @{/calendar/{v}(v=${view}, date=${date})}">
     <div class="cal-title">
@@ -21,12 +21,6 @@
         </div>
     </div>
     <div class="cal-actions">
-        <button type="button" class="button button-ghost button-small" data-open-dialog="chore-quick"
-                th:if="${showChores and !#lists.isEmpty(quickChores)}"
-                title="Eine Hausarbeit einplanen oder als erledigt buchen">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 20V10l7.5-6 7.5 6v10z"/><path d="M9.5 20v-5h5v5"/></svg>
-            Hausarbeit
-        </button>
         <div class="menu cal-menu" data-menu>
             <button type="button" class="button button-ghost button-small" aria-expanded="false" aria-haspopup="true"
                     data-menu-toggle title="Ebenen, Raster, Zoom und Spalten pro Person">
@@ -41,13 +35,16 @@
                             th:if="${showTodos}">ToDos</button>
                     <button type="button" class="chip-toggle" data-layer="chores" aria-pressed="true"
                             th:if="${showChores}">Hausarbeiten</button>
+                    <button type="button" class="chip-toggle" data-layer="busy" aria-pressed="true"
+                            th:if="${gridDays != null}">Sperrzeiten</button>
                 </div>
-            <div class="segmented segmented-slots" role="group" aria-label="Raster" th:if="${gridDays != null}">
-                <button type="button" data-slot-choice="coarse" aria-pressed="true"
-                        th:title="|Grob: rastet auf ${slotCoarse} Minuten ein|">Grob</button>
-                <button type="button" data-slot-choice="fine" aria-pressed="false"
-                        th:title="|Fein: rastet auf ${slotFine} Minuten ein|">Fein</button>
-            </div>
+            <label class="field field-inline cal-slot" th:if="${gridDays != null}"
+                   title="Auf wie viele Minuten Einträge beim Ziehen einrasten">
+                <span>Raster</span>
+                <select data-slot-select aria-label="Rastergröße beim Ziehen">
+                    <option th:each="m : ${slotOptions}" th:value="${m}" th:text="|${m} Min|">15 Min</option>
+                </select>
+            </label>
             <div class="segmented segmented-zoom" role="group" aria-label="Zoom" th:if="${gridDays != null or view == 'month'}">
                 <button type="button" data-zoom-step="-1" title="Verkleinern (Strg + Mausrad)">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4M8 11h6"/></svg>
@@ -94,27 +91,77 @@
                    title="Alle Einstellungen des Kalenders">Einstellungen</a>
             </div>
         </div>
-        <a class="button" th:href="@{/calendar/events/new(date=${date}, back=${here})}"
-           sec:authorize="hasAuthority('CALENDAR_EVENT_CREATE')">
+        <button type="button" class="button" th:if="${canCreateAny}" data-open-create th:attr="data-date=${date}"
+                title="Termin, Hausarbeit, ToDo oder Zeit anlegen">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-            Termin
-        </a>
+            Neu
+        </button>
     </div>
-    <dialog th:replace="~{calendar/fragments :: choreQuickDialog(${date})}"></dialog>
+    <dialog th:replace="~{calendar/fragments :: createDialog(${date})}"></dialog>
 </div>
 
-<!-- Quick planning or booking of a chore: one form for both, switched by the mode (calendar-chore-quick.js) -->
-<dialog th:fragment="choreQuickDialog(day)" id="chore-quick" class="dialog" aria-labelledby="chore-quick-title"
-        th:if="${showChores and !#lists.isEmpty(quickChores)}">
-    <form th:action="@{/calendar/actions/chores/plan}" method="post" data-grid-form="chore-quick" data-chore-quick
-          th:attr="data-plan-url=@{/calendar/actions/chores/plan}, data-book-url=@{/calendar/actions/chores/book}">
-        <div class="dialog-head">
-            <h2 id="chore-quick-title">Hausarbeit</h2>
-            <button type="button" class="icon-button" data-close-dialog>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-                <span class="visually-hidden">Schließen</span>
-            </button>
+<!-- Dialog "Neu": one place to create an event, chore, to-do or time; tapping a free time or the toolbar opens it -->
+<dialog th:fragment="createDialog(day)" id="grid-quick" class="dialog" aria-labelledby="grid-quick-title"
+        th:if="${canCreateAny}" data-create>
+    <div class="dialog-head">
+        <h2 id="grid-quick-title">Neuer Termin</h2>
+        <button type="button" class="icon-button" data-close-dialog>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            <span class="visually-hidden">Schließen</span>
+        </button>
+    </div>
+    <div class="sheet-tabs create-types" role="tablist" aria-label="Was möchtest du anlegen?" data-create-types>
+        <button type="button" role="tab" data-create-type="event" th:if="${canCreate}" aria-selected="false">Termin</button>
+        <button type="button" role="tab" data-create-type="chore" th:if="${canCreateChore}" aria-selected="false">Hausarbeit</button>
+        <button type="button" role="tab" data-create-type="todo" th:if="${canCreateTodo}" aria-selected="false">ToDo</button>
+        <button type="button" role="tab" data-create-type="time" th:if="${canCreateTime}" aria-selected="false">Zeit</button>
+    </div>
+
+    <!-- Termin -->
+    <form th:if="${canCreate}" th:action="@{/calendar/actions/events}" method="post" data-grid-form="create"
+          data-create-form="event">
+        <div class="dialog-body">
+            <div class="field">
+                <label for="quick-title">Titel</label>
+                <input id="quick-title" class="input-title" type="text" name="title" maxlength="200" required
+                       placeholder="Was steht an?" autocomplete="off">
+            </div>
+            <input type="hidden" name="allDay" value="false" data-quick-allday>
+            <div class="field-row field-row-when">
+                <div class="field">
+                    <label for="quick-start-date">Beginn</label>
+                    <div class="date-time">
+                        <input id="quick-start-date" type="date" name="startDate" required>
+                        <input type="time" name="startTime" aria-label="Uhrzeit Beginn" data-time-field>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="quick-end-date">Ende</label>
+                    <div class="date-time">
+                        <input id="quick-end-date" type="date" name="endDate" required>
+                        <input type="time" name="endTime" aria-label="Uhrzeit Ende" data-time-field>
+                    </div>
+                </div>
+            </div>
+            <div th:replace="~{calendar/fragments :: categorySelect('quick-category', null)}"></div>
+            <fieldset class="field choices" th:unless="${#lists.isEmpty(allMembers)}">
+                <legend>Betrifft</legend>
+                <label class="choice choice-member" th:each="m : ${allMembers}" th:style="|--member-color: ${m.color}|">
+                    <input type="checkbox" name="memberIds" th:value="${m.id}" data-quick-member>
+                    <span th:text="${m.name}">Name</span>
+                </label>
+            </fieldset>
         </div>
+        <div class="dialog-foot">
+            <a class="button button-ghost" th:href="@{/calendar/events/new}" data-quick-details>Mehr Details</a>
+            <button type="submit" class="button">Termin anlegen</button>
+        </div>
+    </form>
+
+    <!-- Hausarbeit: einplanen oder als erledigt buchen (calendar-chore-quick.js) -->
+    <form th:if="${canCreateChore}" th:action="@{/calendar/actions/chores/plan}" method="post"
+          data-grid-form="chore-quick" data-chore-quick data-create-form="chore" hidden
+          th:attr="data-plan-url=@{/calendar/actions/chores/plan}, data-book-url=@{/calendar/actions/chores/book}">
         <div class="dialog-body" th:with="first=${quickChores[0]}">
             <div class="field">
                 <label for="chore-quick-chore">Welche Hausarbeit?</label>
@@ -163,8 +210,93 @@
             </div>
         </div>
         <div class="dialog-foot">
-            <button type="button" class="button button-ghost" data-close-dialog>Abbrechen</button>
+            <a class="button button-ghost" th:href="@{/household/chores/new}">Neue Hausarbeit</a>
             <button type="submit" class="button" data-chore-submit>Einplanen</button>
+        </div>
+    </form>
+
+    <!-- ToDo -->
+    <form th:if="${canCreateTodo}" th:action="@{/calendar/actions/todos}" method="post" data-grid-form="todo-create"
+          data-create-form="todo" hidden>
+        <div class="dialog-body">
+            <div class="field">
+                <label for="create-todo-title">Titel</label>
+                <input id="create-todo-title" class="input-title" type="text" name="title" maxlength="200" required
+                       placeholder="Was ist zu tun?" autocomplete="off">
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="create-todo-due">Fällig am</label>
+                    <input id="create-todo-due" class="input" type="date" name="dueOn">
+                </div>
+                <div class="field">
+                    <label for="create-todo-priority">Priorität</label>
+                    <select id="create-todo-priority" name="priority" class="input">
+                        <option th:each="p : ${todoPriorities}" th:value="${p}" th:text="${p.label()}"
+                                th:selected="${p.name() == 'NORMAL'}">Normal</option>
+                    </select>
+                </div>
+            </div>
+            <fieldset class="field choices" th:unless="${#lists.isEmpty(allMembers)}">
+                <legend>Zuständig</legend>
+                <label class="choice choice-member" th:each="m : ${allMembers}" th:style="|--member-color: ${m.color}|">
+                    <input type="checkbox" name="assignees" th:value="|member:${m.id}|" data-create-member>
+                    <span th:text="${m.name}">Name</span>
+                </label>
+            </fieldset>
+        </div>
+        <div class="dialog-foot">
+            <a class="button button-ghost" th:href="@{/todos/new}">Mehr Details</a>
+            <button type="submit" class="button">ToDo anlegen</button>
+        </div>
+    </form>
+
+    <!-- Zeit (Arbeit, Schlaf, Ruhe ...) -->
+    <form th:if="${canCreateTime}" th:action="@{/calendar/actions/blockers}" method="post"
+          data-grid-form="time-create" data-create-form="time" hidden>
+        <div class="dialog-body">
+            <div class="field">
+                <label for="create-time-title">Titel</label>
+                <input id="create-time-title" class="input-title" type="text" name="title" maxlength="200" required
+                       placeholder="z. B. Arbeit" autocomplete="off">
+            </div>
+            <div class="field">
+                <label for="create-time-kind">Art</label>
+                <select id="create-time-kind" name="kind" class="input">
+                    <option th:each="k : ${blockerKinds}" th:value="${k}" th:text="${k.label()}"
+                            th:selected="${k.name() == 'WORK'}">Arbeit</option>
+                </select>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="create-time-from">Von</label>
+                    <input id="create-time-from" class="input" type="time" name="startTime" value="08:00" required>
+                </div>
+                <div class="field">
+                    <label for="create-time-to">Bis</label>
+                    <input id="create-time-to" class="input" type="time" name="endTime" value="16:00" required>
+                </div>
+            </div>
+            <input type="hidden" name="validFrom" data-create-valid-from>
+            <fieldset class="field choices">
+                <legend>An diesen Tagen</legend>
+                <label class="choice" th:each="d : ${T(java.time.DayOfWeek).values()}">
+                    <input type="checkbox" name="weekdays" th:value="${d}" th:attr="data-weekday=${d.value}">
+                    <span th:text="${d.getDisplayName(T(java.time.format.TextStyle).SHORT, #locale)}">Mo</span>
+                </label>
+            </fieldset>
+            <fieldset class="field choices" th:unless="${#lists.isEmpty(allMembers)}">
+                <legend>Für wen?</legend>
+                <label class="choice choice-member" th:each="m : ${allMembers}" th:style="|--member-color: ${m.color}|">
+                    <input type="checkbox" name="memberIds" th:value="${m.id}" data-create-member
+                           th:checked="${m.id == ownMemberId}">
+                    <span th:text="${m.name}">Name</span>
+                </label>
+            </fieldset>
+        </div>
+        <div class="dialog-foot">
+            <a class="button button-ghost" th:href="@{/times/new}">Mehr Details</a>
+            <button type="submit" class="button">Zeit anlegen</button>
         </div>
     </form>
 </dialog>
@@ -174,54 +306,16 @@
     <div data-sheet-body></div>
 </dialog>
 
-<!-- Quick creation after tapping or spanning a free time -->
-<dialog th:fragment="quickDialog" id="grid-quick" class="dialog" aria-labelledby="grid-quick-title" th:if="${canCreate}">
-    <form th:action="@{/calendar/actions/events}" method="post" data-grid-form="create">
-        <div class="dialog-head">
-            <h2 id="grid-quick-title">Neuer Termin</h2>
-            <button type="button" class="icon-button" data-close-dialog>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
-                <span class="visually-hidden">Schließen</span>
-            </button>
-        </div>
-        <div class="dialog-body">
-            <div class="field">
-                <label for="quick-title">Titel</label>
-                <input id="quick-title" class="input-title" type="text" name="title" maxlength="200" required
-                       placeholder="Was steht an?" autocomplete="off">
-            </div>
-            <input type="hidden" name="allDay" value="false" data-quick-allday>
-            <div class="field-row field-row-when">
-                <div class="field">
-                    <label for="quick-start-date">Beginn</label>
-                    <div class="date-time">
-                        <input id="quick-start-date" type="date" name="startDate" required>
-                        <input type="time" name="startTime" aria-label="Uhrzeit Beginn" data-time-field>
-                    </div>
-                </div>
-                <div class="field">
-                    <label for="quick-end-date">Ende</label>
-                    <div class="date-time">
-                        <input id="quick-end-date" type="date" name="endDate" required>
-                        <input type="time" name="endTime" aria-label="Uhrzeit Ende" data-time-field>
-                    </div>
-                </div>
-            </div>
-            <div th:replace="~{calendar/fragments :: categorySelect('quick-category', null)}"></div>
-            <fieldset class="field choices" th:unless="${#lists.isEmpty(allMembers)}">
-                <legend>Betrifft</legend>
-                <label class="choice choice-member" th:each="m : ${allMembers}" th:style="|--member-color: ${m.color}|">
-                    <input type="checkbox" name="memberIds" th:value="${m.id}" data-quick-member>
-                    <span th:text="${m.name}">Name</span>
-                </label>
-            </fieldset>
-        </div>
-        <div class="dialog-foot">
-            <a class="button button-ghost" th:href="@{/calendar/events/new}" data-quick-details>Mehr Details</a>
-            <button type="submit" class="button">Termin anlegen</button>
-        </div>
+<!-- One-tap actions of an entry at the top of its dialog; they come from the domain services' item actions -->
+<div th:fragment="quickBar(actions)" class="quick-actions" role="group" aria-label="Schnellaktionen"
+     th:if="${actions != null and !#lists.isEmpty(actions)}">
+    <form th:each="a : ${actions}" method="post" th:action="${a.url}" data-grid-form="quick"
+          th:attr="data-confirm=${a.confirm}, data-confirm-label=${a.confirmLabel}, data-confirm-tone=${a.danger} ? 'danger'">
+        <input type="hidden" th:each="p : ${a.params}" th:name="${p.key}" th:value="${p.value}">
+        <button type="submit" class="button button-small" th:classappend="${a.danger} ? 'button-danger' : 'button-ghost'"
+                th:text="${a.label}">Abhaken</button>
     </form>
-</dialog>
+</div>
 
 <!-- Blocker and school bands of a day -->
 <ul th:fragment="bands(list, compact)" class="bands" th:classappend="${compact} ? 'bands-compact'"

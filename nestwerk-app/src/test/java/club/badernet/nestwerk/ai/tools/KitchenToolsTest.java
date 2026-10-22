@@ -46,6 +46,7 @@ class KitchenToolsTest {
     User guest;
     User outsider;
 
+    @Autowired AttachmentTools attachmentTools;
     @BeforeEach
     void setUp() {
         Role cooks = roleService.create("Köche", null, Set.of("KITCHEN_VIEW", "KITCHEN_RECIPES_EDIT", "KITCHEN_PLAN",
@@ -208,5 +209,123 @@ class KitchenToolsTest {
         assertThatThrownBy(() -> kitchen.listPantry(as(outsider))).isInstanceOf(Tools.ToolException.class);
         assertThatThrownBy(() -> kitchen.getRecipe(as(chef), 999_999L, null)).isInstanceOf(Tools.ToolException.class)
                 .hasMessageContaining("nicht gefunden");
+    }
+
+    @Test
+    void deletesFoodsRecipesMealsShoppingItemsAndPantryPostsWithTheRightRights() {
+        KitchenTools.RecipeDetail recipe = pancakes();
+        KitchenTools.FoodItem food = kitchen.createFood(as(chef), "Kichererbsenmehl", null, 340.0, 12.0, 2.0, 70.0,
+                null, null, null);
+        KitchenTools.MealItem meal = kitchen.planMeal(as(chef), MONDAY.toString(), "Abendessen", recipe.recipe().id(),
+                null);
+        KitchenTools.ShoppingEntry item = kitchen.addShoppingItem(as(chef), "2 Dosen Tomaten");
+        KitchenTools.PantryEntry post = kitchen.addPantryItem(as(chef), "Reis", 500.0, "g", null, null);
+
+        assertThatThrownBy(() -> kitchen.deleteFood(as(guest), food.id())).isInstanceOf(Tools.ToolException.class)
+                .hasMessageContaining("Keine Berechtigung");
+        assertThatThrownBy(() -> kitchen.deleteRecipe(as(guest), recipe.recipe().id()))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Keine Berechtigung");
+        assertThatThrownBy(() -> kitchen.deleteMeal(as(guest), meal.id())).isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.deleteShoppingItem(as(guest), item.id()))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.deletePantryItem(as(guest), post.id()))
+                .isInstanceOf(Tools.ToolException.class);
+
+        assertThat(kitchen.deleteMeal(as(chef), meal.id())).contains("gelöscht");
+        assertThat(kitchen.getMealPlan(as(chef), MONDAY.toString(), MONDAY.toString())).isEmpty();
+        assertThat(kitchen.searchRecipes(as(chef), "pfann")).hasSize(1);
+
+        assertThat(kitchen.deleteShoppingItem(as(chef), item.id())).contains("gelöscht");
+        assertThat(kitchen.shoppingList(as(chef))).isEmpty();
+        assertThat(kitchen.deletePantryItem(as(chef), post.id())).contains("gelöscht");
+        assertThat(kitchen.listPantry(as(chef))).isEmpty();
+        assertThat(kitchen.deleteFood(as(chef), food.id())).contains("Kichererbsenmehl");
+        assertThat(kitchen.searchFoods(as(chef), "kichererbsenm")).isEmpty();
+        assertThat(kitchen.deleteRecipe(as(chef), recipe.recipe().id())).contains("Pfannkuchen");
+        assertThat(kitchen.searchRecipes(as(chef), "pfann")).isEmpty();
+
+        assertThatThrownBy(() -> kitchen.deleteRecipe(as(chef), recipe.recipe().id()))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.deleteFood(as(chef), food.id())).isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.deleteMeal(as(chef), meal.id())).isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.deleteShoppingItem(as(chef), item.id()))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.deletePantryItem(as(chef), post.id()))
+                .isInstanceOf(Tools.ToolException.class);
+    }
+
+    @Test
+    void deletingARecipeKeepsTheFoodsOfItsIngredients() {
+        KitchenTools.RecipeDetail recipe = pancakes();
+
+        kitchen.deleteRecipe(as(chef), recipe.recipe().id());
+
+        assertThat(kitchen.searchFoods(as(chef), "mehl")).isNotEmpty();
+    }
+
+    @Test
+    void readsOneFoodAndOnePantryPost() {
+        KitchenTools.FoodItem food = kitchen.createFood(as(chef), "Kichererbsenmehl", "pantry", 340.0, 12.0, 2.0,
+                70.0, null, 1000.0, 365);
+        KitchenTools.PantryEntry post = kitchen.addPantryItem(as(chef), "Reis", 500.0, "g", null, null);
+
+        assertThat(kitchen.getFood(as(guest), food.id()).name()).isEqualTo("Kichererbsenmehl");
+        assertThat(kitchen.getPantryItem(as(guest), post.id()).name()).isEqualTo("Reis");
+        assertThatThrownBy(() -> kitchen.getFood(as(outsider), food.id())).isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.getPantryItem(as(outsider), post.id()))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.getFood(as(chef), 999_999L)).isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.getPantryItem(as(chef), 999_999L)).isInstanceOf(Tools.ToolException.class);
+    }
+
+    @Test
+    void updatesWhatIsCookedKeepingDayAndEaters() {
+        Long pancakes = pancakes().recipe().id();
+        Long soup = kitchen.createRecipe(as(chef), "Suppe", List.of("1 l Wasser"), 2, 10, null, null, "Kochen.", null)
+                .recipe().id();
+        KitchenTools.MealItem meal = kitchen.planMeal(as(chef), MONDAY.toString(), "Abendessen", pancakes, null);
+
+        KitchenTools.MealItem withRecipe = kitchen.updateMeal(as(chef), meal.id(), soup, null);
+        assertThat(withRecipe.title()).isEqualTo("Suppe");
+        assertThat(withRecipe.recipeId()).isEqualTo(soup);
+        assertThat(withRecipe.day()).isEqualTo(MONDAY);
+        assertThat(withRecipe.eaters()).isEqualTo(meal.eaters());
+
+        KitchenTools.MealItem freeTitle = kitchen.updateMeal(as(chef), meal.id(), null, "Reste vom Vortag");
+        assertThat(freeTitle.title()).isEqualTo("Reste vom Vortag");
+        assertThat(freeTitle.recipeId()).isNull();
+
+        assertThatThrownBy(() -> kitchen.updateMeal(as(chef), meal.id(), null, " "))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Rezept");
+        assertThatThrownBy(() -> kitchen.updateMeal(as(chef), meal.id(), 999_999L, null))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.updateMeal(as(guest), meal.id(), soup, null))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Keine Berechtigung");
+        assertThatThrownBy(() -> kitchen.updateMeal(as(chef), 999_999L, soup, null))
+                .isInstanceOf(Tools.ToolException.class);
+    }
+
+    @Test
+    void setsARecipePhotoWithSizeAndTypeLimits() {
+        Long recipe = pancakes().recipe().id();
+        String png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+
+        AttachmentTools.AttachmentItem photo = attachmentTools.setRecipePhoto(as(chef), recipe, "kuchen.png", png);
+
+        assertThat(photo.fileName()).isEqualTo("kuchen.png");
+        assertThat(attachmentTools.listAttachments(as(chef), "RECIPE", recipe)).hasSize(1);
+        assertThatThrownBy(() -> attachmentTools.setRecipePhoto(as(chef), recipe, "rezept.pdf", png))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining(".jpg");
+        assertThatThrownBy(() -> attachmentTools.setRecipePhoto(as(chef), recipe, "kuchen.png", "###"))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("base64");
+        String tooBig = java.util.Base64.getEncoder().encodeToString(new byte[3 * 1024 * 1024 + 1]);
+        assertThatThrownBy(() -> attachmentTools.setRecipePhoto(as(chef), recipe, "gross.png", tooBig))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("3 MB");
+        assertThatThrownBy(() -> attachmentTools.setRecipePhoto(as(chef), recipe, "kuchen.png", "bm9wZQ=="))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> attachmentTools.setRecipePhoto(as(guest), recipe, "kuchen.png", png))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> attachmentTools.setRecipePhoto(as(chef), 999_999L, "kuchen.png", png))
+                .isInstanceOf(Tools.ToolException.class);
     }
 }

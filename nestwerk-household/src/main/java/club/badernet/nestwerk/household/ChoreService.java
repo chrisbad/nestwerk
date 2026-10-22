@@ -228,7 +228,8 @@ public class ChoreService {
             throw new IllegalArgumentException("„Spätestens“ muss nach „frühestens“ liegen.");
         }
         return new ChoreInput(title, area, description, in.minutesEasy(), in.minutesMedium(), in.minutesHard(),
-                in.kind(), rrule, startsOn, time, interval, distribution, ids, in.windowStart(), in.windowEnd());
+                in.kind(), rrule, startsOn, time, interval, distribution, ids, in.windowStart(), in.windowEnd(),
+                in.oncePerDay(), in.noOverlap());
     }
 
     private static void requireMinutes(Integer minutes, ChoreEffort effort) {

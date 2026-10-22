@@ -22,6 +22,7 @@
     </div>
 
     <section id="chore-panel-task" role="tabpanel" aria-labelledby="chore-tab-task" data-tab-panel="task">
+    <div th:replace="~{calendar/fragments :: quickBar(${quickActions})}"></div>
         <div class="dialog-body">
             <dl class="event-facts sheet-facts">
                 <dt>Wann</dt>
@@ -37,7 +38,7 @@
                 </dd>
                 <dt>Status</dt>
                 <dd>
-                    <span th:text="${c.done} ? 'Erledigt' : 'Offen'">Offen</span>
+                    <span th:text="${c.done} ? 'Erledigt' : (${c.skipped} ? 'Nicht nötig' : 'Offen')">Offen</span>
                     <span class="notice-inline" th:if="${c.overdue}">überfällig</span>
                 </dd>
             </dl>
@@ -58,14 +59,6 @@
             <fieldset th:replace="~{household/fragments :: helper-fields}"></fieldset>
             <div class="form-actions">
                 <button type="submit" class="button">Abhaken und buchen</button>
-            </div>
-        </form>
-
-        <form class="dialog-section" th:if="${c.canUndo}" method="post" data-grid-form="chore-undo"
-              th:action="@{/calendar/actions/chores/{id}/undo(id=${task.id})}">
-            <p class="hint">Die Gutschriften werden entfernt und die Hausarbeit ist wieder offen.</p>
-            <div class="form-actions">
-                <button type="submit" class="button button-ghost">Erledigung zurücknehmen</button>
             </div>
         </form>
 

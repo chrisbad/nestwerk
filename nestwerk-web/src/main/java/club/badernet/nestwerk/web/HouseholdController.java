@@ -10,12 +10,9 @@ import club.badernet.nestwerk.household.ChoreTaskService;
 import club.badernet.nestwerk.household.Distribution;
 import club.badernet.nestwerk.household.HouseholdAccess;
 import club.badernet.nestwerk.household.IcalImporter;
-import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.security.CurrentUser;
 import club.badernet.nestwerk.user.User;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -26,20 +23,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.IsoFields;
-import java.time.temporal.TemporalAdjusters;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -47,18 +37,6 @@ import java.util.stream.Stream;
 @Controller
 @RequestMapping("/household")
 public class HouseholdController {
-
-    /** Ein Tag als Spalte im Wochenplan. */
-    public record WeekDay(LocalDate date, String label, boolean today) {
-    }
-
-    /** Eine Zeile im Wochenplan: ein Mitglied (oder „offen“) mit seinen Aufgaben je Tag. */
-    public record WeekRow(Long memberId, String label, String color, List<List<HouseholdViews.TaskChip>> cells, int minutes) {
-    }
-
-    /** Ein Tag mit seinen Aufgaben (Wochenplan auf dem Handy). */
-    public record DayGroup(WeekDay day, List<HouseholdViews.TaskChip> chips) {
-    }
 
     private final ChoreService chores;
     private final ChoreTaskService tasks;
@@ -78,7 +56,7 @@ public class HouseholdController {
     }
 
     /**
-     * The household plan: the day (default today) with a filter by person next to the week it belongs to. {@code week}
+     * The household plan: the day (default today) with a filter by person. The week lives in the calendar. {@code week}
      * is the older name of {@code date} and still works in links.
      */
     @GetMapping
@@ -88,40 +66,9 @@ public class HouseholdController {
         HouseholdViews.Context ctx = views.context(viewer);
         LocalDate today = ctx.today();
         LocalDate focus = parseDate(date != null ? date : week, today);
-        LocalDate monday = focus.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        List<WeekDay> days = new ArrayList<>();
-        for (int i = 0; i < 7; i++) {
-            LocalDate d = monday.plusDays(i);
-            days.add(new WeekDay(d, HouseholdViews.shortDay(d), d.equals(today)));
-        }
-        List<ChoreTask> inWeek = tasks.between(viewer, monday, monday.plusDays(6));
-        Map<Long, List<ChoreTask>> byMember = new LinkedHashMap<>();
-        ctx.members().keySet().forEach(id -> byMember.put(id, new ArrayList<>()));
-        List<ChoreTask> unassigned = new ArrayList<>();
-        for (ChoreTask t : inWeek) {
-            if (t.getAssigneeMemberId() == null || !byMember.containsKey(t.getAssigneeMemberId())) {
-                unassigned.add(t);
-            } else {
-                byMember.get(t.getAssigneeMemberId()).add(t);
-            }
-        }
-        List<WeekRow> rows = new ArrayList<>();
-        byMember.forEach((id, list) -> {
-            FamilyMember m = ctx.members().get(id);
-            rows.add(row(id, m.getName(), m.getColor(), list, days, ctx));
-        });
-        if (!unassigned.isEmpty()) {
-            rows.add(row(null, "Offen", null, unassigned, days, ctx));
-        }
-        List<DayGroup> byDay = days.stream().map(d -> new DayGroup(d, views.chips(inWeek.stream()
-                .filter(t -> t.getDueOn().equals(d.date())).toList(), ctx))).toList();
+        List<HouseholdViews.TaskChip> dayChips = views.chips(tasks.between(viewer, focus, focus), ctx);
         List<HouseholdViews.TaskChip> overdue = focus.equals(today)
                 ? views.chips(tasks.overdue(viewer, today), ctx) : List.of();
-        List<HouseholdViews.TaskChip> dayChips = byDay.stream().filter(g -> g.day().date().equals(focus))
-                .findFirst().map(DayGroup::chips).orElse(List.of());
-        model.addAttribute("days", days);
-        model.addAttribute("rows", rows);
-        model.addAttribute("byDay", byDay);
         model.addAttribute("overdue", overdue);
         model.addAttribute("dayChips", dayChips);
         model.addAttribute("hasOpenTasks", Stream.concat(overdue.stream(), dayChips.stream())
@@ -131,23 +78,9 @@ public class HouseholdController {
         model.addAttribute("focus", focus);
         model.addAttribute("focusLabel", HouseholdViews.longDay(focus));
         model.addAttribute("focusIsToday", focus.equals(today));
-        model.addAttribute("monday", monday);
-        model.addAttribute("weekNumber", monday.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
-        model.addAttribute("weekRange", HouseholdViews.longDay(monday) + " – " + HouseholdViews.longDay(monday.plusDays(6)));
-        model.addAttribute("isCurrentWeek", !today.isBefore(monday) && !today.isAfter(monday.plusDays(6)));
         model.addAttribute("back", "/household?date=" + focus);
         addCommon(model, viewer, "plan");
         return "household/plan";
-    }
-
-    private WeekRow row(Long memberId, String label, String color, List<ChoreTask> list, List<WeekDay> days,
-                       HouseholdViews.Context ctx) {
-        List<List<HouseholdViews.TaskChip>> cells = new ArrayList<>();
-        for (WeekDay d : days) {
-            cells.add(views.chips(list.stream().filter(t -> t.getDueOn().equals(d.date())).toList(), ctx));
-        }
-        int minutes = list.stream().mapToInt(views::minutes).sum();
-        return new WeekRow(memberId, label, color, cells, minutes);
     }
 
     /** The day view is the start page of the household now; old links keep working. */
@@ -161,14 +94,13 @@ public class HouseholdController {
     @GetMapping("/chores")
     String chores(Model model) {
         User viewer = requireModule();
-        Map<String, List<Chore>> groups = new LinkedHashMap<>();
-        for (Chore c : chores.visible(viewer)) {
-            String key = !c.isActive() ? "Deaktiviert" : (c.getArea() == null ? "Ohne Bereich" : c.getArea());
-            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(c);
-        }
-        model.addAttribute("groups", groups);
-        model.addAttribute("bookable", groups.values().stream().flatMap(List::stream)
-                .filter(c -> tasks.canBook(viewer, c)).map(Chore::getId).collect(java.util.stream.Collectors.toSet()));
+        List<ChoreRow> rows = chores.visible(viewer).stream()
+                .map(c -> ChoreRow.of(c, tasks.canBook(viewer, c), access.can(viewer, "EDIT", c),
+                        access.can(viewer, "DELETE", c)))
+                .toList();
+        model.addAttribute("rows", rows);
+        model.addAttribute("areas", rows.stream().map(ChoreRow::areaKey).distinct().sorted().toList());
+        model.addAttribute("kinds", ChoreKind.values());
         model.addAttribute("canCreate", chores.canCreate(viewer));
         addCommon(model, viewer, "chores");
         return "household/chores";
@@ -281,14 +213,14 @@ public class HouseholdController {
     }
 
     @PostMapping("/chores/{id}/delete")
-    String delete(@PathVariable Long id, RedirectAttributes redirect) {
+    String delete(@PathVariable Long id, @RequestParam(required = false) String back, RedirectAttributes redirect) {
         try {
             chores.delete(id, requireModule());
             redirect.addFlashAttribute("success", "Hausarbeit wurde gelöscht.");
-            return "redirect:/household/chores";
+            return "redirect:" + SafeRedirect.target(back, "/household/chores");
         } catch (IllegalArgumentException e) {
             redirect.addFlashAttribute("error", e.getMessage());
-            return "redirect:/household/chores/" + id;
+            return "redirect:" + SafeRedirect.target(back, "/household/chores/" + id);
         }
     }
 
@@ -423,20 +355,20 @@ public class HouseholdController {
         return answer(id, actor, ok, message, back, htmx, model, redirect);
     }
 
-    /** Ziehen im Wochenplan: Zuständigkeit ändern, Antwort als kurze Meldung statt Weiterleitung. */
-    @PostMapping(value = "/tasks/{id}/assign", headers = "HX-Request", produces = "text/plain;charset=UTF-8")
-    @ResponseBody
-    ResponseEntity<String> assignInline(@PathVariable Long id, @RequestParam(required = false) Long member) {
+    @PostMapping("/tasks/{id}/skip")
+    String skip(@PathVariable Long id, @RequestParam(required = false) String back,
+                @RequestHeader(name = "HX-Request", required = false) String htmx,
+                Model model, RedirectAttributes redirect) {
         User actor = requireModule();
+        String message = "Als nicht nötig markiert.";
+        boolean ok = true;
         try {
-            tasks.assign(id, member, actor);
-            return ResponseEntity.ok(member == null ? "Die Hausarbeit ist jetzt offen zum Nehmen."
-                    : "Zuständigkeit wurde geändert.");
-        } catch (ChoreConflictException | IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (AccessDeniedException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
+            tasks.skip(id, actor);
+        } catch (ChoreConflictException e) {
+            message = e.getMessage();
+            ok = false;
         }
+        return answer(id, actor, ok, message, back, htmx, model, redirect);
     }
 
     @PostMapping("/tasks/{id}/assign")

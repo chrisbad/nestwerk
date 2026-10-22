@@ -35,8 +35,9 @@ import java.util.Map;
 @RequestMapping("/household")
 public class HouseholdAccountController {
 
-    /** Ausgewerteter Zeitraum mit Beschriftung und Nachbarn. */
-    public record Period(String key, LocalDate from, LocalDate to, String label, LocalDate previous, LocalDate next) {
+    /** Ausgewerteter Zeitraum mit Beschriftung und Nachbarn; {@code anchor} ist das gewählte Datum innerhalb des Zeitraums. */
+    public record Period(String key, LocalDate anchor, LocalDate from, LocalDate to, String label, LocalDate previous,
+                         LocalDate next) {
     }
 
     /** Eine Gutschrift für die Liste. */
@@ -73,6 +74,7 @@ public class HouseholdAccountController {
         List<ChoreStats.MemberStats> rows = stats.forPeriod(viewer, p.from(), p.to());
         int max = rows.stream().mapToInt(ChoreStats.MemberStats::minutes).max().orElse(0);
         model.addAttribute("period", p);
+        model.addAttribute("today", ctx.today());
         model.addAttribute("rows", rows);
         model.addAttribute("maxMinutes", Math.max(max, 1));
         model.addAttribute("credits", stats.credits(viewer, p.from(), p.to()).stream()
@@ -104,20 +106,20 @@ public class HouseholdAccountController {
 
     static Period period(String key, LocalDate date) {
         return switch (key) {
-            case "day" -> new Period("day", date, date, HouseholdViews.longDay(date), date.minusDays(1), date.plusDays(1));
+            case "day" -> new Period("day", date, date, date, HouseholdViews.longDay(date), date.minusDays(1), date.plusDays(1));
             case "month" -> {
                 LocalDate first = date.withDayOfMonth(1);
-                yield new Period("month", first, first.plusMonths(1).minusDays(1), first.format(MONTH),
+                yield new Period("month", date, first, first.plusMonths(1).minusDays(1), first.format(MONTH),
                         first.minusMonths(1), first.plusMonths(1));
             }
             case "year" -> {
                 LocalDate first = date.withDayOfYear(1);
-                yield new Period("year", first, first.plusYears(1).minusDays(1), String.valueOf(first.getYear()),
+                yield new Period("year", date, first, first.plusYears(1).minusDays(1), String.valueOf(first.getYear()),
                         first.minusYears(1), first.plusYears(1));
             }
             default -> {
                 LocalDate monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-                yield new Period("week", monday, monday.plusDays(6),
+                yield new Period("week", date, monday, monday.plusDays(6),
                         "KW " + monday.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR) + ": " + monday.format(DAY) + " – "
                                 + monday.plusDays(6).format(DAY), monday.minusWeeks(1), monday.plusWeeks(1));
             }
@@ -170,6 +172,17 @@ public class HouseholdAccountController {
             rewards.update(id, title, description, cost, active, requireRewards());
             redirect.addFlashAttribute("success", "Belohnung wurde gespeichert.");
         } catch (IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/household/rewards";
+    }
+
+    @PostMapping("/rewards/{id}/delete")
+    String deleteReward(@PathVariable Long id, RedirectAttributes redirect) {
+        try {
+            rewards.delete(id, requireRewards());
+            redirect.addFlashAttribute("success", "Belohnung wurde gelöscht.");
+        } catch (ChoreConflictException | IllegalArgumentException e) {
             redirect.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/household/rewards";

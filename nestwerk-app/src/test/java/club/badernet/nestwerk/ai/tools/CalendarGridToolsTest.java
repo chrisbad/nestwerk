@@ -69,7 +69,7 @@ class CalendarGridToolsTest {
 
     private CalendarTools.Event dentist(Long categoryId) {
         return calendarTools.createEvent(as(parent), "Zahnarzt", "2030-03-04", "09:00", null, "10:00", null, null,
-                null, null, null, null, null, categoryId);
+                null, null, null, null, null, categoryId, null);
     }
 
     @Test
@@ -108,7 +108,7 @@ class CalendarGridToolsTest {
                 .singleElement().satisfies(e -> assertThat(e.categoryId()).isEqualTo(doctor));
 
         CalendarTools.Event cleared = calendarTools.updateEvent(as(parent), created.eventId(), null, null, null, null,
-                null, null, null, null, null, null, null, null, 0L);
+                null, null, null, null, null, null, null, null, 0L, null);
         assertThat(cleared.categoryId()).isNull();
     }
 
@@ -130,7 +130,7 @@ class CalendarGridToolsTest {
     @Test
     void seriesMoveAsOccurrenceOrAsWholeSeries() {
         CalendarTools.Event series = calendarTools.createEvent(as(parent), "Chor", "2030-03-04", "18:00", null,
-                "19:00", null, null, null, "FREQ=WEEKLY", null, null, null, null);
+                "19:00", null, null, null, "FREQ=WEEKLY", null, null, null, null, null);
         String second = calendarTools.listEvents(as(parent), "2030-03-11", "2030-03-11").getFirst().recurrenceId();
 
         calendarTools.rescheduleEvent(as(parent), series.eventId(), "2030-03-12T18:00", "2030-03-12T19:00", null,

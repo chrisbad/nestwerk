@@ -41,27 +41,30 @@
     const snap = (minutes, slot) => Math.round(minutes / slot) * slot;
     const snapDown = (minutes, slot) => Math.floor(minutes / slot) * slot;
 
-    /* --- Snapping: fine (5 min) or coarse (15 min); only how times snap, not the size ----------------------------- */
+    /* --- Snapping: the chosen slot length in minutes; only how times snap, not the size ------------------------- */
 
-    function readSlot() {
+    /** The remembered slot length in minutes; the old words "fine" and "coarse" still count. */
+    function readSlot(root) {
+        let stored = null;
         try {
-            return localStorage.getItem(SLOT_KEY) === "fine" ? "fine" : "coarse";
-        } catch (e) {
-            return "coarse";
-        }
+            stored = localStorage.getItem(SLOT_KEY);
+        } catch (e) { /* the default applies */ }
+        const minutes = stored === "fine" ? +root.dataset.slotFine : stored === "coarse" ? +root.dataset.slotCoarse
+            : +stored;
+        const offered = [...root.querySelectorAll("[data-slot-select] option")].map(option => +option.value);
+        return offered.includes(minutes) ? minutes : +root.dataset.slotCoarse;
     }
 
-    function applySlot(root, choice) {
-        root.dataset.slot = choice;
-        root.querySelectorAll("[data-slot-choice]").forEach(button =>
-            button.setAttribute("aria-pressed", String(button.dataset.slotChoice === choice)));
+    function applySlot(root, minutes) {
+        root.dataset.slot = String(minutes);
+        root.querySelectorAll("[data-slot-select]").forEach(select => { select.value = String(minutes); });
     }
 
-    const slotMinutes = root => +(root.dataset.slot === "fine" ? root.dataset.slotFine : root.dataset.slotCoarse);
+    const slotMinutes = root => +root.dataset.slot || +root.dataset.slotCoarse;
 
-    function switchSlot(root, choice) {
-        try { localStorage.setItem(SLOT_KEY, choice); } catch (e) { /* only for this page */ }
-        applySlot(root, choice);
+    function switchSlot(root, minutes) {
+        try { localStorage.setItem(SLOT_KEY, String(minutes)); } catch (e) { /* only for this page */ }
+        applySlot(root, minutes);
     }
 
     /* --- Geometry ------------------------------------------------------------------------------------------------ */
@@ -294,31 +297,15 @@
     function openQuick(root, range, member) {
         const dialog = root.querySelector("#grid-quick");
         if (!dialog) return;
-        const form = dialog.querySelector("form");
-        form.reset();
-        const set = (name, value) => { form.elements[name].value = value; };
         const allDay = Boolean(range.allDay);
-        set("allDay", String(allDay));
-        form.classList.toggle("is-allday", allDay);
-        form.querySelectorAll("[data-time-field]").forEach(input => {
-            input.required = !allDay;
-            input.disabled = allDay;
-        });
-        if (allDay) {
-            set("startDate", range.first);
-            set("endDate", range.last);
-        } else {
-            set("startDate", dateOf(range.start));
-            set("startTime", clock(minuteOf(range.start)));
-            set("endDate", dateOf(range.end));
-            set("endTime", clock(minuteOf(range.end)));
-        }
-        // created in a person's column: that person is preselected
-        form.querySelectorAll("[data-quick-member]").forEach(box => {
-            box.checked = Boolean(member) && box.value === member;
-        });
-        dialog.showModal();
-        form.elements.title.focus();
+        const context = allDay
+            ? { allDay, startDate: range.first, endDate: range.last, member: member || "" }
+            : {
+                allDay, startDate: dateOf(range.start), startTime: clock(minuteOf(range.start)),
+                endDate: dateOf(range.end), endTime: clock(minuteOf(range.end)), member: member || ""
+            };
+        // tapping a free time is most often a new event; the dialog offers the other types as tabs
+        window.NestwerkCreate.open(dialog, context, "event");
     }
 
     /** The link "Mehr Details" takes what was entered so far to the full form and comes back to this view. */
@@ -460,9 +447,28 @@
         root.classList.add("is-grid-dragging");
         root.querySelectorAll(".tgrid-zone").forEach(zone =>
             zone.classList.toggle("is-relevant", drag.members.includes(zone.dataset.member)));
+        markOverlapZones(root, item);
         try { root.setPointerCapture?.(g.id); } catch (e) { /* capture is optional */ }
         helpers().haptic(10);
         update();
+    }
+
+    /**
+     * Times of other events and chores a dragged entry must not be put over: a chore must not lie over a flagged
+     * entry or, when flagged itself, over any entry; an event only matters for chores. Candidates count whoever
+     * the entry is given to; they are only drawn in the columns of the entry's persons.
+     */
+    function markOverlapZones(root, item) {
+        const kind = item?.dataset.gridItem;
+        const own = item?.dataset.overlapKey;
+        const flagged = item?.dataset.noOverlap === "true";
+        root.querySelectorAll(".tgrid-zone[data-overlap-key]").forEach(zone => {
+            const candidate = Boolean(own) && zone.dataset.overlapKey !== own
+                && (kind === "chore" || zone.dataset.overlapKind === "chore")
+                && (flagged || zone.dataset.overlapFlag === "true");
+            zone.classList.toggle("is-overlap-candidate", candidate);
+            zone.classList.toggle("is-relevant", candidate && drag.members.includes(zone.dataset.member));
+        });
     }
 
     /** Computes the snapped result of the drag (times and person column) and draws the ghost. */
@@ -634,7 +640,7 @@
         const end = result.allDay ? absolute(result.last, DAY_MINUTES) : result.end;
         for (const column of columns(root)) {
             const dayStart = absolute(column.dataset.date, 0);
-            for (const zone of column.querySelectorAll('.tgrid-zone[data-strength="block"]')) {
+            for (const zone of column.querySelectorAll('.tgrid-zone[data-strength="block"], .tgrid-zone.is-overlap-candidate')) {
                 if (!members.includes(zone.dataset.member)) continue;
                 const from = dayStart + +zone.dataset.startMinute;
                 const to = dayStart + +zone.dataset.endMinute;
@@ -707,8 +713,8 @@
         d.label?.remove();
         d.item?.classList.remove("is-lifted");
         d.root.classList.remove("is-grid-dragging");
-        d.root.querySelectorAll(".tgrid-zone.is-relevant, .tgrid-zone.is-hit")
-            .forEach(zone => zone.classList.remove("is-relevant", "is-hit"));
+        d.root.querySelectorAll(".tgrid-zone.is-relevant, .tgrid-zone.is-hit, .tgrid-zone.is-overlap-candidate")
+            .forEach(zone => zone.classList.remove("is-relevant", "is-hit", "is-overlap-candidate"));
         lastDragEnd = Date.now();
         helpers().markDragged();
     }
@@ -821,11 +827,6 @@
         }
         const root = event.target.closest("[data-time-grid]");
         if (!root || event.target.closest("dialog")) return;
-        const slotChoice = event.target.closest("[data-slot-choice]");
-        if (slotChoice) {
-            switchSlot(root, slotChoice.dataset.slotChoice);
-            return;
-        }
         if (event.target.closest("[data-split-toggle]")) {
             toggleSplit(root);
             return;
@@ -868,7 +869,7 @@
             window.location.replace(`/calendar/days3?date=${root.dataset.focus}`);
             return;
         }
-        applySlot(root, readSlot());
+        applySlot(root, readSlot(root));
         root.querySelectorAll("[data-split-toggle]").forEach(button =>
             button.setAttribute("aria-pressed", String(root.dataset.split === "person")));
         const scroller = scrollerOf(root);
@@ -917,6 +918,11 @@
         document.addEventListener("pointerup", onPointerUp);
         document.addEventListener("pointercancel", onPointerCancel);
         document.addEventListener("click", onClick, true);
+        document.addEventListener("change", event => {
+            const select = event.target.closest?.("[data-slot-select]");
+            const root = select?.closest("[data-time-grid]");
+            if (root) switchSlot(root, +select.value);
+        });
         document.addEventListener("wheel", onWheel, { passive: false });
         // while dragging or pinching with fingers the page must not scroll; before, it scrolls as usual
         document.addEventListener("touchmove", event => {

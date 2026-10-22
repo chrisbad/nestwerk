@@ -34,7 +34,7 @@ public class HouseholdTools {
     public record ChoreItem(Long choreId, String title, String area, String description, String kind, String rrule,
                             LocalDate startsOn, String dueTime, Integer intervalDays, String distribution,
                             List<String> members, int minutesEasy, int minutesMedium, int minutesHard,
-                            boolean active, List<String> dates) {
+                            boolean active, List<String> dates, boolean oncePerDay, boolean noOverlap) {
     }
 
     private static final int MAX_DAYS = 31;
@@ -107,7 +107,22 @@ public class HouseholdTools {
         });
     }
 
-    @McpTool(name = "undo_chore_task", description = "Nimmt das heutige eigene Abhaken einer Aufgabe zurück.",
+    @McpTool(name = "skip_chore_task", description = "Markiert eine offene Aufgabe für ihren Tag als nicht nötig, "
+            + "z. B. weil die Spülmaschine nicht benutzt wurde. Es gibt keine Gutschrift, die Aufgabe bleibt als "
+            + "durchgestrichener Platzhalter stehen und wird nicht neu geplant; bei Hausarbeiten mit Abstand nach "
+            + "Erledigung läuft der Rhythmus von diesem Tag an weiter. Rückgängig mit undo_chore_task.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public ChoreTaskItem skipChoreTask(McpTransportContext context,
+                                       @McpToolParam(description = "ID der Aufgabe (taskId)") Long taskId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(taskId, "taskId");
+            tasks.skip(id, user);
+            return item(tasks.get(id, user), names());
+        });
+    }
+
+    @McpTool(name = "undo_chore_task", description = "Nimmt das heutige eigene Abhaken oder „nicht nötig“ einer "
+            + "Aufgabe zurück.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
     public ChoreTaskItem undoChoreTask(McpTransportContext context,
                                        @McpToolParam(description = "ID der Aufgabe") Long taskId) {
@@ -162,7 +177,12 @@ public class HouseholdTools {
                                  @McpToolParam(description = "Frühester Beginn HH:MM", required = false)
                                  String windowStart,
                                  @McpToolParam(description = "Spätestes Ende HH:MM", required = false)
-                                 String windowEnd) {
+                                 String windowEnd,
+                                 @McpToolParam(description = "true = höchstens eine Buchung pro Tag (Standard false)",
+                                         required = false) Boolean oncePerDay,
+                                 @McpToolParam(description = "true = nie mit anderen Hausarbeiten oder Terminen "
+                                         + "überschneiden, die das ebenfalls verlangen (Standard false)",
+                                         required = false) Boolean noOverlap) {
         return tools.write(context, user -> {
             ChoreKind k = Tools.enumValue(ChoreKind.class, kind, "kind");
             Distribution d = Tools.enumValue(Distribution.class, distribution, "distribution");
@@ -172,7 +192,8 @@ public class HouseholdTools {
                     rrule == null || rrule.isBlank() ? "FREQ=WEEKLY" : rrule, Tools.date(startsOn, "startsOn"),
                     Tools.time(dueTime, "dueTime"), intervalDays == null ? 7 : intervalDays,
                     d == null ? Distribution.ROTATION : d, memberIds == null ? List.of() : memberIds,
-                    Tools.time(windowStart, "windowStart"), Tools.time(windowEnd, "windowEnd")), user);
+                    Tools.time(windowStart, "windowStart"), Tools.time(windowEnd, "windowEnd"),
+                    Boolean.TRUE.equals(oncePerDay), Boolean.TRUE.equals(noOverlap)), user);
             return chore(chores.get(created.getId(), user), names());
         });
     }
@@ -208,7 +229,11 @@ public class HouseholdTools {
                                  @McpToolParam(description = "Frühester Beginn HH:MM", required = false)
                                  String windowStart,
                                  @McpToolParam(description = "Spätestes Ende HH:MM", required = false)
-                                 String windowEnd) {
+                                 String windowEnd,
+                                 @McpToolParam(description = "true = höchstens eine Buchung pro Tag", required = false)
+                                 Boolean oncePerDay,
+                                 @McpToolParam(description = "true = nie überschneiden", required = false)
+                                 Boolean noOverlap) {
         return tools.write(context, user -> {
             Long id = Tools.required(choreId, "choreId");
             Chore c = chores.get(id, user);
@@ -225,7 +250,9 @@ public class HouseholdTools {
                     intervalDays == null ? c.getIntervalDays() : intervalDays,
                     d == null ? c.getDistribution() : d, memberIds == null ? c.getMemberIds() : memberIds,
                     windowStart == null ? c.getWindowStart() : Tools.time(windowStart, "windowStart"),
-                    windowEnd == null ? c.getWindowEnd() : Tools.time(windowEnd, "windowEnd")), user);
+                    windowEnd == null ? c.getWindowEnd() : Tools.time(windowEnd, "windowEnd"),
+                    oncePerDay == null ? c.isOncePerDay() : oncePerDay,
+                    noOverlap == null ? c.isNoOverlap() : noOverlap), user);
             return chore(chores.get(id, user), names());
         });
     }
@@ -373,7 +400,8 @@ public class HouseholdTools {
                 c.getRrule(), c.getStartsOn(), c.getDueTime() == null ? null : c.getDueTime().toString(),
                 c.getIntervalDays(), c.getDistribution().name(),
                 c.getMemberIds().stream().map(m -> names.getOrDefault(m, "?") + " (" + m + ")").toList(),
-                c.getMinutesEasy(), c.getMinutesMedium(), c.getMinutesHard(), c.isActive(), dates);
+                c.getMinutesEasy(), c.getMinutesMedium(), c.getMinutesHard(), c.isActive(), dates, c.isOncePerDay(),
+                c.isNoOverlap());
     }
 
     private Map<Long, String> names() {
@@ -386,5 +414,12 @@ public class HouseholdTools {
                 t.getAssigneeMemberId() == null ? null : names.getOrDefault(t.getAssigneeMemberId(), "?"),
                 t.getStatus().name(), t.getChore().getPlanMinutes(),
                 t.getPlannedAt() == null ? null : t.getPlannedAt().toString());
+    }
+
+    @McpTool(name = "get_chore", description = "Zeigt eine Hausarbeit mit allen Angaben (wie list_chores, für eine).",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public ChoreItem getChore(McpTransportContext context,
+                              @McpToolParam(description = "ID der Hausarbeit (choreId) aus list_chores") Long choreId) {
+        return tools.read(context, user -> chore(chores.get(Tools.required(choreId, "choreId"), user), names()));
     }
 }

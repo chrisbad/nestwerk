@@ -64,6 +64,10 @@ public class CalendarEvent {
     @Column(nullable = false)
     private boolean absence;
 
+    /** Chores must not be planned over the event or its occurrences. */
+    @Column(name = "no_overlap", nullable = false)
+    private boolean noOverlap;
+
     @Column(name = "category_id")
     private Long categoryId;
 
@@ -116,6 +120,7 @@ public class CalendarEvent {
     public String getRrule() { return rrule; }
     public boolean isPrivateEvent() { return privateEvent; }
     public boolean isAbsence() { return absence; }
+    public boolean isNoOverlap() { return noOverlap; }
     public Optional<Long> getCategoryId() { return Optional.ofNullable(categoryId); }
     public Long getCreatedBy() { return createdBy; }
     public int getSequence() { return sequence; }
@@ -129,6 +134,7 @@ public class CalendarEvent {
     public void setRrule(String rrule) { this.rrule = rrule; }
     public void setPrivateEvent(boolean privateEvent) { this.privateEvent = privateEvent; }
     public void setAbsence(boolean absence) { this.absence = absence; }
+    public void setNoOverlap(boolean noOverlap) { this.noOverlap = noOverlap; }
     public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
 
     public void setTimes(Instant startsAt, Instant endsAt, boolean allDay) {

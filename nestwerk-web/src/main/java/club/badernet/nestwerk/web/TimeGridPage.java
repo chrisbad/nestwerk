@@ -2,6 +2,8 @@ package club.badernet.nestwerk.web;
 
 import club.badernet.nestwerk.blocker.BlockerBands;
 import club.badernet.nestwerk.blocker.BlockerZones;
+import club.badernet.nestwerk.blocker.BusyBlock;
+import club.badernet.nestwerk.blocker.BusyBlocks;
 import club.badernet.nestwerk.calendar.CalendarEventService;
 import club.badernet.nestwerk.calendar.EventCategory;
 import club.badernet.nestwerk.calendar.Occurrence;
@@ -13,9 +15,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.ui.Model;
 
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -36,18 +40,23 @@ public class TimeGridPage {
      */
     private static final Map<String, Integer> NARROW_FROM = Map.of("day", 3, "days3", 2, "week", 1);
 
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
+    private static final int MINUTES_PER_DAY = 24 * 60;
+
     private final CalendarPageData pageData;
     private final CalendarEventService events;
     private final BlockerBands bands;
     private final BlockerZones zones;
+    private final BusyBlocks busyBlocks;
     private final ZoneId zone;
 
     public TimeGridPage(CalendarPageData pageData, CalendarEventService events, BlockerBands bands,
-                        BlockerZones zones, CalendarSettings settings) {
+                        BlockerZones zones, BusyBlocks busyBlocks, CalendarSettings settings) {
         this.pageData = pageData;
         this.events = events;
         this.bands = bands;
         this.zones = zones;
+        this.busyBlocks = busyBlocks;
         this.zone = settings.zone();
     }
 
@@ -83,11 +92,15 @@ public class TimeGridPage {
                 .map(person -> TimeGridLayout.layout(of(person, split, timed, people), days, this::start, this::end))
                 .toList();
         Map<LocalDate, List<GridDay.GridZone>> zonesByDay = zones(days, viewer);
-        Map<LocalDate, List<BlockerBands.Band>> bandsByDay = bands.between(first, last, viewer);
+        Map<LocalDate, List<GridDay.OverlapZone>> overlapsByDay = overlapZones(timed, days, people);
+        Map<LocalDate, List<BlockerBands.Band>> bandsByDay = bands.sourceBands(first, last, viewer);
+        Map<LocalDate, List<BusyBlock>> blocksByDay = busyBlocks.between(first, last, viewer).stream()
+                .collect(Collectors.groupingBy(b -> b.start().atZone(zone).toLocalDate()));
         LocalDate today = pageData.today();
         List<GridDay> gridDays = days.stream().map(d -> new GridDay(d, d.equals(today), isWeekend(d),
                 bandsByDay.getOrDefault(d, List.of()), dayColumns(d, columns, split, placed,
-                        zonesByDay.getOrDefault(d, List.of())))).toList();
+                        zonesByDay.getOrDefault(d, List.of()), blocks(blocksByDay.getOrDefault(d, List.of()),
+                                people), overlapsByDay.getOrDefault(d, List.of())))).toList();
         List<AllDayItem> items = allDayItems(allDay, days, columns, split, people);
 
         model.addAttribute("gridDays", gridDays);
@@ -99,10 +112,8 @@ public class TimeGridPage {
         model.addAttribute("nowMinute", now.getHour() * 60 + now.getMinute());
         model.addAttribute("slotFine", SlotSize.FINE.minutes());
         model.addAttribute("slotCoarse", SlotSize.COARSE.minutes());
+        model.addAttribute("slotOptions", SlotSize.OPTIONS);
         model.addAttribute("narrowColumns", NARROW_FROM.getOrDefault(view, 1));
-        model.addAttribute("canCreate", events.canCreate(viewer));
-        model.addAttribute("allMembers", List.copyOf(people.values()));
-        model.addAttribute("allCategories", List.copyOf(categories.values()));
         model.addAttribute("first", first);
         model.addAttribute("last", last);
     }
@@ -128,13 +139,20 @@ public class TimeGridPage {
 
     private static List<GridDay.Column> dayColumns(LocalDate day, List<GridPerson> columns, GridSplit split,
                                                    List<Map<LocalDate, List<TimeGridLayout.Placed<GridEntry>>>> placed,
-                                                   List<GridDay.GridZone> zones) {
+                                                   List<GridDay.GridZone> zones, List<MemberBlock> blocks,
+                                                   List<GridDay.OverlapZone> overlaps) {
         List<GridDay.Column> result = new ArrayList<>();
         for (int i = 0; i < columns.size(); i++) {
             Long member = columns.get(i).memberId();
             List<GridDay.GridZone> own = split == GridSplit.NONE ? zones
                     : zones.stream().filter(z -> z.memberId().equals(member)).toList();
-            result.add(new GridDay.Column(member, placed.get(i).getOrDefault(day, List.of()), own));
+            List<GridDay.GridBlock> ownBlocks = blocks.stream()
+                    .filter(b -> split == GridSplit.NONE || b.memberId().equals(member))
+                    .map(MemberBlock::block).toList();
+            List<GridDay.OverlapZone> ownOverlaps = split == GridSplit.NONE ? overlaps
+                    : overlaps.stream().filter(z -> z.memberId().equals(member)).toList();
+            result.add(new GridDay.Column(member, placed.get(i).getOrDefault(day, List.of()), own, ownBlocks,
+                    ownOverlaps));
         }
         return List.copyOf(result);
     }
@@ -150,7 +168,7 @@ public class TimeGridPage {
         for (int p = 0; p < width; p++) {
             Long member = columns.get(p).memberId();
             for (TimeGridLayout.Lane<GridEntry> lane : TimeGridLayout.lanes(of(columns.get(p), split, allDay, people),
-                    days, this::firstDay, this::lastDay)) {
+                    days, GridEntry::firstDay, GridEntry::lastDay)) {
                 if (split == GridSplit.NONE) {
                     result.add(new AllDayItem(lane.entry(), lane.firstColumn(), lane.span(), lane.lane(),
                             lane.continuesBefore(), lane.continuesAfter(), null));
@@ -179,6 +197,67 @@ public class TimeGridPage {
                 events.canDelete(o.createdBy(), viewer));
     }
 
+    /** One person's share of a timed event or chore, as a candidate for the overlap zones. */
+    private record Occupied(GridEntry entry, Long memberId, String key, String kind, boolean flag, String label) {
+    }
+
+    /** The times of the timed events and chores per member and day; the grid shows the relevant ones while dragging. */
+    private Map<LocalDate, List<GridDay.OverlapZone>> overlapZones(List<GridEntry> timed, List<LocalDate> days,
+                                                                   Map<Long, FamilyMember> people) {
+        List<Occupied> occupied = new ArrayList<>();
+        for (GridEntry entry : timed) {
+            for (Long member : entry.memberIds()) {
+                if (!people.containsKey(member)) {
+                    continue;
+                }
+                switch (entry) {
+                    case GridEntry.Event e -> occupied.add(new Occupied(e, member, "event:" + e.occurrence().eventId(),
+                            "event", e.occurrence().noOverlap(), "dem Termin „" + e.occurrence().title() + "“"));
+                    case GridEntry.Chore c -> occupied.add(new Occupied(c, member, "chore:" + c.chore().id(), "chore",
+                            c.chore().noOverlap(), "der Hausarbeit „" + c.chore().title() + "“"));
+                    default -> {
+                    }
+                }
+            }
+        }
+        Map<LocalDate, List<GridDay.OverlapZone>> result = new LinkedHashMap<>();
+        TimeGridLayout.layout(occupied, days, o -> start(o.entry()), o -> end(o.entry())).forEach((day, list) ->
+                result.put(day, list.stream().map(p -> new GridDay.OverlapZone(p.startMinute(), p.endMinute(),
+                        p.entry().memberId(), p.entry().key(), p.entry().kind(), p.entry().flag(),
+                        people.get(p.entry().memberId()).getName() + " · überschneidet sich mit "
+                                + p.entry().label())).toList()));
+        return result;
+    }
+
+    /** A drawn block with the person it belongs to, to pick it for the person's column. */
+    private record MemberBlock(Long memberId, GridDay.GridBlock block) {
+    }
+
+    /** The blocks of a day as drawn blocks; in an unsplit column every affected person gets a stripe of its own. */
+    private List<MemberBlock> blocks(List<BusyBlock> day, Map<Long, FamilyMember> people) {
+        List<Long> stripeOrder = day.stream().map(BusyBlock::memberId).distinct().sorted().toList();
+        return day.stream().map(b -> {
+            FamilyMember member = people.get(b.memberId());
+            GridDay.GridBlock block = new GridDay.GridBlock(minuteOfDay(b.start()), endMinute(b.end()),
+                    stripeOrder.indexOf(b.memberId()), stripeOrder.size(), b.kind(),
+                    member == null ? null : member.getColor(),
+                    (member == null ? "" : member.getName() + " · ") + b.label(),
+                    TIME.format(b.start().atZone(zone)) + "–" + TIME.format(b.end().atZone(zone)));
+            return new MemberBlock(b.memberId(), block);
+        }).toList();
+    }
+
+    private int minuteOfDay(Instant instant) {
+        ZonedDateTime time = instant.atZone(zone);
+        return time.getHour() * 60 + time.getMinute();
+    }
+
+    /** A block ending at midnight ends the day, not at minute 0. */
+    private int endMinute(Instant instant) {
+        int minute = minuteOfDay(instant);
+        return minute == 0 ? MINUTES_PER_DAY : minute;
+    }
+
     private Map<LocalDate, List<GridDay.GridZone>> zones(List<LocalDate> days, User viewer) {
         Map<LocalDate, List<GridDay.GridZone>> result = new LinkedHashMap<>();
         TimeGridLayout.layout(zones.between(days.getFirst(), days.getLast(), viewer), days,
@@ -197,39 +276,11 @@ public class TimeGridPage {
     }
 
     private ZonedDateTime start(GridEntry entry) {
-        return switch (entry) {
-            case GridEntry.Event e -> e.startsAt().atZone(zone);
-            case GridEntry.Chore c -> c.chore().startsAt().atZone(zone);
-            case GridEntry.DayChore c -> c.chore().day().atStartOfDay(zone);
-            case GridEntry.DueTodo t -> t.todo().getDueOn().atStartOfDay(zone);
-        };
+        return entry.startsAt().atZone(zone);
     }
 
     private ZonedDateTime end(GridEntry entry) {
-        return switch (entry) {
-            case GridEntry.Event e -> e.endsAt().atZone(zone);
-            case GridEntry.Chore c -> c.chore().endsAt().atZone(zone);
-            case GridEntry.DayChore c -> c.chore().day().plusDays(1).atStartOfDay(zone);
-            case GridEntry.DueTodo t -> t.todo().getDueOn().plusDays(1).atStartOfDay(zone);
-        };
-    }
-
-    private LocalDate firstDay(GridEntry entry) {
-        return switch (entry) {
-            case GridEntry.Event e -> e.startsAt().toLocalDate();
-            case GridEntry.Chore c -> c.chore().day();
-            case GridEntry.DayChore c -> c.chore().day();
-            case GridEntry.DueTodo t -> t.todo().getDueOn();
-        };
-    }
-
-    private LocalDate lastDay(GridEntry entry) {
-        return switch (entry) {
-            case GridEntry.Event e -> e.lastDay();
-            case GridEntry.Chore c -> c.chore().day();
-            case GridEntry.DayChore c -> c.chore().day();
-            case GridEntry.DueTodo t -> t.todo().getDueOn();
-        };
+        return entry.endsAt().atZone(zone);
     }
 
     private static boolean isWeekend(LocalDate day) {

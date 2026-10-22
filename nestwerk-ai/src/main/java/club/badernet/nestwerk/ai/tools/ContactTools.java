@@ -105,4 +105,17 @@ public class ContactTools {
         return new ContactItem(c.getId(), c.getName(), c.getCategory(), c.getCompany(), c.getPhone(), c.getEmail(),
                 c.getStreet(), c.getPostalCode(), c.getCity(), c.getUrl(), c.getNote());
     }
+
+    @McpTool(name = "delete_contact", description = "Löscht einen Kontakt endgültig. Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteContact(McpTransportContext context,
+                           @McpToolParam(description = "ID des Kontakts aus search_contacts") Long contactId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(contactId, "contactId");
+            String name = contacts.get(id, user).getName();
+            contacts.delete(id, user);
+            return "Kontakt „" + name + "“ wurde gelöscht.";
+        });
+    }
 }

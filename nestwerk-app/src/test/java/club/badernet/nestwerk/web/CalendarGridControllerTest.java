@@ -170,6 +170,14 @@ class CalendarGridControllerTest {
     }
 
     @Test
+    void gridDrawsBlockedTimesInlineAtTheirTime() throws Exception {
+        mockMvc.perform(get("/calendar/days3").param("date", TUESDAY.toString()).with(as("editor")))
+                .andExpect(content().string(containsString("class=\"tgrid-busy ")))
+                .andExpect(content().string(containsString("--start: 480;")))
+                .andExpect(content().string(containsString("tgrid-busy-label")));
+    }
+
+    @Test
     void foreignEventsAreNotEditableInTheGrid() throws Exception {
         event("Meins", 15, null);
 
@@ -311,5 +319,29 @@ class CalendarGridControllerTest {
                 .andExpect(status().is3xxRedirection());
 
         assertThat(categories.findByName("Musikschule", editor)).isPresent();
+    }
+
+    @Test
+    void slotLengthIsAChoiceOfSeveralLengthsNotJustFineAndCoarse() throws Exception {
+        mockMvc.perform(get("/calendar/week").param("date", TUESDAY.toString()).with(as("editor")))
+                .andExpect(content().string(containsString("data-slot-select")))
+                .andExpect(content().string(containsString("<option value=\"10\">10 Min</option>")))
+                .andExpect(content().string(containsString("<option value=\"30\">30 Min</option>")))
+                .andExpect(content().string(containsString("<option value=\"60\">60 Min</option>")))
+                .andExpect(content().string(not(containsString("data-slot-choice"))))
+                .andExpect(content().string(containsString("data-slot-coarse=\"15\"")));
+    }
+
+    @Test
+    void calendarUsesTheFullWidthExceptForListViews() throws Exception {
+        String css = mockMvc.perform(get("/css/nestwerk.css").with(as("editor"))).andReturn().getResponse()
+                .getContentAsString();
+
+        assertThat(css).contains(".cal-main { max-width: none; }")
+                .contains(".cal-main-grid { max-width: none; }")
+                .contains(".cal-main-lanes { max-width: none; }")
+                .doesNotContain(".cal-main { max-width: 78rem; }");
+        mockMvc.perform(get("/calendar/agenda").with(as("editor")))
+                .andExpect(content().string(containsString("cal-main cal-main-list")));
     }
 }

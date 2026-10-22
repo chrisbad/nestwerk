@@ -118,6 +118,23 @@ class HouseholdAccountControllerTest {
     }
 
     @Test
+    void switchingThePeriodKeepsTheSelectedDate() throws Exception {
+        mockMvc.perform(get("/household/stats").param("period", "year").param("date", "2026-05-17").with(user("mama")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("period=day&amp;date=2026-05-17")))
+                .andExpect(content().string(containsString("period=week&amp;date=2026-05-17")))
+                .andExpect(content().string(containsString("period=month&amp;date=2026-05-17")));
+    }
+
+    @Test
+    void quickLinksJumpToToday() throws Exception {
+        mockMvc.perform(get("/household/stats").param("period", "year").param("date", "2020-01-01").with(user("mama")))
+                .andExpect(content().string(containsString("period=day&amp;date=" + today)))
+                .andExpect(content().string(containsString("Diese Woche")))
+                .andExpect(content().string(containsString("Dieser Monat")));
+    }
+
+    @Test
     void correctingACreditStoresMinutesAndReason() throws Exception {
         ChoreCredit credit = kidDid("Staubsaugen", 25);
 
@@ -184,5 +201,24 @@ class HouseholdAccountControllerTest {
                 .andExpect(status().isForbidden());
 
         assertThat(rewardRepository.findAll()).extracting(Reward::getTitle).containsExactly("Ausflug");
+    }
+
+    @Test
+    void parentsDeleteUnusedRewardsAndKeepRequestedOnes() throws Exception {
+        kidDid("Staubsaugen", 50);
+        Reward unused = rewardService.create("Kino", null, 30, mama);
+        Reward wanted = rewardService.create("Eis", null, 30, mama);
+        mockMvc.perform(post("/household/rewards/{id}/redeem", wanted.getId()).with(csrf()).with(user("kind")));
+
+        mockMvc.perform(get("/household/rewards").with(user("mama")))
+                .andExpect(content().string(containsString("/household/rewards/" + unused.getId() + "/delete")));
+        mockMvc.perform(post("/household/rewards/{id}/delete", unused.getId()).with(csrf()).with(user("kind")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/household/rewards/{id}/delete", unused.getId()).with(csrf()).with(user("mama")))
+                .andExpect(flash().attribute("success", containsString("gelöscht")));
+        mockMvc.perform(post("/household/rewards/{id}/delete", wanted.getId()).with(csrf()).with(user("mama")))
+                .andExpect(flash().attribute("error", containsString("offene Anträge")));
+
+        assertThat(rewardRepository.findAll()).extracting(Reward::getTitle).containsExactly("Eis");
     }
 }

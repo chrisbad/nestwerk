@@ -1115,44 +1115,6 @@
         document.addEventListener("htmx:afterSettle", setup);
     }
 
-    /* --- Wochenplan: Hausarbeit zu einer anderen Person ziehen --------------- */
-
-    function initPlanDrag() {
-        const grid = document.querySelector("[data-plan-grid]");
-        if (!grid) return;
-        grid.querySelectorAll(".plan-cell[data-day]").forEach(cell => {
-            sortable(cell, {
-                group: "plan-day-" + cell.dataset.day,
-                sort: false,
-                draggable: ".chore-chip:not(.is-done)",
-                filter: ".chore-check, dialog",
-                preventOnFilter: false,
-                forceFallback: true,
-                fallbackOnBody: true,
-                onMove: evt => { markDropTarget(evt.to); },
-                onEnd: async evt => {
-                    if (evt.from === evt.to) return;
-                    const chip = evt.item;
-                    const row = evt.to.closest(".plan-row");
-                    const member = row.dataset.memberId === "open" ? "" : row.dataset.memberId;
-                    haptic(12);
-                    try {
-                        const id = chip.id.replace("task-", "");
-                        showToast(await postForm(`/household/tasks/${id}/assign`, { member }), "success");
-                        const color = row.style.getPropertyValue("--member-color");
-                        if (color) chip.style.setProperty("--member-color", color);
-                        else chip.style.removeProperty("--member-color");
-                        chip.animate([{ transform: "scale(1.08)" }, { transform: "scale(1)" }],
-                            { duration: 380, easing: "cubic-bezier(0.34, 1.56, 0.64, 1)" });
-                    } catch (error) {
-                        evt.from.insertBefore(chip, evt.from.children[evt.oldIndex] || null);
-                        showToast(error.message, "error");
-                    }
-                }
-            });
-        });
-    }
-
     /* --- Essensplan: Rezepte in Mahlzeiten ziehen, Einträge verschieben ------ */
 
     /* Rezeptsuche im Essensplan: erst beim Anklicken eines Planungsfelds */
@@ -1508,7 +1470,6 @@
         initPullToRefresh();
         initHomeSorting();
         initCalendarDrag();
-        initPlanDrag();
         initDragClickGuard();
         initUpdateRestart();
         initBlockerWarning();

@@ -112,6 +112,25 @@ public class RewardService {
         get(id).change(cleanTitle(title), cleanDescription(description), cleanCost(cost), active);
     }
 
+    /**
+     * Löscht eine Belohnung. Offene Anträge müssen erst entschieden werden; wurde sie schon einmal beantragt, bleibt
+     * sie für das Minutenkonto erhalten und lässt sich nur noch aus dem Angebot nehmen.
+     */
+    @Transactional
+    public void delete(Long id, User actor) {
+        requireManage(actor);
+        Reward reward = get(id);
+        if (redemptions.existsByRewardIdAndStatus(id, RedemptionStatus.REQUESTED)) {
+            throw new ChoreConflictException("Für „" + reward.getTitle() + "“ gibt es noch offene Anträge. "
+                    + "Entscheide erst darüber.");
+        }
+        if (redemptions.existsByRewardId(id)) {
+            throw new ChoreConflictException("„" + reward.getTitle() + "“ wurde schon eingelöst und zählt im "
+                    + "Minutenkonto. Nimm sie stattdessen aus dem Angebot (deaktivieren).");
+        }
+        rewards.delete(reward);
+    }
+
     /* --- Einlösen -------------------------------------------------------------- */
 
     /** Beantragt eine Belohnung für {@code memberId} (Standard: das eigene Mitglied). */

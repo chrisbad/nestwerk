@@ -18,6 +18,7 @@ import club.badernet.nestwerk.household.Distribution;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberService;
 import club.badernet.nestwerk.todo.AssigneeRef;
+import club.badernet.nestwerk.todo.TodoPriority;
 import club.badernet.nestwerk.todo.Todo;
 import club.badernet.nestwerk.todo.TodoInput;
 import club.badernet.nestwerk.todo.TodoRepository;
@@ -71,6 +72,7 @@ class CalendarDialogsTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired UserService userService;
+    @Autowired club.badernet.nestwerk.role.RoleService roleService;
     @Autowired FamilyMemberService memberService;
     @Autowired ChoreService chores;
     @Autowired ChoreRepository choreRepository;
@@ -79,6 +81,7 @@ class CalendarDialogsTest {
     @Autowired TodoRepository todoRepository;
     @Autowired CalendarEventService events;
     @Autowired CalendarEventRepository eventRepository;
+    @Autowired club.badernet.nestwerk.blocker.BlockerService blockerService;
     @Autowired EntityManager entityManager;
 
     User admin;
@@ -219,14 +222,87 @@ class CalendarDialogsTest {
     }
 
     @Test
-    void toolbarOffersTheQuickChoreDialogWithTheBookableChores() throws Exception {
+    void createDialogOffersEveryTypeTheViewerMayCreate() throws Exception {
         onDemandChore("Wäsche falten");
 
         mockMvc.perform(get("/calendar/week").param("date", WEDNESDAY.toString()).with(asAdmin()))
-                .andExpect(content().string(containsString("data-open-dialog=\"chore-quick\"")))
-                .andExpect(content().string(containsString("id=\"chore-quick\"")))
+                .andExpect(content().string(containsString("data-open-create")))
+                .andExpect(content().string(containsString("id=\"grid-quick\"")))
+                .andExpect(content().string(containsString("data-create-type=\"event\"")))
+                .andExpect(content().string(containsString("data-create-type=\"chore\"")))
+                .andExpect(content().string(containsString("data-create-type=\"todo\"")))
+                .andExpect(content().string(containsString("data-create-type=\"time\"")))
+                .andExpect(content().string(containsString("/calendar/actions/todos\"")))
+                .andExpect(content().string(containsString("/calendar/actions/blockers\"")))
                 .andExpect(content().string(containsString("Wäsche falten")))
-                .andExpect(content().string(containsString("data-chore-mode")));
+                .andExpect(content().string(containsString("data-chore-mode")))
+                .andExpect(content().string(not(containsString("id=\"chore-quick\""))));
+    }
+
+    @Test
+    void createDialogIsAvailableOnEveryView() throws Exception {
+        for (String view : new String[]{"day", "days3", "week", "month", "agenda", "my"}) {
+            mockMvc.perform(get("/calendar/" + view).param("date", WEDNESDAY.toString()).with(asAdmin()))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("data-open-create")))
+                    .andExpect(content().string(containsString("data-create-form=\"todo\"")));
+        }
+    }
+
+    @Test
+    void viewersWithoutAnyCreateRightDoNotSeeTheDialog() throws Exception {
+        club.badernet.nestwerk.role.Role viewOnly = roleService.create("Leser", null, Set.of("CALENDAR_VIEW"));
+        userService.create("leser", "passwort1", Set.of(viewOnly.getId()));
+        mockMvc.perform(get("/calendar/week").param("date", WEDNESDAY.toString())
+                        .with(user("leser").authorities(new SimpleGrantedAuthority("CALENDAR_VIEW"))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("data-open-create"))))
+                .andExpect(content().string(not(containsString("id=\"grid-quick\""))));
+    }
+
+    @Test
+    void todoIsCreatedFromTheCalendar() throws Exception {
+        mockMvc.perform(post("/calendar/actions/todos").with(csrf()).with(asAdmin())
+                        .param("title", "Steuer machen").param("dueOn", WEDNESDAY.toString())
+                        .param("priority", "HIGH").param("assignees", "member:" + lena.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value(containsString("Steuer machen")));
+
+        Todo created = todoRepository.findAll().stream().filter(t -> t.getTitle().equals("Steuer machen"))
+                .findFirst().orElseThrow();
+        assertThat(created.getDueOn()).isEqualTo(WEDNESDAY);
+        assertThat(created.getPriority()).isEqualTo(TodoPriority.HIGH);
+        assertThat(created.assigneeRefs()).extracting(AssigneeRef::key).containsExactly("member:" + lena.getId());
+    }
+
+    @Test
+    void creatingATodoWithoutTitleOrRightIsRefused() throws Exception {
+        mockMvc.perform(post("/calendar/actions/todos").with(csrf()).with(asAdmin()).param("title", " "))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void timeIsCreatedFromTheCalendarForTheChosenPeople() throws Exception {
+        mockMvc.perform(post("/calendar/actions/blockers").with(csrf()).with(asAdmin())
+                        .param("title", "Arbeit").param("kind", "WORK").param("startTime", "08:00")
+                        .param("endTime", "16:00").param("weekdays", "TUESDAY").param("validFrom", WEDNESDAY.toString())
+                        .param("memberIds", lena.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value(containsString("Arbeit")));
+
+        assertThat(blockerService.forMember(lena.getId())).singleElement().satisfies(blocker -> {
+            assertThat(blocker.getTitle()).isEqualTo("Arbeit");
+            assertThat(blocker.getStartTime()).isEqualTo(LocalTime.of(8, 0));
+        });
+    }
+
+    @Test
+    void creatingATimeNeedsADayAndTimes() throws Exception {
+        mockMvc.perform(post("/calendar/actions/blockers").with(csrf()).with(asAdmin())
+                        .param("title", "Arbeit").param("kind", "WORK").param("startTime", "08:00")
+                        .param("endTime", "16:00").param("validFrom", WEDNESDAY.toString())
+                        .param("memberIds", lena.getId().toString()))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -254,6 +330,131 @@ class CalendarDialogsTest {
         assertThat(moved.getDueOn()).isEqualTo(WEDNESDAY);
         assertThat(moved.getPlannedAt()).isEqualTo(LocalTime.of(16, 30));
         assertThat(moved.getAssigneeMemberId()).isEqualTo(tim.getId());
+    }
+
+    @Test
+    void movingAChoreOntoAnEventThatForbidsOverlapIsRejectedWithTheReason() throws Exception {
+        ChoreTask task = plannedChore(1);
+        events.create(new EventInput("Operation", null, null, WEDNESDAY, LocalTime.of(10, 0), WEDNESDAY,
+                LocalTime.of(11, 0), false, null, false, Set.of(lena.getId()), false, null, true), admin);
+
+        mockMvc.perform(post("/calendar/actions/chores/{id}/update", task.getId()).with(csrf()).with(asAdmin())
+                        .param("date", WEDNESDAY.toString()).param("start", "10:30"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(containsString("Operation")));
+
+        assertThat(tasks.findById(task.getId()).orElseThrow().getDueOn()).isEqualTo(MONDAY);
+    }
+
+    @Test
+    void gridMarksTheTimesOfEventsAndChoresAsOverlapZones() throws Exception {
+        ChoreTask task = plannedChore(1);
+        CalendarEvent flagged = events.create(new EventInput("Operation", null, null, MONDAY, LocalTime.of(10, 0),
+                MONDAY, LocalTime.of(11, 0), false, null, false, Set.of(lena.getId()), false, null, true), admin);
+
+        mockMvc.perform(get("/calendar/week").param("date", MONDAY.toString()).with(asAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("tgrid-zone-overlap")))
+                .andExpect(content().string(containsString("data-overlap-key=\"event:" + flagged.getId() + "\"")))
+                .andExpect(content().string(containsString("data-overlap-key=\"chore:" + task.getId() + "\"")))
+                .andExpect(content().string(containsString("data-overlap-flag=\"true\"")))
+                .andExpect(content().string(containsString("data-no-overlap=\"true\"")))
+                .andExpect(content().string(containsString("überschneidet sich mit dem Termin „Operation“")));
+    }
+
+    /* --- Quick actions: context menu and bar in the dialog ------------------------------------------------------ */
+
+    @Test
+    void contextMenuOffersTheChoreActionsTheViewerMayUse() throws Exception {
+        ChoreTask task = plannedChore(1);
+
+        mockMvc.perform(get("/calendar/items/chores/{id}/actions", task.getId()).with(asAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].key").value(org.hamcrest.Matchers.contains("complete", "skip", "edit")))
+                .andExpect(jsonPath("$[0].url").value("/calendar/actions/chores/" + task.getId() + "/complete"))
+                .andExpect(jsonPath("$[1].label").value("Nicht nötig"));
+
+        mockMvc.perform(post("/calendar/actions/chores/{id}/skip", task.getId()).with(csrf()).with(asAdmin()))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/calendar/items/chores/{id}/actions", task.getId()).with(asAdmin()))
+                .andExpect(jsonPath("$[*].key").value(org.hamcrest.Matchers.contains("undo")))
+                .andExpect(jsonPath("$[0].label").value("Wieder nötig"));
+    }
+
+    @Test
+    void contextMenuOfASeriesOffersToCancelOneOccurrenceOrDeleteAll() throws Exception {
+        CalendarEvent series = events.create(new EventInput("Chor", null, null, WEDNESDAY, LocalTime.of(19, 0),
+                WEDNESDAY, LocalTime.of(20, 0), false, "FREQ=WEEKLY", false, Set.of(), false, null), admin);
+        String occurrence = series.getStartsAt().toString();
+
+        mockMvc.perform(get("/calendar/items/events/{id}/actions", series.getId()).param("occurrence", occurrence)
+                        .with(asAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].key").value(org.hamcrest.Matchers.contains("edit", "cancel-occurrence",
+                        "delete")))
+                .andExpect(jsonPath("$[1].params.recurrenceId").value(occurrence))
+                .andExpect(jsonPath("$[2].label").value("Ganze Serie löschen"))
+                .andExpect(jsonPath("$[2].danger").value(true))
+                .andExpect(jsonPath("$[2].confirm").value(containsString("Chor")));
+    }
+
+    @Test
+    void contextMenuOfATodoCanCheckItOff() throws Exception {
+        Todo todo = dueTodo(Set.of());
+
+        mockMvc.perform(get("/calendar/items/todos/{id}/actions", todo.getId()).with(asAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].key").value("complete"))
+                .andExpect(jsonPath("$[0].url").value("/calendar/actions/todos/" + todo.getId() + "/status"))
+                .andExpect(jsonPath("$[0].params.status").value("DONE"));
+    }
+
+    @Test
+    void contextMenuRejectsUnknownEntriesAndKinds() throws Exception {
+        mockMvc.perform(get("/calendar/items/chores/{id}/actions", 999_999L).with(asAdmin()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/calendar/items/kitchen/{id}/actions", 1L).with(asAdmin()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/calendar/items/chores/{id}/actions", 1L).with(user("niemand")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void dialogsStartWithTheQuickActionBar() throws Exception {
+        ChoreTask task = plannedChore(1);
+        Todo todo = dueTodo(Set.of());
+
+        mockMvc.perform(get("/calendar/chores/{id}/sheet", task.getId()).with(asAdmin()))
+                .andExpect(content().string(containsString("class=\"quick-actions\"")))
+                .andExpect(content().string(containsString("/calendar/actions/chores/" + task.getId() + "/skip")))
+                .andExpect(content().string(containsString("Nicht nötig")));
+        mockMvc.perform(get("/calendar/todos/{id}/sheet", todo.getId()).with(asAdmin()))
+                .andExpect(content().string(containsString("class=\"quick-actions\"")))
+                .andExpect(content().string(containsString("name=\"status\" value=\"DONE\"")));
+    }
+
+    @Test
+    void theEventDialogHasDeleteInItsBarAndNothingForViewersWithoutTheRight() throws Exception {
+        CalendarEvent single = events.create(new EventInput("Zahnarzt", null, null, WEDNESDAY, LocalTime.of(9, 0),
+                WEDNESDAY, LocalTime.of(10, 0), false, null, false, Set.of(), false, null), admin);
+
+        mockMvc.perform(get("/calendar/events/{id}/sheet", single.getId()).with(asAdmin()))
+                .andExpect(content().string(containsString("class=\"quick-actions\"")))
+                .andExpect(content().string(containsString("Termin löschen")))
+                .andExpect(content().string(containsString("data-confirm-tone=\"danger\"")));
+        mockMvc.perform(get("/calendar/events/{id}/sheet", single.getId())
+                        .with(user("anderer").authorities(new SimpleGrantedAuthority("CALENDAR_VIEW"))))
+                .andExpect(content().string(not(containsString("class=\"quick-actions\""))));
+    }
+
+    @Test
+    void theContextMenuScriptIsLoadedOnEveryPage() throws Exception {
+        mockMvc.perform(get("/calendar/week").with(asAdmin()))
+                .andExpect(content().string(containsString("/js/calendar-menu.js")));
+        mockMvc.perform(get("/js/calendar-menu.js").with(asAdmin()))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("role\", \"menu\"")))
+                .andExpect(content().string(containsString("contextmenu")));
     }
 
     @Test

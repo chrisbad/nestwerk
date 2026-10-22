@@ -47,6 +47,12 @@ public class ExamService {
     }
 
     @Transactional(readOnly = true)
+    public SchoolExam get(Long id, User viewer) {
+        access.require(viewer, SchoolPermission.SCHOOL_VIEW);
+        return exams.findById(id).orElseThrow(() -> new IllegalArgumentException("Termin nicht gefunden"));
+    }
+
+    @Transactional(readOnly = true)
     public List<SchoolExam> upcoming(LocalDate from) {
         return exams.findAllByDayGreaterThanEqual(from);
     }

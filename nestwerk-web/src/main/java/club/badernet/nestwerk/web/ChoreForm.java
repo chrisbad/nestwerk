@@ -31,6 +31,8 @@ public class ChoreForm {
     @DateTimeFormat(iso = DateTimeFormat.ISO.TIME)
     private LocalTime windowEnd;
     private Integer intervalDays = 7;
+    private boolean oncePerDay;
+    private boolean noOverlap;
     private Distribution distribution = Distribution.ROTATION;
     private List<Long> memberIds = new ArrayList<>();
 
@@ -53,6 +55,8 @@ public class ChoreForm {
         f.windowStart = c.getWindowStart();
         f.windowEnd = c.getWindowEnd();
         f.intervalDays = c.getIntervalDays();
+        f.oncePerDay = c.isOncePerDay();
+        f.noOverlap = c.isNoOverlap();
         f.distribution = c.getDistribution();
         f.memberIds = new ArrayList<>(c.getMemberIds());
         return f;
@@ -60,7 +64,8 @@ public class ChoreForm {
 
     public ChoreInput toInput() {
         return new ChoreInput(title, area, description, minutesEasy, minutesMedium, minutesHard, kind, rrule, startsOn,
-                dueTime, intervalDays, distribution, memberIds, windowStart, windowEnd);
+                dueTime, intervalDays, distribution, memberIds, windowStart, windowEnd,
+                oncePerDay, noOverlap);
     }
 
     public String getTitle() { return title; }
@@ -69,6 +74,10 @@ public class ChoreForm {
     public void setArea(String area) { this.area = area; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public boolean isOncePerDay() { return oncePerDay; }
+    public void setOncePerDay(boolean oncePerDay) { this.oncePerDay = oncePerDay; }
+    public boolean isNoOverlap() { return noOverlap; }
+    public void setNoOverlap(boolean noOverlap) { this.noOverlap = noOverlap; }
     public Integer getMinutesEasy() { return minutesEasy; }
     public void setMinutesEasy(Integer minutesEasy) { this.minutesEasy = minutesEasy; }
     public Integer getMinutesMedium() { return minutesMedium; }

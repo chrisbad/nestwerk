@@ -87,24 +87,26 @@ public class CalendarTransfer {
                 return ImportReport.Row.skip(p.title(), detail, "vorhanden, Bearbeiten nicht erlaubt");
             }
             Long keptCategory = categoryId != null ? categoryId : current.getCategoryId().orElse(null);
-            events.update(current.getId(), input(p, current.getMemberIds(), current.isAbsence(), keptCategory), actor);
+            events.update(current.getId(), input(p, current.getMemberIds(), current.isAbsence(), keptCategory,
+                    p.noOverlap() || current.isNoOverlap()), actor);
             return new ImportReport.Row(p.title(), detail, ImportReport.Action.UPDATE, null);
         }
         if (repository.findByUid(p.uid()).isPresent()) {
             return ImportReport.Row.skip(p.title(), detail, "UID gehört zu einem anderen, nicht sichtbaren Termin");
         }
-        events.create(input(p, Set.of(), false, categoryId), actor, p.uid());
+        events.create(input(p, Set.of(), false, categoryId, p.noOverlap()), actor, p.uid());
         return new ImportReport.Row(p.title(), detail, ImportReport.Action.NEW, null);
     }
 
-    private static EventInput input(CalendarIcs.Parsed p, Set<Long> members, boolean absence, Long categoryId) {
+    private static EventInput input(CalendarIcs.Parsed p, Set<Long> members, boolean absence, Long categoryId,
+                                    boolean noOverlap) {
         String title = p.title().length() > 200 ? p.title().substring(0, 200) : p.title();
         if (p.allDay()) {
             return new EventInput(title, p.description(), p.location(), p.startDate(), null, p.endDate(), null, true,
-                    p.rrule(), p.privateEvent(), members, absence, categoryId);
+                    p.rrule(), p.privateEvent(), members, absence, categoryId, noOverlap);
         }
         return new EventInput(title, p.description(), p.location(), p.start().toLocalDate(),
                 p.start().toLocalTime(), p.end().toLocalDate(), p.end().toLocalTime(), false, p.rrule(),
-                p.privateEvent(), members, absence, categoryId);
+                p.privateEvent(), members, absence, categoryId, noOverlap);
     }
 }

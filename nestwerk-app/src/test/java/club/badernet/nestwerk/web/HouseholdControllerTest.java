@@ -48,6 +48,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -108,13 +109,13 @@ class HouseholdControllerTest {
     }
 
     @Test
-    void weekShowsTasksInTheMembersRow() throws Exception {
+    void planShowsTheTasksOfTheDay() throws Exception {
         todaysTask("Spülmaschine ausräumen", kidM.getId());
 
         mockMvc.perform(get("/household").with(as("mama")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Spülmaschine ausräumen")))
-                .andExpect(content().string(containsString("plan-grid")))
+                .andExpect(content().string(not(containsString("plan-grid"))))
                 .andExpect(content().string(containsString("data-open-dialog=\"book-")))
                 .andExpect(content().string(containsString("15 Min")))
                 .andExpect(content().string(containsString("Lena")));
@@ -140,6 +141,35 @@ class HouseholdControllerTest {
                 .andExpect(content().string(containsString("data-toast=\"success\"")))
                 .andExpect(content().string(containsString("/household/tasks/" + t.getId() + "/undo")))
                 .andExpect(content().string(not(containsString("<html"))));
+    }
+
+    @Test
+    void markingATaskAsNotNecessaryReturnsTheStruckThroughChipWithUndo() throws Exception {
+        ChoreTask t = todaysTask("Müll", kidM.getId());
+
+        mockMvc.perform(post("/household/tasks/{id}/skip", t.getId()).with(csrf()).with(as("kind"))
+                        .header("HX-Request", "true").param("back", "/household"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("is-skipped")))
+                .andExpect(content().string(containsString("nicht nötig")))
+                .andExpect(content().string(containsString("/household/tasks/" + t.getId() + "/undo")))
+                .andExpect(content().string(not(containsString("/household/tasks/" + t.getId() + "/skip"))));
+    }
+
+    @Test
+    void openTasksOfferTheNotNecessaryButton() throws Exception {
+        ChoreTask t = todaysTask("Müll", kidM.getId());
+
+        mockMvc.perform(get("/household").with(as("kind")))
+                .andExpect(content().string(containsString("/household/tasks/" + t.getId() + "/skip")));
+    }
+
+    @Test
+    void childCannotMarkSomebodyElsesTaskAsNotNecessary() throws Exception {
+        ChoreTask t = todaysTask("Bad", mamaM.getId());
+
+        mockMvc.perform(post("/household/tasks/{id}/skip", t.getId()).with(csrf()).with(as("kind")))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -176,6 +206,22 @@ class HouseholdControllerTest {
         assertThat(c.getMemberIds()).containsExactly(kidM.getId(), mamaM.getId());
         assertThat(c.getIntervalDays()).isEqualTo(7);
         assertThat(c.minutesFor(ChoreEffort.HARD)).isEqualTo(60);
+    }
+
+    @Test
+    void noOverlapCheckboxIsOfferedAndSavedForChores() throws Exception {
+        mockMvc.perform(get("/household/chores/new").with(as("mama")))
+                .andExpect(content().string(containsString("name=\"noOverlap\"")))
+                .andExpect(content().string(containsString("Nicht überschneiden")));
+
+        mockMvc.perform(post("/household/chores").with(csrf()).with(as("mama"))
+                        .param("title", "Fenster putzen").param("minutesEasy", "15").param("minutesMedium", "30")
+                        .param("minutesHard", "60").param("kind", "ON_DEMAND").param("distribution", "OPEN")
+                        .param("noOverlap", "true"))
+                .andExpect(status().is3xxRedirection());
+
+        assertThat(choreRepository.findAll()).filteredOn(c -> c.getTitle().equals("Fenster putzen")).singleElement()
+                .satisfies(c -> assertThat(c.isNoOverlap()).isTrue());
     }
 
     @Test
@@ -244,7 +290,7 @@ class HouseholdControllerTest {
     }
 
     @Test
-    void planShowsTheDayWithPersonFilterNextToTheWeek() throws Exception {
+    void planShowsTheDayWithPersonFilter() throws Exception {
         todaysTask("Zimmer aufräumen", kidM.getId());
         todaysTask("Steuer", mamaM.getId());
 
@@ -257,7 +303,18 @@ class HouseholdControllerTest {
                 .andExpect(content().string(containsString("data-member=\"" + kidM.getId() + "\"")))
                 .andExpect(content().string(containsString("Zimmer aufräumen")))
                 .andExpect(content().string(containsString("Steuer")))
-                .andExpect(content().string(containsString("plan-grid")));
+                .andExpect(content().string(not(containsString("plan-grid"))));
+    }
+
+    @Test
+    void planLinksToTheWeekInTheCalendarForTheShownDay() throws Exception {
+        String day = today.plusDays(2).toString();
+
+        mockMvc.perform(get("/household").param("date", day).with(as("kind")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("href=\"/calendar/week?date=" + day + "\"")))
+                .andExpect(content().string(containsString("data-swipe-prev")))
+                .andExpect(content().string(containsString("data-swipe-next")));
     }
 
     @Test
@@ -291,6 +348,69 @@ class HouseholdControllerTest {
         mockMvc.perform(get("/").with(as("kind")))
                 .andExpect(content().string(containsString("Meine Hausarbeiten")))
                 .andExpect(content().string(containsString("Zimmer aufräumen")));
+    }
+
+    @Test
+    void choreListIsATableAndOffersEditAndDeleteOnlyWithPermission() throws Exception {
+        Chore c = chores.create(new ChoreInput("Fenster putzen", "Haus", null, 10, 20, 30, ChoreKind.ON_DEMAND, null,
+                null, null, null, Distribution.OPEN, List.of()), admin);
+        entityManager.flush();
+        String editLink = "href=\"/household/chores/" + c.getId() + "/edit\"";
+        String deleteAction = "action=\"/household/chores/" + c.getId() + "/delete\"";
+
+        mockMvc.perform(get("/household/chores").with(as("mama")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-table=\"chores\"")))
+                .andExpect(content().string(containsString("Fenster putzen")))
+                .andExpect(content().string(containsString("Bei Bedarf")))
+                .andExpect(content().string(containsString("10–30 Min")))
+                .andExpect(content().string(containsString(editLink)))
+                .andExpect(content().string(containsString(deleteAction)));
+        mockMvc.perform(get("/household/chores").with(as("kind")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Fenster putzen")))
+                .andExpect(content().string(containsString("/book-form")))
+                .andExpect(content().string(not(containsString(editLink))))
+                .andExpect(content().string(not(containsString(deleteAction))));
+    }
+
+    @Test
+    void deletingFromTheListReturnsToTheList() throws Exception {
+        Chore c = chores.create(new ChoreInput("Fenster putzen", "Haus", null, 10, 20, 30, ChoreKind.ON_DEMAND, null,
+                null, null, null, Distribution.OPEN, List.of()), admin);
+        entityManager.flush();
+
+        mockMvc.perform(post("/household/chores/{id}/delete", c.getId()).with(csrf()).with(as("mama"))
+                        .param("back", "/household/chores"))
+                .andExpect(redirectedUrl("/household/chores"));
+
+        assertThat(choreRepository.findById(c.getId())).isEmpty();
+    }
+
+    @Test
+    void deletingAChoreWithCreditsKeepsItAndExplainsWhy() throws Exception {
+        ChoreTask t = todaysTask("Müll", kidM.getId());
+        mockMvc.perform(post("/household/tasks/{id}/complete", t.getId()).with(csrf()).with(as("kind")));
+        entityManager.flush();
+        Long choreId = t.getChore().getId();
+
+        mockMvc.perform(post("/household/chores/{id}/delete", choreId).with(csrf()).with(as("mama"))
+                        .param("back", "/household/chores"))
+                .andExpect(redirectedUrl("/household/chores"))
+                .andExpect(flash().attribute("error", containsString("deaktivieren")));
+
+        assertThat(choreRepository.findById(choreId)).isPresent();
+    }
+
+    @Test
+    void deleteIgnoresAForeignReturnTarget() throws Exception {
+        Chore c = chores.create(new ChoreInput("Fenster putzen", "Haus", null, 10, 20, 30, ChoreKind.ON_DEMAND, null,
+                null, null, null, Distribution.OPEN, List.of()), admin);
+        entityManager.flush();
+
+        mockMvc.perform(post("/household/chores/{id}/delete", c.getId()).with(csrf()).with(as("mama"))
+                        .param("back", "https://evil.example/"))
+                .andExpect(redirectedUrl("/household/chores"));
     }
 
     @Test
