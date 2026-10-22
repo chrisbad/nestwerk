@@ -65,7 +65,7 @@ public class SchoolTools {
                            String start, String end, String location, List<Long> participantIds) {
     }
 
-    public record HolidayItem(String name, LocalDate from, LocalDate to, String source) {
+    public record HolidayItem(Long holidayId, String name, LocalDate from, LocalDate to, String source) {
     }
 
     public record GradeItem(Long gradeId, String grade, String kind, LocalDate day, int weightPercent, String note) {
@@ -238,7 +238,7 @@ public class SchoolTools {
             }
             LocalDate now = LocalDate.now(clock);
             return holidays.list(state, now.minusMonths(1), now.plusYears(1)).stream()
-                    .map(h -> new HolidayItem(h.getName(), h.getStartsOn(), h.getEndsOn(), h.getSource())).toList();
+                    .map(h -> new HolidayItem(h.getId(), h.getName(), h.getStartsOn(), h.getEndsOn(), h.getSource())).toList();
         });
     }
 
@@ -447,6 +447,42 @@ public class SchoolTools {
             boolean value = signed == null || signed;
             letters.setSigned(Tools.required(letterId, "letterId"), value, user);
             return value ? "Als unterschrieben markiert." : "Unterschrift zurückgenommen.";
+        });
+    }
+
+    @McpTool(name = "delete_school_grade", description = "Löscht eine Note endgültig (nur mit Schulrecht zum Bearbeiten). Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteSchoolGrade(McpTransportContext context,
+                           @McpToolParam(description = "Noten-ID aus list_school_grades") Long gradeId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(gradeId, "gradeId");
+            grades.delete(id, user);
+            return "Note wurde gelöscht.";
+        });
+    }
+
+    @McpTool(name = "delete_school_letter", description = "Löscht einen Elternbrief endgültig samt Anhängen. Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteSchoolLetter(McpTransportContext context,
+                           @McpToolParam(description = "Brief-ID aus list_school_letters") Long letterId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(letterId, "letterId");
+            letters.delete(id, user);
+            return "Elternbrief wurde gelöscht.";
+        });
+    }
+
+    @McpTool(name = "delete_school_holiday", description = "Löscht selbst eingetragene Ferien (online geladene lassen sich nicht löschen). Braucht das Recht für die Schul-Einstellungen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteSchoolHoliday(McpTransportContext context,
+                           @McpToolParam(description = "Ferien-ID aus list_school_holidays") Long holidayId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(holidayId, "holidayId");
+            holidays.deleteManual(id, user);
+            return "Ferien wurden gelöscht.";
         });
     }
 

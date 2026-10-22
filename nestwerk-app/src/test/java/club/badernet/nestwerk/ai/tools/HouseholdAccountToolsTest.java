@@ -119,4 +119,32 @@ class HouseholdAccountToolsTest {
         assertThatThrownBy(() -> accountTools.removeChoreDate(as(admin), chore.choreId(), day.toString(), null))
                 .isInstanceOf(Tools.ToolException.class);
     }
+
+    @Test
+    void deletesUnusedRewardsButNotOnesPeopleAlreadyRequested() {
+        LocalDate today = LocalDate.now(clock);
+        Chore chore = chores.create(new ChoreInput("Küche aufräumen", null, null, 30, 30, 30, ChoreKind.RECURRING,
+                "FREQ=DAILY;COUNT=1", today, null, null, Distribution.FIXED, List.of(kidM.getId())), admin);
+        entityManager.flush();
+        ChoreTask task = tasks.findAllByChoreId(chore.getId()).getFirst();
+        householdTools.completeChoreTask(as(kid), task.getId(), null, null, null, null);
+        entityManager.flush();
+        HouseholdAccountTools.RewardItem unused = accountTools.createReward(as(admin), "Kino", 100, null);
+        HouseholdAccountTools.RewardItem wanted = accountTools.createReward(as(admin), "Eis essen", 15, null);
+
+        assertThatThrownBy(() -> accountTools.deleteReward(as(kid), unused.rewardId()))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThat(accountTools.deleteReward(as(admin), unused.rewardId())).contains("Kino");
+        assertThatThrownBy(() -> accountTools.deleteReward(as(admin), unused.rewardId()))
+                .isInstanceOf(Tools.ToolException.class);
+
+        HouseholdAccountTools.RedemptionItem request = accountTools.redeemReward(as(kid), wanted.rewardId(), null);
+        assertThatThrownBy(() -> accountTools.deleteReward(as(admin), wanted.rewardId()))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("offene Anträge");
+        accountTools.decideRedemption(as(admin), request.redemptionId(), true);
+        assertThatThrownBy(() -> accountTools.deleteReward(as(admin), wanted.rewardId()))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("deaktivieren");
+        assertThat(accountTools.listRewards(as(admin)).rewards()).extracting(HouseholdAccountTools.RewardItem::title)
+                .containsExactly("Eis essen");
+    }
 }

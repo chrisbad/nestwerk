@@ -406,4 +406,28 @@ class McpToolsTest {
         assertThat(overview.notes()).anyMatch(n -> n.startsWith("Kalender"));
         assertThat(overview.myUrgentTodos()).extracting(TodoTools.TodoItem::title).contains("Heute erledigen");
     }
+
+    @Test
+    void deletesContactsAndReportsUnknownOnes() {
+        ContactTools.ContactItem contact = contactTools.createContact(as(admin), "Dr. Weiß", "Arzt", null, null,
+                null, null, null, null, null, null);
+
+        assertThat(contactTools.deleteContact(as(admin), contact.id())).contains("Dr. Weiß");
+
+        assertThat(contactTools.searchContacts(as(admin), null)).isEmpty();
+        assertThatThrownBy(() -> contactTools.deleteContact(as(admin), contact.id()))
+                .isInstanceOf(Tools.ToolException.class).hasMessage("Kontakt nicht gefunden");
+        assertThatThrownBy(() -> contactTools.deleteContact(as(admin), null))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("contactId");
+    }
+
+    @Test
+    void contactCannotBeDeletedWithoutTheRight() {
+        ContactTools.ContactItem contact = contactTools.createContact(as(admin), "Dr. Weiß", "Arzt", null, null,
+                null, null, null, null, null, null);
+
+        assertThatThrownBy(() -> contactTools.deleteContact(as(kid), contact.id()))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThat(contactTools.searchContacts(as(admin), null)).hasSize(1);
+    }
 }

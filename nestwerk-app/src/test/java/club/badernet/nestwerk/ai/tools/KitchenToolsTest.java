@@ -209,4 +209,56 @@ class KitchenToolsTest {
         assertThatThrownBy(() -> kitchen.getRecipe(as(chef), 999_999L, null)).isInstanceOf(Tools.ToolException.class)
                 .hasMessageContaining("nicht gefunden");
     }
+
+    @Test
+    void deletesFoodsRecipesMealsShoppingItemsAndPantryPostsWithTheRightRights() {
+        KitchenTools.RecipeDetail recipe = pancakes();
+        KitchenTools.FoodItem food = kitchen.createFood(as(chef), "Kichererbsenmehl", null, 340.0, 12.0, 2.0, 70.0,
+                null, null, null);
+        KitchenTools.MealItem meal = kitchen.planMeal(as(chef), MONDAY.toString(), "Abendessen", recipe.recipe().id(),
+                null);
+        KitchenTools.ShoppingEntry item = kitchen.addShoppingItem(as(chef), "2 Dosen Tomaten");
+        KitchenTools.PantryEntry post = kitchen.addPantryItem(as(chef), "Reis", 500.0, "g", null, null);
+
+        assertThatThrownBy(() -> kitchen.deleteFood(as(guest), food.id())).isInstanceOf(Tools.ToolException.class)
+                .hasMessageContaining("Keine Berechtigung");
+        assertThatThrownBy(() -> kitchen.deleteRecipe(as(guest), recipe.recipe().id()))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Keine Berechtigung");
+        assertThatThrownBy(() -> kitchen.deleteMeal(as(guest), meal.id())).isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.deleteShoppingItem(as(guest), item.id()))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.deletePantryItem(as(guest), post.id()))
+                .isInstanceOf(Tools.ToolException.class);
+
+        assertThat(kitchen.deleteMeal(as(chef), meal.id())).contains("gelöscht");
+        assertThat(kitchen.getMealPlan(as(chef), MONDAY.toString(), MONDAY.toString())).isEmpty();
+        assertThat(kitchen.searchRecipes(as(chef), "pfann")).hasSize(1);
+
+        assertThat(kitchen.deleteShoppingItem(as(chef), item.id())).contains("gelöscht");
+        assertThat(kitchen.shoppingList(as(chef))).isEmpty();
+        assertThat(kitchen.deletePantryItem(as(chef), post.id())).contains("gelöscht");
+        assertThat(kitchen.listPantry(as(chef))).isEmpty();
+        assertThat(kitchen.deleteFood(as(chef), food.id())).contains("Kichererbsenmehl");
+        assertThat(kitchen.searchFoods(as(chef), "kichererbsenm")).isEmpty();
+        assertThat(kitchen.deleteRecipe(as(chef), recipe.recipe().id())).contains("Pfannkuchen");
+        assertThat(kitchen.searchRecipes(as(chef), "pfann")).isEmpty();
+
+        assertThatThrownBy(() -> kitchen.deleteRecipe(as(chef), recipe.recipe().id()))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.deleteFood(as(chef), food.id())).isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.deleteMeal(as(chef), meal.id())).isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.deleteShoppingItem(as(chef), item.id()))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> kitchen.deletePantryItem(as(chef), post.id()))
+                .isInstanceOf(Tools.ToolException.class);
+    }
+
+    @Test
+    void deletingARecipeKeepsTheFoodsOfItsIngredients() {
+        KitchenTools.RecipeDetail recipe = pancakes();
+
+        kitchen.deleteRecipe(as(chef), recipe.recipe().id());
+
+        assertThat(kitchen.searchFoods(as(chef), "mehl")).isNotEmpty();
+    }
 }

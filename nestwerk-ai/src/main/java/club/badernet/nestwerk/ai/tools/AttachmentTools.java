@@ -218,4 +218,16 @@ public class AttachmentTools {
             java.nio.file.Files.write(dest.toPath(), data);
         }
     }
+
+    @McpTool(name = "delete_attachment", description = "Löscht einen Anhang endgültig (Hochladende, Administratoren und wer den Besitzer bearbeiten darf). Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteAttachment(McpTransportContext context,
+                           @McpToolParam(description = "ID des Anhangs aus list_attachments") Long attachmentId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(attachmentId, "attachmentId");
+            attachments.delete(id, user);
+            return "Anhang wurde gelöscht.";
+        });
+    }
 }

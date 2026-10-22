@@ -289,4 +289,29 @@ public class BlockerTools {
     private static <T> T orDefault(T value, T fallback) {
         return value != null ? value : fallback;
     }
+
+    @McpTool(name = "delete_blocker", description = "Löscht eine Zeit (Arbeit, Schlaf, Ruhe …) endgültig. Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteBlocker(McpTransportContext context,
+                           @McpToolParam(description = "ID der Zeit aus list_blockers") Long blockerId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(blockerId, "blockerId");
+            String title = blockers.get(id).getTitle();
+            blockers.delete(id, user);
+            return "Zeit „" + title + "“ wurde gelöscht.";
+        });
+    }
+
+    @McpTool(name = "delete_rest_goal", description = "Löscht ein Ruhe-Ziel endgültig. Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteRestGoal(McpTransportContext context,
+                           @McpToolParam(description = "ID des Ziels aus list_rest_goals") Long goalId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(goalId, "goalId");
+            blockers.deleteGoal(id, user);
+            return "Ruhe-Ziel wurde gelöscht.";
+        });
+    }
 }

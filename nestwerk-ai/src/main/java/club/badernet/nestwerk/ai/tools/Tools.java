@@ -14,6 +14,7 @@ import club.badernet.nestwerk.user.User;
 import io.modelcontextprotocol.common.McpTransportContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
@@ -73,6 +74,9 @@ public class Tools {
             throw new ToolException("Keine Berechtigung: " + e.getMessage());
         } catch (IllegalArgumentException | IllegalStateException | DateTimeException e) {
             throw new ToolException(e.getMessage());
+        } catch (DataIntegrityViolationException e) {
+            throw new ToolException("Das lässt sich nicht löschen oder ändern, weil noch andere Daten darauf "
+                    + "verweisen.");
         } catch (ObjectOptimisticLockingFailureException e) {
             throw new ToolException("Der Eintrag wurde inzwischen geändert. Bitte neu laden und erneut versuchen.");
         } catch (TodoNotFoundException | EventNotFoundException | CategoryNotFoundException | ChoreNotFoundException

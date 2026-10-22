@@ -202,4 +202,23 @@ class HouseholdAccountControllerTest {
 
         assertThat(rewardRepository.findAll()).extracting(Reward::getTitle).containsExactly("Ausflug");
     }
+
+    @Test
+    void parentsDeleteUnusedRewardsAndKeepRequestedOnes() throws Exception {
+        kidDid("Staubsaugen", 50);
+        Reward unused = rewardService.create("Kino", null, 30, mama);
+        Reward wanted = rewardService.create("Eis", null, 30, mama);
+        mockMvc.perform(post("/household/rewards/{id}/redeem", wanted.getId()).with(csrf()).with(user("kind")));
+
+        mockMvc.perform(get("/household/rewards").with(user("mama")))
+                .andExpect(content().string(containsString("/household/rewards/" + unused.getId() + "/delete")));
+        mockMvc.perform(post("/household/rewards/{id}/delete", unused.getId()).with(csrf()).with(user("kind")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/household/rewards/{id}/delete", unused.getId()).with(csrf()).with(user("mama")))
+                .andExpect(flash().attribute("success", containsString("gelöscht")));
+        mockMvc.perform(post("/household/rewards/{id}/delete", wanted.getId()).with(csrf()).with(user("mama")))
+                .andExpect(flash().attribute("error", containsString("offene Anträge")));
+
+        assertThat(rewardRepository.findAll()).extracting(Reward::getTitle).containsExactly("Eis");
+    }
 }

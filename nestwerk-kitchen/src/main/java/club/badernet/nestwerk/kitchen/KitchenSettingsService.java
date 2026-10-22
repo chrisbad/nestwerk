@@ -58,6 +58,9 @@ public class KitchenSettingsService {
     @Transactional
     public void deleteSlot(Long id, User actor) {
         access.require(actor, KitchenPermission.KITCHEN_SETTINGS);
+        if (!slots.existsById(id)) {
+            throw new IllegalArgumentException("Die Mahlzeit gibt es nicht.");
+        }
         if (slots.count() <= 1) {
             throw new IllegalArgumentException("Mindestens eine Mahlzeit muss bleiben.");
         }

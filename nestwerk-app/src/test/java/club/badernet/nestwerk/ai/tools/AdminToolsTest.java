@@ -96,4 +96,28 @@ class AdminToolsTest {
         assertThatThrownBy(() -> adminTools.createRole(as(manager), "Super", null, List.of("BACKUP_MANAGE")))
                 .isInstanceOf(Tools.ToolException.class);
     }
+
+    @Test
+    void deletesMembersAndRolesWithTheirGuards() {
+        AdminTools.MemberItem member = adminTools.createMember(as(admin), "Oma", "#ff8800", null);
+        AdminTools.RoleItem role = adminTools.createRole(as(admin), "Helfer", null, List.of("CALENDAR_VIEW"));
+        adminTools.setUserRoles(as(admin), plain.getId(), List.of(role.roleId()));
+
+        assertThatThrownBy(() -> adminTools.deleteMember(as(plain), member.memberId()))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("MEMBER_MANAGE");
+        assertThatThrownBy(() -> adminTools.deleteRole(as(plain), role.roleId()))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("ACCESS_ROLE_MANAGE");
+
+        assertThat(adminTools.deleteMember(as(admin), member.memberId())).contains("Oma");
+        assertThatThrownBy(() -> adminTools.deleteMember(as(admin), member.memberId()))
+                .isInstanceOf(Tools.ToolException.class).hasMessage("Mitglied nicht gefunden");
+
+        // still assigned to a user
+        assertThatThrownBy(() -> adminTools.deleteRole(as(admin), role.roleId()))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("zugewiesen");
+        adminTools.setUserRoles(as(admin), plain.getId(), List.of());
+        assertThat(adminTools.deleteRole(as(admin), role.roleId())).contains("Helfer");
+        assertThatThrownBy(() -> adminTools.deleteRole(as(admin), role.roleId()))
+                .isInstanceOf(Tools.ToolException.class).hasMessage("Rolle nicht gefunden");
+    }
 }

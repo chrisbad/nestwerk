@@ -251,6 +251,40 @@ public class AdminTools {
         });
     }
 
+    @McpTool(name = "delete_member", description = "Verwaltung: Löscht ein Familienmitglied endgültig. Das Konto "
+            + "des Mitglieds bleibt bestehen. Braucht MEMBER_MANAGE. Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteMember(McpTransportContext context,
+                               @McpToolParam(description = "memberId aus list_members") Long memberId) {
+        return tools.write(context, actor -> {
+            guard.require(actor, AdminPermission.MEMBER_MANAGE);
+            Long id = Tools.required(memberId, "memberId");
+            String name = memberService.findAll().stream().filter(m -> m.getId().equals(id)).findFirst()
+                    .map(FamilyMember::getName).orElseThrow(() -> new Tools.ToolException("Mitglied nicht gefunden"));
+            memberService.delete(id);
+            return "Mitglied „" + name + "“ wurde gelöscht.";
+        });
+    }
+
+    @McpTool(name = "delete_role", description = "Verwaltung: Löscht eine Rolle. Systemrollen und Rollen, die noch "
+            + "Benutzern zugewiesen sind, lassen sich nicht löschen. Braucht ACCESS_ROLE_MANAGE. Nur nach Rückfrage "
+            + "benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteRole(McpTransportContext context,
+                             @McpToolParam(description = "roleId aus list_roles") Long roleId) {
+        return tools.write(context, actor -> {
+            guard.require(actor, AdminPermission.ACCESS_ROLE_MANAGE);
+            Long id = Tools.required(roleId, "roleId");
+            String name = roleService.findAll().stream().filter(r -> r.getId().equals(id)).findFirst()
+                    .map(Role::getName).orElseThrow(() -> new Tools.ToolException("Rolle nicht gefunden"));
+            roleService.requireMayManage(catalog.effective(actor), id, null);
+            roleService.delete(id);
+            return "Rolle „" + name + "“ wurde gelöscht.";
+        });
+    }
+
     @McpTool(name = "access_catalog", description = "Verwaltung: Zeigt, welche Zugriffsregeln es gibt – je "
             + "Objekttyp die Aktionen, Beziehungen und erlaubten Kombinationen (AKTION:BEZIEHUNG) – und die "
             + "Vorlagen für set_role_access_rules und apply_access_preset. Braucht ACCESS_ROLE_MANAGE.",

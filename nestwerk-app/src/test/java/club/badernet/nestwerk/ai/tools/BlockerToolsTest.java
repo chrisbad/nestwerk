@@ -101,4 +101,27 @@ class BlockerToolsTest {
         assertThat(blockerTools.setHolidayState(as(admin), "bw")).contains("BW");
         assertThatThrownBy(() -> blockerTools.setHolidayState(as(papa), "BY")).isInstanceOf(Tools.ToolException.class);
     }
+
+    @Test
+    void deletesBlockersAndRestGoalsOnlyWithTheRightToEditThem() {
+        BlockerTools.BlockerItem work = blockerTools.createBlocker(as(mama), "Büro", "work", "08:00", "16:30",
+                List.of("MONDAY"), List.of(mamaM.getId()), null, null, null, null, null, null, null, null);
+
+        assertThatThrownBy(() -> blockerTools.deleteBlocker(as(papa), work.blockerId()))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThat(blockerTools.listBlockers(as(mama), mamaM.getId())).hasSize(1);
+
+        assertThat(blockerTools.deleteBlocker(as(mama), work.blockerId())).contains("Büro");
+
+        assertThat(blockerTools.listBlockers(as(mama), mamaM.getId())).isEmpty();
+        assertThatThrownBy(() -> blockerTools.deleteBlocker(as(mama), work.blockerId()))
+                .isInstanceOf(Tools.ToolException.class);
+
+        blockerTools.saveRestGoal(as(mama), mamaM.getId(), "hours", 10, null, null, null, null);
+        Long goal = blockerTools.listRestGoals(as(mama), mamaM.getId()).getFirst().goalId();
+        assertThatThrownBy(() -> blockerTools.deleteRestGoal(as(papa), goal)).isInstanceOf(Tools.ToolException.class);
+        assertThat(blockerTools.deleteRestGoal(as(mama), goal)).contains("Ruhe-Ziel");
+        assertThat(blockerTools.listRestGoals(as(mama), mamaM.getId())).isEmpty();
+        assertThatThrownBy(() -> blockerTools.deleteRestGoal(as(mama), goal)).isInstanceOf(Tools.ToolException.class);
+    }
 }
