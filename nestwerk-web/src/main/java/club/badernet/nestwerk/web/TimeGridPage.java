@@ -113,9 +113,6 @@ public class TimeGridPage {
         model.addAttribute("slotFine", SlotSize.FINE.minutes());
         model.addAttribute("slotCoarse", SlotSize.COARSE.minutes());
         model.addAttribute("narrowColumns", NARROW_FROM.getOrDefault(view, 1));
-        model.addAttribute("canCreate", events.canCreate(viewer));
-        model.addAttribute("allMembers", List.copyOf(people.values()));
-        model.addAttribute("allCategories", List.copyOf(categories.values()));
         model.addAttribute("first", first);
         model.addAttribute("last", last);
     }

@@ -18,6 +18,7 @@ import club.badernet.nestwerk.household.Distribution;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberService;
 import club.badernet.nestwerk.todo.AssigneeRef;
+import club.badernet.nestwerk.todo.TodoPriority;
 import club.badernet.nestwerk.todo.Todo;
 import club.badernet.nestwerk.todo.TodoInput;
 import club.badernet.nestwerk.todo.TodoRepository;
@@ -71,6 +72,7 @@ class CalendarDialogsTest {
 
     @Autowired MockMvc mockMvc;
     @Autowired UserService userService;
+    @Autowired club.badernet.nestwerk.role.RoleService roleService;
     @Autowired FamilyMemberService memberService;
     @Autowired ChoreService chores;
     @Autowired ChoreRepository choreRepository;
@@ -79,6 +81,7 @@ class CalendarDialogsTest {
     @Autowired TodoRepository todoRepository;
     @Autowired CalendarEventService events;
     @Autowired CalendarEventRepository eventRepository;
+    @Autowired club.badernet.nestwerk.blocker.BlockerService blockerService;
     @Autowired EntityManager entityManager;
 
     User admin;
@@ -219,14 +222,87 @@ class CalendarDialogsTest {
     }
 
     @Test
-    void toolbarOffersTheQuickChoreDialogWithTheBookableChores() throws Exception {
+    void createDialogOffersEveryTypeTheViewerMayCreate() throws Exception {
         onDemandChore("Wäsche falten");
 
         mockMvc.perform(get("/calendar/week").param("date", WEDNESDAY.toString()).with(asAdmin()))
-                .andExpect(content().string(containsString("data-open-dialog=\"chore-quick\"")))
-                .andExpect(content().string(containsString("id=\"chore-quick\"")))
+                .andExpect(content().string(containsString("data-open-create")))
+                .andExpect(content().string(containsString("id=\"grid-quick\"")))
+                .andExpect(content().string(containsString("data-create-type=\"event\"")))
+                .andExpect(content().string(containsString("data-create-type=\"chore\"")))
+                .andExpect(content().string(containsString("data-create-type=\"todo\"")))
+                .andExpect(content().string(containsString("data-create-type=\"time\"")))
+                .andExpect(content().string(containsString("/calendar/actions/todos\"")))
+                .andExpect(content().string(containsString("/calendar/actions/blockers\"")))
                 .andExpect(content().string(containsString("Wäsche falten")))
-                .andExpect(content().string(containsString("data-chore-mode")));
+                .andExpect(content().string(containsString("data-chore-mode")))
+                .andExpect(content().string(not(containsString("id=\"chore-quick\""))));
+    }
+
+    @Test
+    void createDialogIsAvailableOnEveryView() throws Exception {
+        for (String view : new String[]{"day", "days3", "week", "month", "agenda", "my"}) {
+            mockMvc.perform(get("/calendar/" + view).param("date", WEDNESDAY.toString()).with(asAdmin()))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(containsString("data-open-create")))
+                    .andExpect(content().string(containsString("data-create-form=\"todo\"")));
+        }
+    }
+
+    @Test
+    void viewersWithoutAnyCreateRightDoNotSeeTheDialog() throws Exception {
+        club.badernet.nestwerk.role.Role viewOnly = roleService.create("Leser", null, Set.of("CALENDAR_VIEW"));
+        userService.create("leser", "passwort1", Set.of(viewOnly.getId()));
+        mockMvc.perform(get("/calendar/week").param("date", WEDNESDAY.toString())
+                        .with(user("leser").authorities(new SimpleGrantedAuthority("CALENDAR_VIEW"))))
+                .andExpect(status().isOk())
+                .andExpect(content().string(not(containsString("data-open-create"))))
+                .andExpect(content().string(not(containsString("id=\"grid-quick\""))));
+    }
+
+    @Test
+    void todoIsCreatedFromTheCalendar() throws Exception {
+        mockMvc.perform(post("/calendar/actions/todos").with(csrf()).with(asAdmin())
+                        .param("title", "Steuer machen").param("dueOn", WEDNESDAY.toString())
+                        .param("priority", "HIGH").param("assignees", "member:" + lena.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value(containsString("Steuer machen")));
+
+        Todo created = todoRepository.findAll().stream().filter(t -> t.getTitle().equals("Steuer machen"))
+                .findFirst().orElseThrow();
+        assertThat(created.getDueOn()).isEqualTo(WEDNESDAY);
+        assertThat(created.getPriority()).isEqualTo(TodoPriority.HIGH);
+        assertThat(created.assigneeRefs()).extracting(AssigneeRef::key).containsExactly("member:" + lena.getId());
+    }
+
+    @Test
+    void creatingATodoWithoutTitleOrRightIsRefused() throws Exception {
+        mockMvc.perform(post("/calendar/actions/todos").with(csrf()).with(asAdmin()).param("title", " "))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void timeIsCreatedFromTheCalendarForTheChosenPeople() throws Exception {
+        mockMvc.perform(post("/calendar/actions/blockers").with(csrf()).with(asAdmin())
+                        .param("title", "Arbeit").param("kind", "WORK").param("startTime", "08:00")
+                        .param("endTime", "16:00").param("weekdays", "TUESDAY").param("validFrom", WEDNESDAY.toString())
+                        .param("memberIds", lena.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value(containsString("Arbeit")));
+
+        assertThat(blockerService.forMember(lena.getId())).singleElement().satisfies(blocker -> {
+            assertThat(blocker.getTitle()).isEqualTo("Arbeit");
+            assertThat(blocker.getStartTime()).isEqualTo(LocalTime.of(8, 0));
+        });
+    }
+
+    @Test
+    void creatingATimeNeedsADayAndTimes() throws Exception {
+        mockMvc.perform(post("/calendar/actions/blockers").with(csrf()).with(asAdmin())
+                        .param("title", "Arbeit").param("kind", "WORK").param("startTime", "08:00")
+                        .param("endTime", "16:00").param("validFrom", WEDNESDAY.toString())
+                        .param("memberIds", lena.getId().toString()))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

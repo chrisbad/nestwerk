@@ -3870,6 +3870,11 @@ form.is-allday [data-time-field] { display: none; }
 .tgrid-event.is-short.is-narrow .occ-time { display: none; }
 /* Raster-Dialoge: gleichmäßige Abstände, auch mit versteckten Feldern dazwischen */
 #grid-quick .dialog-body, .grid-sheet-content [data-series-only] { display: grid; gap: 1rem; }
+.create-types { margin: 0 1.5rem 1rem; }
+.sheet-tabs.create-types [role="tab"] { padding-inline: 0.5rem; white-space: nowrap; }
+#grid-quick [data-chore-panel]:not([hidden]) { display: grid; gap: 1rem; }
+#grid-quick [data-chore-panel] > * { margin: 0; }
+#grid-quick form[hidden] { display: none; }
 #grid-quick .dialog-body > *, .grid-sheet-content [data-series-only] > * { margin: 0; }
 /* Überlappende Termine: frühere Spalten dürfen breiter sein, spätere liegen darüber. Der Titel oben bleibt so
    lesbar, weil spätere Termine erst weiter unten beginnen. */

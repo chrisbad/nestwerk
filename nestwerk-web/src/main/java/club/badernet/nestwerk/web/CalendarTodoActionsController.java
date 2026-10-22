@@ -40,6 +40,23 @@ public class CalendarTodoActionsController {
         this.currentUser = currentUser;
     }
 
+    /** Creates a to-do from the calendar's dialog "Neu": title, due date, priority and the assignees. */
+    @PostMapping
+    ActionResult create(@RequestParam String title,
+                        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueOn,
+                        @RequestParam(defaultValue = "NORMAL") TodoPriority priority,
+                        @RequestParam(name = "assignees", required = false) List<String> assignees) {
+        User actor = requireModule();
+        TodoForm form = new TodoForm();
+        form.setTitle(title);
+        form.setDueOn(dueOn);
+        form.setPriority(priority);
+        form.setAssignees(assignees == null ? new ArrayList<>() : new ArrayList<>(assignees));
+        form.setResponsibleUserId(actor.getId());
+        Todo saved = todos.create(form.toInput(), actor);
+        return ActionResult.of("ToDo „" + saved.getTitle() + "“ ist angelegt.");
+    }
+
     /** Title, due date, priority and the assignees from the dialog; everything else stays as stored. */
     @PostMapping("/{id}/update")
     ActionResult update(@PathVariable Long id, @RequestParam int version, @RequestParam String title,

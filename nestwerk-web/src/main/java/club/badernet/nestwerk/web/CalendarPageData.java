@@ -1,5 +1,7 @@
 package club.badernet.nestwerk.web;
 
+import club.badernet.nestwerk.blocker.BlockerKind;
+import club.badernet.nestwerk.blocker.BlockerService;
 import club.badernet.nestwerk.calendar.CalendarEventService;
 import club.badernet.nestwerk.calendar.CalendarGrid;
 import club.badernet.nestwerk.calendar.EventCategory;
@@ -14,6 +16,7 @@ import club.badernet.nestwerk.member.FamilyMemberService;
 import club.badernet.nestwerk.settings.CalendarSettings;
 import club.badernet.nestwerk.todo.Todo;
 import club.badernet.nestwerk.todo.TodoAccess;
+import club.badernet.nestwerk.todo.TodoPriority;
 import club.badernet.nestwerk.todo.TodoQuery;
 import club.badernet.nestwerk.user.User;
 import org.springframework.stereotype.Component;
@@ -45,11 +48,12 @@ public class CalendarPageData {
     private final ChoreTaskService choreTasks;
     private final ChoreService choreService;
     private final HouseholdAccess householdAccess;
+    private final BlockerService blockers;
 
     public CalendarPageData(CalendarEventService events, EventCategoryService categories,
                             FamilyMemberService members, CalendarSettings settings, TodoQuery todoQuery,
                             TodoAccess todoAccess, ChoreTaskService choreTasks, ChoreService choreService,
-                            HouseholdAccess householdAccess) {
+                            HouseholdAccess householdAccess, BlockerService blockers) {
         this.events = events;
         this.categories = categories;
         this.members = members;
@@ -59,6 +63,7 @@ public class CalendarPageData {
         this.choreTasks = choreTasks;
         this.choreService = choreService;
         this.householdAccess = householdAccess;
+        this.blockers = blockers;
     }
 
     public LocalDate today() {
@@ -145,6 +150,25 @@ public class CalendarPageData {
         model.addAttribute("showChores", chores);
         model.addAttribute("quickChores", chores ? quickChores(viewer) : List.<QuickChore>of());
         model.addAttribute("ownMemberId", householdAccess.memberId(viewer).orElse(null));
+        addCreateOptions(model, viewer);
+    }
+
+    /** What the dialog "Neu" offers: every type the viewer may create, with the lists its fields need. */
+    private void addCreateOptions(Model model, User viewer) {
+        boolean event = events.canCreate(viewer);
+        boolean chore = (Boolean) model.getAttribute("showChores")
+                && !((List<?>) model.getAttribute("quickChores")).isEmpty();
+        boolean todo = todoAccess.mayOpen(viewer.getUsername()) && todoAccess.canCreate(viewer);
+        boolean time = blockers.canCreate(viewer);
+        model.addAttribute("canCreate", event);
+        model.addAttribute("canCreateChore", chore);
+        model.addAttribute("canCreateTodo", todo);
+        model.addAttribute("canCreateTime", time);
+        model.addAttribute("canCreateAny", event || chore || todo || time);
+        model.addAttribute("allMembers", List.copyOf(memberById().values()));
+        model.addAttribute("allCategories", List.copyOf(categoryById(viewer).values()));
+        model.addAttribute("todoPriorities", TodoPriority.values());
+        model.addAttribute("blockerKinds", BlockerKind.values());
     }
 
     /** Active chores the viewer may plan or book, by title; for the quick dialog of the toolbar. */
