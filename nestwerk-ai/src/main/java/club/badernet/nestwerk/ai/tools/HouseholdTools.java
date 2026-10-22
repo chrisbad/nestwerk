@@ -107,7 +107,22 @@ public class HouseholdTools {
         });
     }
 
-    @McpTool(name = "undo_chore_task", description = "Nimmt das heutige eigene Abhaken einer Aufgabe zurück.",
+    @McpTool(name = "skip_chore_task", description = "Markiert eine offene Aufgabe für ihren Tag als nicht nötig, "
+            + "z. B. weil die Spülmaschine nicht benutzt wurde. Es gibt keine Gutschrift, die Aufgabe bleibt als "
+            + "durchgestrichener Platzhalter stehen und wird nicht neu geplant; bei Hausarbeiten mit Abstand nach "
+            + "Erledigung läuft der Rhythmus von diesem Tag an weiter. Rückgängig mit undo_chore_task.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public ChoreTaskItem skipChoreTask(McpTransportContext context,
+                                       @McpToolParam(description = "ID der Aufgabe (taskId)") Long taskId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(taskId, "taskId");
+            tasks.skip(id, user);
+            return item(tasks.get(id, user), names());
+        });
+    }
+
+    @McpTool(name = "undo_chore_task", description = "Nimmt das heutige eigene Abhaken oder „nicht nötig“ einer "
+            + "Aufgabe zurück.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
     public ChoreTaskItem undoChoreTask(McpTransportContext context,
                                        @McpToolParam(description = "ID der Aufgabe") Long taskId) {

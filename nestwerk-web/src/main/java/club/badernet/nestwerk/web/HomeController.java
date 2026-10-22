@@ -119,7 +119,8 @@ public class HomeController {
                         .previousOrSame(java.time.DayOfWeek.MONDAY));
                 List<club.badernet.nestwerk.household.ChoreTask> week = choreTasks
                         .between(user, monday, monday.plusDays(6)).stream()
-                        .filter(t -> ctx.ownMember().equals(t.getAssigneeMemberId())).toList();
+                        .filter(t -> ctx.ownMember().equals(t.getAssigneeMemberId()))
+                        .filter(t -> !t.isSkipped()).toList();
                 List<club.badernet.nestwerk.household.ChoreTask> day = week.stream()
                         .filter(t -> t.getDueOn().equals(ctx.today())).toList();
                 rings.add(Ring.of("Haushalt heute", "erledigt", (int) day.stream().filter(t -> !t.isOpen()).count(),

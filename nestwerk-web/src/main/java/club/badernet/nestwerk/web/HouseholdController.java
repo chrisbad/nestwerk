@@ -355,6 +355,22 @@ public class HouseholdController {
         return answer(id, actor, ok, message, back, htmx, model, redirect);
     }
 
+    @PostMapping("/tasks/{id}/skip")
+    String skip(@PathVariable Long id, @RequestParam(required = false) String back,
+                @RequestHeader(name = "HX-Request", required = false) String htmx,
+                Model model, RedirectAttributes redirect) {
+        User actor = requireModule();
+        String message = "Als nicht nötig markiert.";
+        boolean ok = true;
+        try {
+            tasks.skip(id, actor);
+        } catch (ChoreConflictException e) {
+            message = e.getMessage();
+            ok = false;
+        }
+        return answer(id, actor, ok, message, back, htmx, model, redirect);
+    }
+
     @PostMapping("/tasks/{id}/assign")
     String assign(@PathVariable Long id, @RequestParam(required = false) Long member,
                   RedirectAttributes redirect) {

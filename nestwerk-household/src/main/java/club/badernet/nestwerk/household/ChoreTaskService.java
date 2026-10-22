@@ -232,7 +232,7 @@ public class ChoreTaskService {
     public void undo(Long taskId, User actor) {
         ChoreTask task = get(taskId, actor);
         if (task.isOpen()) {
-            throw new ChoreConflictException("Diese Hausarbeit ist nicht erledigt.");
+            throw new ChoreConflictException("Diese Hausarbeit ist weder erledigt noch als nicht nötig markiert.");
         }
         if (!bookedTodayBy(task, actor) && !access.canAny(actor, "CORRECT")) {
             throw new AccessDeniedException("Keine Berechtigung, diese Erledigung zurückzunehmen");
@@ -255,6 +255,29 @@ public class ChoreTaskService {
                     .forEach(tasks::delete);
         }
         tasks.flush();
+    }
+
+    /**
+     * Marks the open task as not necessary for its date (e.g. the dishwasher was not used). Nothing is credited, the
+     * task stays as a placeholder so that planning does not create it again, and for chores due some days after
+     * completion the next one is due that many days after this date. Needs the right to complete the task.
+     */
+    @Transactional
+    public void skip(Long taskId, User actor) {
+        ChoreTask task = get(taskId, actor);
+        requireOpen(task);
+        if (task.isAdHoc()) {
+            throw new ChoreConflictException("Eine einmalig eingeplante Hausarbeit lässt sich löschen, aber nicht "
+                    + "als nicht nötig markieren.");
+        }
+        if (!access.can(actor, "COMPLETE", task)) {
+            throw new AccessDeniedException("Keine Berechtigung, diese Hausarbeit als nicht nötig zu markieren");
+        }
+        task.skip(clock.instant(), actor.getId());
+        tasks.flush();
+        if (task.getChore().getKind() == ChoreKind.INTERVAL) {
+            planner.plan(task.getChore(), today());
+        }
     }
 
     /** Zuständigen ändern; ohne Recht für alle nur an Kandidaten der Hausarbeit oder an sich selbst. */
@@ -378,6 +401,9 @@ public class ChoreTaskService {
     private static void requireOpen(ChoreTask task) {
         if (task.isCancelled()) {
             throw new ChoreConflictException("Dieser Termin der Hausarbeit entfällt.");
+        }
+        if (task.isSkipped()) {
+            throw new ChoreConflictException("Diese Hausarbeit wurde als nicht nötig markiert.");
         }
         if (!task.isOpen()) {
             throw new ChoreConflictException("Diese Hausarbeit wurde schon erledigt.");

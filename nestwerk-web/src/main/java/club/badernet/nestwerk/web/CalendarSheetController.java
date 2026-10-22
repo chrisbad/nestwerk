@@ -126,6 +126,7 @@ public class CalendarSheetController {
         model.addAttribute("canComplete", open && householdAccess.can(viewer, "COMPLETE", task));
         model.addAttribute("canAssign", open && householdAccess.can(viewer, "ASSIGN", task));
         model.addAttribute("assignAny", householdAccess.canAny(viewer, "ASSIGN"));
+        model.addAttribute("canSkip", householdViews.chip(task, ctx).canSkip());
         model.addAttribute("canCancel", open && householdAccess.can(viewer, "EDIT", chore));
         model.addAttribute("canEditChore", householdAccess.can(viewer, "EDIT", chore));
         model.addAttribute("canDeleteChore", householdAccess.can(viewer, "DELETE", chore));

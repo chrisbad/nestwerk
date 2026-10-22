@@ -63,9 +63,19 @@
 
         <form class="dialog-section" th:if="${c.canUndo}" method="post" data-grid-form="chore-undo"
               th:action="@{/calendar/actions/chores/{id}/undo(id=${task.id})}">
-            <p class="hint">Die Gutschriften werden entfernt und die Hausarbeit ist wieder offen.</p>
+            <p class="hint" th:unless="${c.skipped}">Die Gutschriften werden entfernt und die Hausarbeit ist wieder offen.</p>
+            <p class="hint" th:if="${c.skipped}">Die Hausarbeit war für diesen Tag als nicht nötig markiert und ist danach wieder offen.</p>
             <div class="form-actions">
-                <button type="submit" class="button button-ghost">Erledigung zurücknehmen</button>
+                <button type="submit" class="button button-ghost"
+                        th:text="${c.skipped} ? 'Wieder nötig' : 'Erledigung zurücknehmen'">Erledigung zurücknehmen</button>
+            </div>
+        </form>
+
+        <form class="dialog-section" th:if="${canSkip}" method="post" data-grid-form="chore-skip"
+              th:action="@{/calendar/actions/chores/{id}/skip(id=${task.id})}">
+            <p class="hint">Nicht nötig, zum Beispiel weil die Spülmaschine nicht benutzt wurde: keine Gutschrift, der Rhythmus läuft weiter.</p>
+            <div class="form-actions">
+                <button type="submit" class="button button-ghost">Nicht nötig</button>
             </div>
         </form>
 

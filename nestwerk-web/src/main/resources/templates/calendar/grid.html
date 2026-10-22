@@ -80,7 +80,7 @@
                                     </a>
                                 </th:block>
                                 <th:block th:if="${lane.entry.kind == 'chore'}" th:with="c=${lane.entry.chore}">
-                                    <a class="occ occ-allday occ-chore tgrid-item"
+                                    <a class="occ occ-allday occ-chore tgrid-item" th:classappend="${c.skipped} ? 'is-skipped'"
                                        th:style="${c.color != null} ? |--occ-color: ${c.color}|"
                                        th:href="@{/household/tasks/{id}(id=${c.id})}" th:title="${c.title}"
                                        th:attr="data-grid-item='chore-day', data-editable='false',
@@ -171,7 +171,7 @@
                                 </a>
                                 <a th:if="${p.entry.kind == 'chore'}" th:with="c=${p.entry.chore}"
                                    class="occ occ-chore tgrid-item tgrid-event"
-                                   th:classappend="${(p.durationMinutes() < 40 ? 'is-short ' : '') + (c.movable ? 'is-editable' : '')}"
+                                   th:classappend="${(p.durationMinutes() < 40 ? 'is-short ' : '') + (c.movable ? 'is-editable ' : '') + (c.skipped ? 'is-skipped' : '')}"
                                    th:style="|--start: ${p.startMinute}; --dur: ${p.durationMinutes()}; --col: ${p.column}; --cols: ${p.columns};${c.color != null ? ' --occ-color: ' + c.color + ';' : ''}|"
                                    th:href="@{/household/tasks/{id}(id=${c.id})}" th:title="|${c.time} ${c.title}|"
                                    th:attr="data-grid-item='chore', data-chore-id=${c.id}, data-editable=${c.movable},

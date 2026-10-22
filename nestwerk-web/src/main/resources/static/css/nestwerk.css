@@ -1815,6 +1815,11 @@ form.inline { display: inline; margin: 0; }
 .chore-chip.is-overdue { border-color: var(--brick); border-left-color: var(--brick); background: var(--brick-soft); }
 .chore-chip.is-done { background: transparent; }
 .chore-chip.is-done .chore-title { text-decoration: line-through; color: var(--ink-soft); }
+.chore-chip.is-skipped { background: transparent; }
+.chore-chip.is-skipped .chore-title, .occ-chore.is-skipped .occ-title > span { text-decoration: line-through; color: var(--ink-soft); }
+.occ-chore.is-skipped { opacity: 0.65; }
+.chore-chip .chore-skip { margin-left: auto; flex: none; }
+.chore-chip.is-skipped .chore-check.is-checked { background: var(--line); border-color: var(--line); color: var(--surface); box-shadow: none; }
 .chore-chip.htmx-added { animation: pop 0.25s var(--ease); }
 
 .chore-check {

@@ -109,7 +109,7 @@ public class CalendarPageData {
         if (show) {
             Map<Long, FamilyMember> people = memberById();
             for (ChoreTask t : choreTasks.between(viewer, from, to)) {
-                if (!t.isOpen()) {
+                if (!t.isOpen() && !t.isSkipped()) {
                     continue;
                 }
                 FamilyMember who = t.getAssigneeMemberId() == null ? null : people.get(t.getAssigneeMemberId());
@@ -117,11 +117,13 @@ public class CalendarPageData {
                     timed.computeIfAbsent(t.getDueOn(), d -> new ArrayList<>()).add(new CalendarChore(t.getId(),
                             t.getChore().getTitle() + " · " + who.getName(), t.getDueOn(), t.getPlannedAt(),
                             Math.max(MIN_CHORE_MINUTES, t.getChore().getMinutesMedium()), who.getColor(),
-                            householdAccess.can(viewer, "ASSIGN", t), t.getAssigneeMemberId()));
+                            !t.isSkipped() && householdAccess.can(viewer, "ASSIGN", t), t.getAssigneeMemberId(),
+                            t.isSkipped()));
                 } else {
                     untimed.computeIfAbsent(t.getDueOn(), d -> new ArrayList<>()).add(new UntimedChore(t.getId(),
                             t.getChore().getTitle() + " · " + (who == null ? "offen" : who.getName()), t.getDueOn(),
-                            who == null ? null : who.getColor(), who == null ? null : who.getId()));
+                            who == null ? null : who.getColor(), who == null ? null : who.getId(),
+                            t.isSkipped()));
                 }
             }
         }

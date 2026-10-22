@@ -205,7 +205,7 @@
 <!-- Eine Aufgabe; erwartet ${c} (TaskChip), ${back}, optional ${showAssignee}, ${showDay}, ${toast} -->
 <li th:fragment="chip" class="chore-chip" th:id="|task-${c.id}|"
     th:attr="data-member=${c.assignee != null} ? ${c.assignee.id} : 'open'"
-    th:classappend="${(c.done ? ' is-done' : '') + (c.overdue ? ' is-overdue' : '')}"
+    th:classappend="${(c.done ? ' is-done' : '') + (c.skipped ? ' is-skipped' : '') + (c.overdue ? ' is-overdue' : '')}"
     th:style="${c.assignee != null} ? |--member-color: ${c.assignee.color}|">
     <th:block th:if="${c.canComplete}">
         <button type="button" class="chore-check" th:title="'Buchen: ' + ${c.title}"
@@ -253,6 +253,7 @@
         <span class="chore-meta">
             <span th:if="${showDay != null and showDay}" th:text="${c.dayLabel}">heute</span>
             <span th:if="${c.time != null}" th:text="${c.time}">19:00</span>
+            <span class="pill" th:if="${c.skipped}">nicht nötig</span>
             <span class="pill pill-blocked" th:if="${c.noOneFree}"
                   title="Niemand hat im Zeitfenster genug freie Zeit">niemand frei</span>
             <span th:text="${c.minutes} + ' Min'">15 Min</span>
@@ -263,6 +264,11 @@
                   th:text="${c.assignee != null} ? ${c.assignee.name} : 'offen'">Lena</span>
         </span>
     </a>
+    <form th:if="${c.canSkip}" class="chore-skip" method="post" th:action="@{/household/tasks/{id}/skip(id=${c.id})}"
+          th:hx-post="@{/household/tasks/{id}/skip(id=${c.id})}" hx-target="closest li" hx-swap="outerHTML">
+        <input type="hidden" name="back" th:value="${back}">
+        <button type="submit" class="button button-ghost button-small" th:title="'Nicht nötig: ' + ${c.title}">Nicht nötig</button>
+    </form>
     <p hidden th:if="${toast != null}" th:attr="data-toast=${toastType}" th:text="${toast}"></p>
 </li>
 

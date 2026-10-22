@@ -484,4 +484,84 @@ class ChoreTaskServiceTest {
         assertThatThrownBy(() -> service.planOnce(c.getId(), today, null, null, stranger))
                 .isInstanceOf(ChoreNotFoundException.class);
     }
+
+    @Test
+    void skippingMarksTheTaskWithoutCreditingAnything() {
+        ChoreTask t = kidsTask();
+
+        service.skip(t.getId(), kid);
+
+        entityManager.flush();
+        ChoreTask skipped = tasks.findById(t.getId()).orElseThrow();
+        assertThat(skipped.getStatus()).isEqualTo(ChoreTaskStatus.SKIPPED);
+        assertThat(skipped.isOpen()).isFalse();
+        assertThat(credits.findAllByTaskId(t.getId())).isEmpty();
+        assertThat(service.between(admin, t.getDueOn(), t.getDueOn())).extracting(ChoreTask::getStatus)
+                .contains(ChoreTaskStatus.SKIPPED);
+    }
+
+    @Test
+    void skippedTaskIsNotPlannedAgain() {
+        ChoreTask t = kidsTask();
+        service.skip(t.getId(), kid);
+        entityManager.flush();
+
+        planner.plan(t.getChore(), today);
+        entityManager.flush();
+
+        assertThat(tasks.findAllByChoreId(t.getChore().getId()).stream()
+                .filter(other -> other.getDueOn().equals(t.getDueOn()))).singleElement()
+                .satisfies(only -> assertThat(only.isSkipped()).isTrue());
+    }
+
+    @Test
+    void intervalChoreContinuesItsRhythmAfterSkipping() {
+        ChoreTask t = firstTask(ChoreKind.INTERVAL, 7, Distribution.FIXED, kidM.getId());
+
+        service.skip(t.getId(), kid);
+        entityManager.flush();
+
+        assertThat(tasks.findAllByChoreIdAndStatus(t.getChore().getId(), ChoreTaskStatus.OPEN))
+                .singleElement().satisfies(next -> assertThat(next.getDueOn()).isEqualTo(t.getDueOn().plusDays(7)));
+    }
+
+    @Test
+    void undoRestoresASkippedTaskAndDropsTheSuccessor() {
+        ChoreTask t = firstTask(ChoreKind.INTERVAL, 7, Distribution.FIXED, kidM.getId());
+        service.skip(t.getId(), kid);
+        entityManager.flush();
+
+        service.undo(t.getId(), kid);
+        entityManager.flush();
+
+        assertThat(tasks.findAllByChoreIdAndStatus(t.getChore().getId(), ChoreTaskStatus.OPEN))
+                .singleElement().satisfies(open -> assertThat(open.getId()).isEqualTo(t.getId()));
+        assertThat(tasks.findById(t.getId()).orElseThrow().getCompletedAt()).isNull();
+    }
+
+    @Test
+    void skippingNeedsTheRightToCompleteTheTask() {
+        ChoreTask t = firstTask(ChoreKind.RECURRING, null, Distribution.FIXED, papaM.getId());
+
+        assertThatThrownBy(() -> service.skip(t.getId(), kid)).isInstanceOf(AccessDeniedException.class);
+    }
+
+    @Test
+    void aSkippedOrDoneTaskCannotBeSkippedOrCompletedAgain() {
+        ChoreTask t = kidsTask();
+        service.skip(t.getId(), kid);
+
+        assertThatThrownBy(() -> service.skip(t.getId(), kid)).isInstanceOf(ChoreConflictException.class)
+                .hasMessageContaining("nicht nötig");
+        assertThatThrownBy(() -> service.complete(t.getId(), kid, null, Set.of(), null))
+                .isInstanceOf(ChoreConflictException.class);
+    }
+
+    @Test
+    void aTaskPlannedOnceCannotBeSkipped() {
+        Chore c = staged(ChoreKind.ON_DEMAND, null);
+        ChoreTask once = service.planOnce(c.getId(), today, null, kidM.getId(), mama);
+
+        assertThatThrownBy(() -> service.skip(once.getId(), kid)).isInstanceOf(ChoreConflictException.class);
+    }
 }

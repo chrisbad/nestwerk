@@ -140,6 +140,13 @@ public class ChoreTask {
         this.status = ChoreTaskStatus.CANCELLED;
     }
 
+    /** Marks the open task as not necessary for its date; who and when are kept so that it can be undone. */
+    void skip(Instant at, Long userId) {
+        this.status = ChoreTaskStatus.SKIPPED;
+        this.completedAt = at;
+        this.completedByUser = userId;
+    }
+
     /** Bucht die Aufgabe und verschiebt sie auf den Zeitpunkt der Durchführung. */
     void complete(Instant performedAt, LocalDate day, LocalTime time, ChoreEffort effort, Instant bookedAt,
                   Long userId) {
@@ -176,6 +183,14 @@ public class ChoreTask {
 
     public boolean isOpen() {
         return status == ChoreTaskStatus.OPEN;
+    }
+
+    public boolean isSkipped() {
+        return status == ChoreTaskStatus.SKIPPED;
+    }
+
+    public boolean isDone() {
+        return status == ChoreTaskStatus.DONE;
     }
 
     public boolean isCancelled() {

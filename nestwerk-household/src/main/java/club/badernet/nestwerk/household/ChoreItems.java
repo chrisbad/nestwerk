@@ -92,6 +92,9 @@ public class ChoreItems implements CalendarItemSource {
         if (task.isOpen()) {
             if (access.can(viewer, "COMPLETE", task)) {
                 actions.add(ItemAction.COMPLETE);
+                if (!task.isAdHoc()) {
+                    actions.add(ItemAction.SKIP);
+                }
             }
             if (access.can(viewer, "ASSIGN", task)) {
                 actions.add(ItemAction.MOVE);

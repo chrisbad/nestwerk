@@ -271,6 +271,27 @@ class McpToolsTest {
     }
 
     @Test
+    void skippingAChoreTaskViaToolKeepsItWithoutCredits() {
+        LocalDate today = LocalDate.now(clock);
+        Chore chore = chores.create(new ChoreInput("Küche aufräumen", null, null, 20, 20, 20, ChoreKind.RECURRING,
+                "FREQ=DAILY;COUNT=2", today, null, null, Distribution.FIXED, List.of(kidM.getId())), admin);
+        entityManager.flush();
+        ChoreTask task = tasks.findAllByChoreId(chore.getId()).stream()
+                .min(Comparator.comparing(ChoreTask::getDueOn)).orElseThrow();
+
+        HouseholdTools.ChoreTaskItem skipped = householdTools.skipChoreTask(as(kid), task.getId());
+
+        assertThat(skipped.status()).isEqualTo("SKIPPED");
+        entityManager.flush();
+        assertThat(credits.findAllByTaskId(task.getId())).isEmpty();
+        assertThatThrownBy(() -> householdTools.skipChoreTask(as(kid), task.getId()))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("nicht nötig");
+        assertThat(householdTools.undoChoreTask(as(kid), task.getId()).status()).isEqualTo("OPEN");
+        assertThatThrownBy(() -> householdTools.skipChoreTask(as(kid), null))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("taskId");
+    }
+
+    @Test
     void fillingTheHouseholdPlanViaTools() {
         LocalDate today = LocalDate.now(clock);
         HouseholdTools.ChoreItem created = householdTools.createChore(as(admin), "Bad putzen", "Bad", null, null,
