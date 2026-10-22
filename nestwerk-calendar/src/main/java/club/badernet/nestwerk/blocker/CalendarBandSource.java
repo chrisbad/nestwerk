@@ -14,4 +14,9 @@ public interface CalendarBandSource {
 
     /** Bands per day from {@code from} to {@code to} (inclusive). */
     Map<LocalDate, List<BlockerBands.Band>> bands(LocalDate from, LocalDate to, User viewer);
+
+    /** The timed ranges among them with exact start and end for the grid; all-day bands have none. */
+    default List<BusyBlock> blocks(LocalDate from, LocalDate to, User viewer) {
+        return List.of();
+    }
 }
