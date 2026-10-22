@@ -118,6 +118,23 @@ class HouseholdAccountControllerTest {
     }
 
     @Test
+    void switchingThePeriodKeepsTheSelectedDate() throws Exception {
+        mockMvc.perform(get("/household/stats").param("period", "year").param("date", "2026-05-17").with(user("mama")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("period=day&amp;date=2026-05-17")))
+                .andExpect(content().string(containsString("period=week&amp;date=2026-05-17")))
+                .andExpect(content().string(containsString("period=month&amp;date=2026-05-17")));
+    }
+
+    @Test
+    void quickLinksJumpToToday() throws Exception {
+        mockMvc.perform(get("/household/stats").param("period", "year").param("date", "2020-01-01").with(user("mama")))
+                .andExpect(content().string(containsString("period=day&amp;date=" + today)))
+                .andExpect(content().string(containsString("Diese Woche")))
+                .andExpect(content().string(containsString("Dieser Monat")));
+    }
+
+    @Test
     void correctingACreditStoresMinutesAndReason() throws Exception {
         ChoreCredit credit = kidDid("Staubsaugen", 25);
 

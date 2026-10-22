@@ -15,16 +15,21 @@
             <span class="visually-hidden">Vorheriger Zeitraum</span>
         </a>
         <nav class="segmented" aria-label="Zeitraum">
-            <a th:href="@{/household/stats(period='day', date=${period.from})}" th:aria-current="${period.key == 'day'} ? 'page'">Tag</a>
-            <a th:href="@{/household/stats(period='week', date=${period.from})}" th:aria-current="${period.key == 'week'} ? 'page'">Woche</a>
-            <a th:href="@{/household/stats(period='month', date=${period.from})}" th:aria-current="${period.key == 'month'} ? 'page'">Monat</a>
-            <a th:href="@{/household/stats(period='year', date=${period.from})}" th:aria-current="${period.key == 'year'} ? 'page'">Jahr</a>
+            <a th:href="@{/household/stats(period='day', date=${period.anchor})}" th:aria-current="${period.key == 'day'} ? 'page'">Tag</a>
+            <a th:href="@{/household/stats(period='week', date=${period.anchor})}" th:aria-current="${period.key == 'week'} ? 'page'">Woche</a>
+            <a th:href="@{/household/stats(period='month', date=${period.anchor})}" th:aria-current="${period.key == 'month'} ? 'page'">Monat</a>
+            <a th:href="@{/household/stats(period='year', date=${period.anchor})}" th:aria-current="${period.key == 'year'} ? 'page'">Jahr</a>
         </nav>
         <a class="icon-button" th:href="@{/household/stats(period=${period.key}, date=${period.next})}" title="Weiter">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
             <span class="visually-hidden">Nächster Zeitraum</span>
         </a>
     </div>
+    <nav class="segmented" aria-label="Schnellauswahl">
+        <a th:href="@{/household/stats(period='day', date=${today})}">Heute</a>
+        <a th:href="@{/household/stats(period='week', date=${today})}">Diese Woche</a>
+        <a th:href="@{/household/stats(period='month', date=${today})}">Dieser Monat</a>
+    </nav>
 
     <p class="hint" th:unless="${seesAll}">Du siehst hier deine eigenen Werte.</p>
 
@@ -76,7 +81,7 @@
                 <details th:if="${canCorrect}" class="credit-correct">
                     <summary>Korrigieren</summary>
                     <form method="post" th:action="@{/household/credits/{id}/correct(id=${cr.id()})}" class="inline-form">
-                        <input type="hidden" name="back" th:value="@{/household/stats(period=${period.key}, date=${period.from})}">
+                        <input type="hidden" name="back" th:value="@{/household/stats(period=${period.key}, date=${period.anchor})}">
                         <label class="field">
                             <span>Minuten</span>
                             <input class="input" type="number" name="minutes" min="0" max="600" th:value="${cr.minutes()}" required>
