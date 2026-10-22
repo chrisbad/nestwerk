@@ -1,80 +1,82 @@
 # Nestwerk
 
-Spring-Boot-Webanwendung (Java 25, Maven, Thymeleaf, PostgreSQL, Flyway) für den Betrieb per Docker Compose.
+Spring Boot web application (Java 25, Maven, Thymeleaf, PostgreSQL, Flyway) for running a family organiser with
+Docker Compose. The user interface is in German; everything else (code, docs, commits) is English.
 
-## Lokal entwickeln
+## Local development
 
-Voraussetzungen: JDK 25, Docker.
+Prerequisites: JDK 25, Docker.
 
 ```bash
 ./mvnw -pl nestwerk-app -am compile spring-boot:run
 ```
 
-`spring-boot-docker-compose` startet die Datenbank aus `compose.yaml` automatisch.
-Beim ersten Start muss ein Admin-Passwort gesetzt sein:
+`spring-boot-docker-compose` starts the database from `compose.yaml` automatically.
+An admin password has to be set on the first start:
 
 ```bash
 NESTWERK_ADMIN_PASSWORD=changeme ./mvnw -pl nestwerk-app -am compile spring-boot:run
 ```
 
-Tests (benötigen laufendes Docker für Testcontainers): `./mvnw verify`
+Tests (need a running Docker for Testcontainers): `./mvnw verify`
 
-## Modulstruktur
+## Module structure
 
-Der Build ist ein Maven-Multi-Module-Projekt. Die Abhängigkeiten laufen nur in eine Richtung (kein Zyklus):
+The build is a Maven multi-module project. Dependencies only point in one direction (no cycles):
 
-| Modul | Inhalt | hängt ab von |
+| Module | Contents | depends on |
 |---|---|---|
-| `nestwerk-core` | Benutzer, Rollen, Rechte/ACL, Familienmitglieder, App-Einstellungen | – |
-| `nestwerk-calendar` | Kalender, Termine, Blocker (Abwesenheiten, Ruhezeiten) | core |
-| `nestwerk-notification` | Benachrichtigungen, Mail und Web-Push | core, calendar |
-| `nestwerk-contact` | Kontakte | core |
-| `nestwerk-todo` | ToDos | core, notification, contact |
-| `nestwerk-household` | Haushaltsplan, Belohnungen, Tablet-Geräte | core, calendar, notification |
-| `nestwerk-kitchen` | Rezepte, Vorrat, Essensplan, Einkaufsliste | core, calendar, notification |
-| `nestwerk-attachment` | Dateianhänge | core, contact, todo, kitchen |
-| `nestwerk-school` | Schuljahre, Stundenplan, Hausaufgaben, Klassenarbeiten, Ferien, Noten, Elternbriefe | core, calendar, notification, todo, attachment |
-| `nestwerk-transfer` | Import/Export (iCalendar, vCard, CSV) | core, calendar, contact, todo |
-| `nestwerk-maintenance` | Datensicherung und Updates | core, notification, attachment |
-| `nestwerk-web` | Controller, Formulare, Templates, statische Dateien | alle Fachmodule |
-| `nestwerk-ai` | MCP-Server, OAuth 2.1, API-Tokens | web und alle Fachmodule |
-| `nestwerk-app` | Startklasse, Konfiguration, Flyway-Migrationen, `application.yaml`, alle Tests | ai |
+| `nestwerk-core` | users, roles, permissions/ACL, family members, app settings | – |
+| `nestwerk-calendar` | calendar, events, blockers (absences, rest times) | core |
+| `nestwerk-notification` | notifications, mail and web push | core, calendar |
+| `nestwerk-contact` | contacts | core |
+| `nestwerk-todo` | todos | core, notification, contact |
+| `nestwerk-household` | chore plan, rewards, tablet devices | core, calendar, notification |
+| `nestwerk-kitchen` | recipes, pantry, meal plan, shopping list | core, calendar, notification |
+| `nestwerk-attachment` | file attachments | core, contact, todo, kitchen |
+| `nestwerk-school` | school years, timetable, homework, exams, holidays, grades, parent letters | core, calendar, notification, todo, attachment |
+| `nestwerk-transfer` | import/export (iCalendar, vCard, CSV) | core, calendar, contact, todo |
+| `nestwerk-maintenance` | backups and updates | core, notification, attachment |
+| `nestwerk-web` | controllers, forms, templates, static files | all domain modules |
+| `nestwerk-ai` | MCP server, OAuth 2.1, API tokens | web and all domain modules |
+| `nestwerk-app` | main class, configuration, Flyway migrations, `application.yaml`, all tests | ai |
 
-Rechte melden Module über `PermissionSource` an den Katalog in `core`; so braucht `core` die Rechte-Enums der anderen
-Module nicht zu kennen. Die Tests liegen gebündelt in `nestwerk-app`, weil sie die vollständige Anwendung samt
-Datenbankmigrationen benötigen. Das ausführbare JAR entsteht unter `nestwerk-app/target/`.
+Modules register their permissions with the catalogue in `core` through `PermissionSource`, so `core` does not need
+to know the permission enums of the other modules. The tests are bundled in `nestwerk-app` because they need the
+complete application including the database migrations. The executable JAR is built under `nestwerk-app/target/`.
 
-## Auf dem Linuxserver installieren
+## Installing on a Linux server
 
-Voraussetzung: ein Linux-Server (Debian/Ubuntu getestet) mit Root-Zugang, eine Domain, die per DNS auf den
-Server zeigt, und offene Ports 80/443. Docker installiert das Skript bei Bedarf selbst.
+Prerequisites: a Linux server (tested on Debian/Ubuntu) with root access, a domain whose DNS points to the server,
+and open ports 80/443. The script installs Docker itself if needed.
 
-1. Unter [Releases](https://github.com/chrisbad/nestwerk/releases) das Paket `nestwerk-install-vX.Y.Z.tar.gz`
-   herunterladen und auf den Server kopieren.
-2. Auf dem Server:
+1. Download the package `nestwerk-install-vX.Y.Z.tar.gz` from
+   [Releases](https://github.com/chrisbad/nestwerk/releases) and copy it to the server.
+2. On the server:
 
    ```bash
    tar xzf nestwerk-install-*.tar.gz && cd nestwerk
    sudo ./install.sh
    ```
 
-Das Skript fragt nach Domain, E-Mail für Let's Encrypt, Admin-Namen und optional einer externen Backup-Platte.
-Alle Passwörter und den `NESTWERK_SECRET_KEY` erzeugt es selbst und legt sie in `/opt/nestwerk/.env` ab (diese
-Datei gut aufbewahren). Am Ende zeigt es Adresse und Admin-Passwort.
+The script asks for the domain, an e-mail address for Let's Encrypt, the admin name and, optionally, an external
+backup disk. It generates all passwords and the `NESTWERK_SECRET_KEY` itself and stores them in
+`/opt/nestwerk/.env` (keep this file safe). At the end it shows the address and the admin password.
 
-- **Reverse Proxy für alle Dienste:** Läuft auf dem Server noch keiner, richtet das Skript unter `/opt/proxy` einen
-  zentralen [nginx-proxy](https://github.com/nginx-proxy/nginx-proxy) mit `acme-companion` ein. Er belegt 80/443
-  und holt die Zertifikate automatisch. Ist ein anderer Proxy auf 80/443 aktiv, lauscht Nestwerk nur auf
-  `127.0.0.1:8080` (`APP_BIND`). Dein Proxy leitet die Domain dorthin und setzt `X-Forwarded-For`/`-Proto`/`-Host`.
-- **Image:** Das Image kommt fertig von `ghcr.io/chrisbad/nestwerk`. Solange das Paket privat ist, fragt das
-  Skript einmal nach einem GitHub-Token mit dem Recht `read:packages` und meldet den Server damit an.
-- Der Datenbankport wird nicht veröffentlicht, die Daten liegen im Volume `db-data`.
-- Der erste Admin wird aus `NESTWERK_ADMIN_USERNAME`/`NESTWERK_ADMIN_PASSWORD` angelegt,
-  solange keine Benutzer existieren. Weitere Konten legt der Admin unter `/admin/users` an.
+- **Reverse proxy for all services:** if the server does not run one yet, the script sets up a central
+  [nginx-proxy](https://github.com/nginx-proxy/nginx-proxy) with `acme-companion` under `/opt/proxy`. It takes
+  ports 80/443 and fetches the certificates automatically. If another proxy already uses 80/443, Nestwerk only
+  listens on `127.0.0.1:8080` (`APP_BIND`). Your proxy forwards the domain there and sets
+  `X-Forwarded-For`/`-Proto`/`-Host`.
+- **Image:** the image is pulled ready-made from `ghcr.io/chrisbad/nestwerk`. As long as the package is private, the
+  script asks once for a GitHub token with the `read:packages` permission and logs the server in with it.
+- The database port is not published; the data lives in the `db-data` volume.
+- The first admin is created from `NESTWERK_ADMIN_USERNAME`/`NESTWERK_ADMIN_PASSWORD` as long as no users exist.
+  The admin creates further accounts under `/admin/users`.
 
-### Weiteren Dienst hinter den Proxy hängen
+### Putting another service behind the proxy
 
-Jeder Container im Docker-Netz `proxy` mit diesen Variablen bekommt seine Domain samt Zertifikat:
+Every container in the Docker network `proxy` that sets these variables gets its own domain and certificate:
 
 ```yaml
 services:
@@ -82,7 +84,7 @@ services:
     image: …
     environment:
       VIRTUAL_HOST: wiki.example.org
-      VIRTUAL_PORT: "3000"          # Port im Container
+      VIRTUAL_PORT: "3000"          # port inside the container
       LETSENCRYPT_HOST: wiki.example.org
     networks: [default, proxy]
 networks:
@@ -90,233 +92,241 @@ networks:
     external: true
 ```
 
-Eigene nginx-Einstellungen je Domain liegen in `/opt/proxy/vhost.d/<domain>`. Für Nestwerk legt das Skript dort
-größere Upload-Grenzen und längere Zeitlimits für Sicherungen an.
+Custom nginx settings per domain live in `/opt/proxy/vhost.d/<domain>`. For Nestwerk the script puts larger upload
+limits and longer timeouts for backups there.
 
-### Umzug auf einen neuen Server
+### Moving to a new server
 
-Auf dem alten Server unter „Sicherungen“ eine Sicherung erstellen und herunterladen. Auf dem neuen Server
-`install.sh` ausführen, als Admin anmelden, die Sicherung unter „Sicherungen“ hochladen und wiederherstellen.
-Danach gelten die Benutzer und Passwörter aus der Sicherung. Zugangsdaten der Sicherungsziele (WebDAV/SFTP) sind
-mit dem alten `NESTWERK_SECRET_KEY` verschlüsselt. Den Wert aus der alten `.env` übernehmen oder die Zugangsdaten
-neu eintragen.
+On the old server, create a backup under "Sicherungen" (backups) and download it. On the new server run
+`install.sh`, log in as admin, upload the backup under "Sicherungen" and restore it. Afterwards the users and
+passwords from the backup apply. The credentials of backup targets (WebDAV/SFTP) are encrypted with the old
+`NESTWERK_SECRET_KEY`. Either take the value over from the old `.env` or enter the credentials again.
 
-### Kalender, Navigation und Einstellungen
+### Calendar, navigation and settings
 
-- **Start:** Wer das Recht hat, landet nach der Anmeldung im Kalender, in der Ansicht „Meine“ (heutige Termine, ToDos
-  und Hausarbeiten der eigenen Person, Überfälliges oben). „Tag“ zeigt die Zeit von links nach rechts mit einer Bahn je
-  Person und erlaubt Anlegen, Verschieben und Ändern per Ziehen; „3 Tage“ und „Woche“ bleiben senkrecht.
-- **Navigation:** Alle Menüeinträge kommen aus einer Registry (`Navigation`) mit Sichtbarkeitsregel; Seitenleiste,
-  Tab-Leiste, „Mehr“-Blatt und Benutzermenü werden daraus erzeugt. Das Plus-Menü legt von überall Termine, ToDos, Zeiten
-  und Einkaufsartikel an, Strg + K öffnet die Schnellsuche.
-- **Ausflug und Rückkehr:** Seiten, die vom Kalender aus geöffnet werden (Einstellungen, Kategorien, Schnellanlegen),
-  bekommen den Ursprung als `back`-Parameter (`SafeRedirect` lässt nur lokale Pfade zu). Der Pfeil oben auf der Seite
-  und alle Formulare führen dorthin zurück; ohne Ursprung gilt die zuletzt besuchte Kalenderansicht.
-- **Einstellungs-Register:** `/settings` listet alle Einstellungen, die der Benutzer sehen darf, in einer durchsuchbaren,
-  filter- und sortierbaren Tabelle (Komponente `data-table`, Zustand in der Adresse). Neue Einstellungen werden in
-  `Settings` eingetragen; MCP: `list_settings`. Benutzer, Mitglieder und Kategorien nutzen dieselbe Tabelle.
-- **Ebenen und Hausarbeiten im Kalender:** „Anzeige“ blendet Termine, ToDos und Hausarbeiten einzeln aus (pro Gerät).
-  Offene Hausarbeiten ohne Uhrzeit oder Person stehen in der Leiste „ganztägig“. „Hausarbeit“ in der Leiste plant eine
-  Hausarbeit einmalig ein (`ChoreTaskService.planOnce`, auch für „Bei Bedarf“) oder bucht sie ungeplant; MCP:
-  `plan_chore_task`, `book_chore`, `complete_chore_task`.
-- **Haushalt:** `/household` zeigt den Tag (Standard: eigene Aufgaben, weitere Personen per Filter-Chip, Auswahl in der
-  Adresse `?who=` und im Gerät) und die Woche; nebeneinander, sobald die Seite breit genug ist (Container Query),
-  sonst untereinander. `?date=` wählt den Tag, `?week=` und `/household/today` leiten weiter. In der Liste der
-  Hausarbeiten bucht „Buchen“ im Seitenpanel auch ungeplante Hausarbeiten.
-- **Startseite:** Die Kachel „Heute in der Schule“ zeigt je Kind die Stunden des Tages als kurze Chips (ausfallende
-  durchgestrichen), Schulfrei-Grund und Klassenarbeit des Tages.
-- **Seitenpanel:** Zeilen öffnen ihre Einzelheiten in einem gemeinsamen Panel (`drawer.js`), das ein Fragment per
-  `GET …/{id}/edit` nachlädt, statt dass jede Zeile einen eigenen Dialog mitbringt. Die Zurück-Taste schließt es.
+The user interface is German, so menu and button names are quoted in German with a short translation where it helps.
 
-### Benachrichtigungen
+- **Start:** whoever has the permission lands in the calendar after login, in the "Meine" ("mine") view (today's
+  events, todos and chores of their own person, overdue items on top). "Tag" (day) shows the time from left to right
+  with one lane per person and allows creating, moving and changing by dragging; "3 Tage" and "Woche" (week) stay
+  vertical.
+- **Navigation:** all menu entries come from one registry (`Navigation`) with a visibility rule; the sidebar, tab
+  bar, "Mehr" ("more") sheet and user menu are generated from it. The plus menu creates events, todos, times and
+  shopping items from anywhere, Ctrl + K opens the quick search.
+- **Excursion and return:** pages opened from the calendar (settings, categories, quick create) get their origin as
+  a `back` parameter (`SafeRedirect` only allows local paths). The arrow at the top of the page and all forms lead
+  back there; without an origin, the last visited calendar view applies.
+- **Settings register:** `/settings` lists all settings the user may see in a searchable, filterable and sortable
+  table (component `data-table`, state kept in the address). New settings are registered in `Settings`; MCP:
+  `list_settings`. Users, members and categories use the same table.
+- **Layers and chores in the calendar:** "Anzeige" (display) hides events, todos and chores individually (per
+  device). Open chores without a time or person appear in the "ganztägig" (all-day) bar. "Hausarbeit" in the bar
+  plans a chore once (`ChoreTaskService.planOnce`, also for "Bei Bedarf", i.e. on demand) or books it unplanned;
+  MCP: `plan_chore_task`, `book_chore`, `complete_chore_task`.
+- **Household:** `/household` shows the day (default: own tasks, further people via filter chip, the selection is
+  kept in the address `?who=` and on the device) and the week; side by side as soon as the page is wide enough
+  (container query), stacked otherwise. `?date=` selects the day, `?week=` and `/household/today` redirect. In the
+  list of chores, "Buchen" (book) in the side panel also books unplanned chores.
+- **Home page:** the tile "Heute in der Schule" (school today) shows each child's lessons of the day as short chips
+  (cancelled ones struck through), the reason for a day off and the exam of the day.
+- **Side panel:** rows open their details in a shared panel (`drawer.js`) that loads a fragment via
+  `GET …/{id}/edit`, instead of every row carrying its own dialog. The back button closes it.
 
-Benachrichtigungen erscheinen immer in der Glocke. Zusätzlich:
+### Notifications
 
-- **E-Mail:** `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASSWORD` und `MAIL_FROM` in der `.env` setzen.
-  Jeder Benutzer hinterlegt seine Adresse unter „Meine Benachrichtigungswege“.
-- **Push aufs Handy:** funktioniert, sobald Nestwerk über HTTPS erreichbar ist und `NESTWERK_BASE_URL`
-  gesetzt ist. Die nötigen Schlüssel erzeugt Nestwerk beim ersten Bedarf selbst. Auf dem iPhone muss
-  Nestwerk über „Teilen → Zum Home-Bildschirm“ installiert sein.
-- Welche Wege standardmäßig gelten, legt ein Administrator unter „Benachrichtigungen einstellen“ fest.
+Notifications always appear in the bell. In addition:
 
-### Zeiten (Arbeit, Schlaf, Ruhe, Freizeit)
+- **E-mail:** set `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASSWORD` and `MAIL_FROM` in `.env`. Every user
+  stores their address under "Meine Benachrichtigungswege" (my notification channels).
+- **Push to the phone:** works as soon as Nestwerk is reachable over HTTPS and `NESTWERK_BASE_URL` is set. Nestwerk
+  generates the required keys itself on first need. On the iPhone, Nestwerk has to be installed via
+  "Share → Add to Home Screen".
+- Which channels apply by default is set by an administrator under "Benachrichtigungen einstellen" (configure
+  notifications).
 
-- Unter „Zeiten“ trägt jede Person wiederkehrende Zeiten ein: Art, Uhrzeit (über Mitternacht möglich), Wochentage,
-  gültig ab/bis und einzelne Ausnahmetage (Urlaub). Rechte wie bei Terminen.
-- **Beim Einplanen:** *Nur anzeigen*, *Warnen* (das Formular fragt einmal nach und schlägt freie Zeiten vor) oder
-  *Sperren* (für andere; man selbst bekommt höchstens eine Warnung). Ausgewählte Personen dürfen trotzdem einplanen.
-  Das gilt für Formular, Ziehen im Kalender, MCP und iCal-Import.
-- **Sichtbarkeit:** mit Titel, nur „belegt“ oder unsichtbar; Betroffene und Admins sehen immer den Titel.
-  Im Kalender erscheinen Zeiten als Bänder; beim Ziehen im Zeitraster zeigt das Raster gesperrte Zeiten der
-  betroffenen Personen schraffiert.
-- **Ruhe-Modus:** Push und Mail warten bis zum Ende der Zeit. **Feiertage:** Zeiten mit „an Feiertagen frei“
-  entfallen an den gesetzlichen Feiertagen des eingestellten Bundeslands.
-- **Ruhe-Ziele:** z. B. „mind. 2 freie Abende“ oder „mind. 6 Stunden Ruhe pro Woche“; Stand auf „Zeiten“ und der
-  Startseite, Warnung beim Einplanen, wenn ein Ziel kippen würde.
+### Times (work, sleep, rest, leisure)
 
-### Haushalt und Wand-Tablet
+- Under "Zeiten" (times) every person enters recurring times: kind, time of day (across midnight is possible),
+  weekdays, valid from/to and individual exception days (holiday). Permissions work like for events.
+- **When scheduling:** *show only*, *warn* (the form asks once and suggests free times) or *block* (for others; the
+  person themself gets at most a warning). Selected people may schedule anyway. This applies to the form, dragging
+  in the calendar, MCP and iCal import.
+- **Visibility:** with title, only "busy", or invisible; the people concerned and admins always see the title. In
+  the calendar, times appear as bands; while dragging in the time grid, the grid shows blocked times of the people
+  concerned hatched.
+- **Quiet mode:** push and mail wait until the time ends. **Public holidays:** times marked "free on public
+  holidays" are dropped on the statutory holidays of the configured federal state.
+- **Rest goals:** e.g. "at least 2 free evenings" or "at least 6 hours of rest per week"; status on "Zeiten" and
+  on the home page, with a warning when scheduling if a goal would tip.
 
-- Der Haushaltsplan plant drei Wochen im Voraus. Wer im Kalender an einem Termin mit dem Häkchen „Abwesend“
-  teilnimmt, wird beim Verteilen übersprungen.
-- Jede Aufgabe bekommt eine Uhrzeit: die früheste freie Lücke der zuständigen Person im Zeitfenster der Hausarbeit
-  (frühestens/spätestens, sonst 07:00 bis Fälligkeit bzw. 21:00), außerhalb von Terminen, Zeiten mit Warnung oder
-  Sperre und anderen Hausarbeiten. Wer keine Lücke hat, wird übersprungen; hat niemand Zeit, bleibt sie offen
-  („niemand frei“). Eingeplante Aufgaben stehen auch im Kalender der Person.
-- **Wand-Tablet koppeln:** Unter „Wand-Tablets“ (Benutzermenü, Recht „Wand-Tablets koppeln“) einen Code
-  erzeugen, auf dem Tablet `https://<nestwerk>/tablet/pair` öffnen und den Code eingeben. Das Tablet sieht
-  danach nur den Haushaltsplan von heute und morgen; abgemeldet wird es dort mit einem Klick.
-- Abgehakt wird am Tablet mit der PIN des Mitglieds. Jeder setzt sie unter „PIN fürs Tablet“, für Kinder
-  ohne Konto geht das in der Mitgliederverwaltung.
-- Abfuhrkalender lassen sich bei einer Hausarbeit mit festen Terminen als `.ics`-Datei oder Abo-Adresse
-  übernehmen; Abos werden täglich aktualisiert.
+### Household and wall tablet
 
-### Küche
+- The chore plan plans three weeks ahead. Whoever takes part in a calendar event with the "Abwesend" (absent) tick
+  is skipped during distribution.
+- Every task gets a time: the earliest free gap of the responsible person within the chore's time window
+  (earliest/latest, otherwise 07:00 until due date or 21:00), outside of events, times with a warning or block, and
+  other chores. Whoever has no gap is skipped; if nobody has time, the task stays open ("niemand frei", nobody
+  free). Planned tasks also appear in the person's calendar.
+- **Pairing a wall tablet:** under "Wand-Tablets" (user menu, permission "Wand-Tablets koppeln") create a code, open
+  `https://<nestwerk>/tablet/pair` on the tablet and enter the code. The tablet then only sees the chore plan for
+  today and tomorrow; it is logged out there with one click.
+- Tasks are ticked off at the tablet with the member's PIN. Everyone sets it under "PIN fürs Tablet"; for children
+  without an account this is done in the member administration.
+- Waste collection calendars can be taken over for a chore with fixed dates as an `.ics` file or subscription
+  address; subscriptions are refreshed daily.
 
-- **Rezepte und Lebensmittel:** Zu jedem Rezept zeigt Nestwerk Kalorien, Eiweiß, Fett und Kohlenhydrate pro Portion und
-  rechnet die Zutaten auf eine andere Portionenzahl um. Die Nährwerte stammen aus einem Grundstock von rund 150
-  Lebensmitteln, aus Open Food Facts (Barcode-Scan) oder eigener Pflege. Zutaten, die sich nicht umrechnen lassen,
-  werden markiert („Nährwerte unvollständig“) und nicht als 0 kcal gezählt.
-- **Rezept-Import:** Ein Link zu einer Rezeptseite (auch Cookidoo-Seiten, die öffentlich lesbar sind) füllt das
-  Rezeptformular vor; gespeichert wird erst nach dem Prüfen. Ein Login bei Cookidoo ist nicht nötig.
-- **Essensplan:** Wochenansicht mit frei einstellbaren Mahlzeiten, Mitessern und Portionen, Drag & Drop und
-  „Woche auffüllen“. Kalorienziele (Küche → Einstellungen) liefern Portionsvorschläge und die Tagesbilanz je Person.
-- **Vorrat:** Menge, Ort und MHD; „Gekocht“ zeigt vorher, was abgebucht wird (ältestes MHD zuerst), Mengen sind
-  korrigierbar. Täglich um 8 Uhr kommt eine Sammelnachricht, wenn etwas in den nächsten zwei Tagen abläuft.
-- **Einkauf:** „Aus Plan erzeugen“ = Bedarf aller ungekochten Mahlzeiten minus Vorrat, dazu freie Artikel. Gekaufte
-  Artikel werden über „Einräumen“ in den Vorrat übernommen.
-- **Bring!:** Unter Küche → Einstellungen E-Mail und Passwort des Bring!-Kontos eintragen und eine Liste wählen. Das
-  Passwort wird verschlüsselt gespeichert (Schlüssel wie bei den Sicherungen). „An Bring! senden“ schickt die offenen
-  Artikel; was bei Bring! nicht mehr „zu kaufen“ ist, gilt als gekauft (Knopf und alle 15 Minuten). Nestwerk nutzt die
-  inoffizielle Web-API von Bring!; fällt sie aus, bleibt die Einkaufsliste unverändert und die Seite zeigt eine Meldung.
-- **Rechte:** `KITCHEN_VIEW`, `KITCHEN_RECIPES_EDIT`, `KITCHEN_PLAN`, `KITCHEN_SHOPPING`, `KITCHEN_SETTINGS`; die Rolle
-  „Benutzer“ bekommt alle außer den Einstellungen.
-- **KI:** Über MCP legt ein Assistent Rezepte aus Foto oder Text an (`create_recipe` mit Zutaten als Textzeilen), plant
-  Mahlzeiten und liest Einkaufsliste und Vorrat (`search_foods`, `plan_meal`, `shopping_list`, `list_pantry` u. a.). Auch Ändern ist möglich (`update_recipe`, `move_meal`, `set_meal_eaters`), ebenso Auffüllen und Kochen (`fill_meal_plan`, `cook_meal`), Einkauf (`generate_shopping_list`, `toggle_shopping_item`, `stow_shopping_item`, Bring!) und Vorrat (`add_pantry_item`, `update_pantry_item`, `take_from_pantry`). Den Haushaltsplan befüllt er mit `create_chore`, `update_chore`, `add_chore_date`, `assign_chore_task` und `book_chore`.
+### Kitchen
 
-### KI-Anbindung (MCP)
+- **Recipes and foods:** for every recipe Nestwerk shows calories, protein, fat and carbohydrates per serving and
+  scales the ingredients to another number of servings. The nutrition values come from a base set of about 150
+  foods, from Open Food Facts (barcode scan) or from your own entries. Ingredients that cannot be converted are
+  marked ("Nährwerte unvollständig", nutrition incomplete) and are not counted as 0 kcal.
+- **Recipe import:** a link to a recipe page (also Cookidoo pages that are publicly readable) pre-fills the recipe
+  form; it is only saved after review. No Cookidoo login is needed.
+- **Meal plan:** week view with freely configurable meals, eaters and servings, drag & drop and "Woche auffüllen"
+  (fill week). Calorie goals (Küche → Einstellungen) provide serving suggestions and the daily balance per person.
+- **Pantry:** quantity, location and best-before date; "Gekocht" (cooked) first shows what will be deducted
+  (oldest best-before date first), quantities can be corrected. Every day at 8:00 a digest message arrives if
+  something expires within the next two days.
+- **Shopping:** "Aus Plan erzeugen" (generate from plan) = demand of all uncooked meals minus pantry, plus free
+  items. Bought items are moved into the pantry via "Einräumen" (stow away).
+- **Bring!:** under Küche → Einstellungen enter the e-mail and password of the Bring! account and choose a list.
+  The password is stored encrypted (same key as the backups). "An Bring! senden" (send to Bring!) sends the open
+  items; whatever is no longer "to buy" at Bring! counts as bought (button and every 15 minutes). Nestwerk uses
+  Bring!'s unofficial web API; if it is down, the shopping list stays unchanged and the page shows a message.
+- **Permissions:** `KITCHEN_VIEW`, `KITCHEN_RECIPES_EDIT`, `KITCHEN_PLAN`, `KITCHEN_SHOPPING`, `KITCHEN_SETTINGS`;
+  the role "Benutzer" (user) gets all but the settings.
+- **AI:** through MCP an assistant creates recipes from a photo or text (`create_recipe` with ingredients as text
+  lines), plans meals and reads the shopping list and pantry (`search_foods`, `plan_meal`, `shopping_list`,
+  `list_pantry` and others). Changing is possible as well (`update_recipe`, `move_meal`, `set_meal_eaters`), as are
+  filling and cooking (`fill_meal_plan`, `cook_meal`), shopping (`generate_shopping_list`, `toggle_shopping_item`,
+  `stow_shopping_item`, Bring!) and the pantry (`add_pantry_item`, `update_pantry_item`, `take_from_pantry`). It
+  fills the chore plan with `create_chore`, `update_chore`, `add_chore_date`, `assign_chore_task` and `book_chore`.
 
-Nestwerk enthält einen MCP-Server unter `https://<nestwerk>/mcp`. Darüber kann ein KI-Assistent wie Claude
-Termine, ToDos, den Haushaltsplan, die Küche, Kontakte, Zeiten und Benachrichtigungen lesen und bearbeiten. Löschen
-geht nur mit ausdrücklich dafür vorgesehenen, als destruktiv markierten Tools: Termine (`delete_event`) und
-Terminkategorien (`delete_event_category`), Hausarbeiten (`delete_chore`), einzelne Termine einer Hausarbeit
-(`cancel_chore_task`) und ToDos (`delete_todo`); dazu Verknüpfungen lösen, einzelne Terminvorkommen absagen und
-feste Haushalts-Termine entfernen. Termine lassen sich wie im Kalender auf neue Zeiten legen (`reschedule_event`,
-`reschedule_event_series`), Hausarbeiten auf eine andere Uhrzeit oder einen anderen Tag (`reschedule_chore_task`).
+### AI integration (MCP)
 
-- **Umfang:** ToDos mit Unterstruktur, Verknüpfungen, Beobachtern, Wiedervorlage und Verlauf; Termine samt
-  einzelner Serienvorkommen; Kontakte; Haushaltsplan mit Auswertung, Gutschrift-Korrekturen, Belohnungen und
-  iCal-Abos; Küche inklusive Einstellungen, Rezept-Import per Adresse und Barcode-Suche; Zeiten (Blocker) und
-  Ruhe-Ziele; Benachrichtigungs-Einstellungen; das Einstellungs-Register (`list_settings`); Anhänge (Text lesen, kleine Dateien hinzufügen); Export und Import
-  als Text mit Vorschau.
-- **Verwaltung:** Mit den passenden Verwaltungsrechten auch Benutzerrollen, Familienmitglieder, Rollen und
-  Zugriffsregeln, Sicherungsplan, Updates und globale Benachrichtigungs-Einstellungen. Es gelten dieselben Regeln
-  gegen Rechteausweitung wie in der Weboberfläche.
-- **Bewusst nur in der Weboberfläche:** Passwörter und Benutzer anlegen, KI-Token, Bring!-Anmeldung, Zugangsdaten
-  für Sicherungsziele, Verschlüsselungs-Passphrase, Wiederherstellen und Löschen von Sicherungen, PINs und
-  Tablet-Kopplung, Push-Geräte einrichten.
+Nestwerk contains an MCP server at `https://<nestwerk>/mcp`. Through it an AI assistant such as Claude can read and
+edit events, todos, the chore plan, the kitchen, contacts, times and notifications. Every feature of the web
+interface has matching tools (create, read, update, delete and the domain-specific actions); the tests in
+`nestwerk-app` guard this (`McpCoverageTest`). Deleting only works with tools provided explicitly for it and marked
+as destructive, for example `delete_event`, `delete_todo` or `delete_chore`. Events can be moved like in the
+calendar (`reschedule_event`, `reschedule_event_series`), chores to another time or day (`reschedule_chore_task`).
 
-- Der Assistent handelt immer als ein Benutzer und hat genau dessen Rechte. Ein Administrator gibt einer Rolle das
-  Recht „KI-Zugang nutzen“. Danach verbindet sich jeder Benutzer auf einem von zwei Wegen:
-- **Mit dem Nestwerk-Login (OAuth 2.1):** Der Client bekommt nur die Adresse. Nestwerk ist zugleich Authorization
-  Server: Der Client findet ihn über `/.well-known/oauth-protected-resource/mcp`, registriert sich selbst
-  (`/oauth2/register`, RFC 7591), der Benutzer meldet sich im Browser an und stimmt zu. Zugriffstoken gelten eine
-  Stunde, Refresh-Tokens 90 Tage und werden bei jeder Nutzung erneuert. Unter „KI-Zugänge → Verbundene Assistenten“
-  lässt sich jede Verbindung trennen. Für claude.ai (Konnektoren) muss Nestwerk per HTTPS aus dem Internet
-  erreichbar sein; Claude Code klappt auch im Heimnetz:
+- **Scope:** todos with sub-structure, links, watchers, follow-up and history; events including single occurrences
+  of a series; contacts; the chore plan with statistics, credit corrections, rewards and iCal subscriptions;
+  kitchen including settings, recipe import by address and barcode search; times (blockers) and rest goals;
+  notification settings; the settings register (`list_settings`); attachments (read text, add small files); export
+  and import as text with preview.
+- **Administration:** with the matching administration permissions also user roles, family members, roles and
+  access rules, backup schedule, updates and global notification settings. The same rules against privilege
+  escalation apply as in the web interface.
+- **Deliberately web-only:** creating users and setting passwords, AI tokens, Bring! login, credentials for backup
+  targets, the encryption passphrase, restoring, deleting and uploading backups, PINs and tablet pairing, setting
+  up push devices.
+
+- The assistant always acts as one user and has exactly their permissions. An administrator gives a role the
+  permission "KI-Zugang nutzen" (use AI access). After that every user connects in one of two ways:
+- **With the Nestwerk login (OAuth 2.1):** the client only needs the address. Nestwerk is also the authorization
+  server: the client finds it via `/.well-known/oauth-protected-resource/mcp`, registers itself
+  (`/oauth2/register`, RFC 7591), the user logs in in the browser and consents. Access tokens are valid for one
+  hour, refresh tokens for 90 days and are renewed on every use. Under "KI-Zugänge → Verbundene Assistenten"
+  (AI access → connected assistants) every connection can be revoked. For claude.ai (connectors), Nestwerk has to
+  be reachable from the internet over HTTPS; Claude Code also works on the home network:
 
   ```bash
   claude mcp add --transport http nestwerk https://<nestwerk>/mcp
-  # danach in Claude Code: /mcp → nestwerk → Authenticate
+  # then in Claude Code: /mcp → nestwerk → Authenticate
   ```
 
-- **Mit Zugangstoken:** Unter „KI-Zugänge“ ein eigenes Token anlegen. Es wird nur einmal angezeigt und lässt sich
-  jederzeit widerrufen.
+- **With an access token:** create a personal token under "KI-Zugänge". It is shown only once and can be revoked at
+  any time.
 
   ```bash
   claude mcp add --transport http nestwerk https://<nestwerk>/mcp --header "Authorization: Bearer nw_…"
   ```
 
-  Andere Clients brauchen die Adresse und den Header `Authorization: Bearer <token>`. Die Seite „KI-Zugänge“ zeigt
-  passende Schnipsel mit der Adresse aus `NESTWERK_BASE_URL`.
-- Der MCP-Server arbeitet zustandslos. Am Reverse Proxy ist nichts Besonderes nötig, außer dass der Header
-  `Authorization` durchgereicht wird und `X-Forwarded-Proto`/`X-Forwarded-Host` stimmen – daraus bildet Nestwerk
-  die OAuth-Adressen.
+  Other clients need the address and the header `Authorization: Bearer <token>`. The page "KI-Zugänge" shows
+  matching snippets with the address from `NESTWERK_BASE_URL`.
+- The MCP server is stateless. Nothing special is needed at the reverse proxy, except that the `Authorization`
+  header is passed through and `X-Forwarded-Proto`/`X-Forwarded-Host` are correct – Nestwerk builds the OAuth
+  addresses from them.
 
 ### Update
 
-**In Nestwerk:** Benutzermenü → „Updates“ (Recht „Updates verwalten“). Nestwerk prüft alle 6 Stunden, ob es eine
-neue Version gibt, und meldet sie den Admins. Ein Klick auf „Jetzt aktualisieren“ beauftragt den Dienst `updater`:
+**In Nestwerk:** user menu → "Updates" (permission "Updates verwalten", manage updates). Nestwerk checks every
+6 hours whether there is a new version and tells the admins. A click on "Jetzt aktualisieren" (update now) hands
+the job to the `updater` service:
 
-1. Sicherung mit der laufenden Version (Art „vor einem Update“),
-2. App- und Updater-Image der neuen Version laden, Installationsdateien (`compose.*.yaml`, `update.sh`) aus dem
-   Updater-Image übernehmen, `NESTWERK_VERSION` in `.env` setzen,
-3. Neustart und Warten, bis die App gesund ist.
+1. a backup with the running version (kind "before an update"),
+2. pull the app and updater images of the new version, take over the installation files (`compose.*.yaml`,
+   `update.sh`) from the updater image, set `NESTWERK_VERSION` in `.env`,
+3. restart and wait until the app is healthy.
 
-Kommt die neue Version nicht hoch, startet der Updater die alte wieder; hatte die neue die Datenbank schon migriert,
-spielt er vorher die Sicherung aus Schritt 1 ein. Ergebnis und Protokoll stehen auf der Seite „Updates“.
+If the new version does not come up, the updater starts the old one again; if the new one had already migrated the
+database, it restores the backup from step 1 first. Result and log are on the "Updates" page.
 
-- **Kanal:** *Releases* (Tags `vX.Y.Z`, Standard) oder *main* (jeder erfolgreiche Build von main, Image-Tag
+- **Channel:** *Releases* (tags `vX.Y.Z`, default) or *main* (every successful build of main, image tag
   `sha-<commit>`).
-- **GitHub-Token:** Solange das Repository privat ist, braucht die Versionsprüfung einen fein granularen Token nur für
-  `chrisbad/nestwerk` mit Lesezugriff auf *Contents* und *Actions*. Er wird verschlüsselt gespeichert.
-- **Sicherheit:** Die App hat keinen Zugriff auf Docker. Sie legt nur einen Auftrag mit der Zielversion ab; der
-  Updater prüft ihn und nimmt alles andere aus seinem eigenen Image.
+- **GitHub token:** as long as the repository is private, the version check needs a fine-grained token for
+  `chrisbad/nestwerk` only, with read access to *Contents* and *Actions*. It is stored encrypted.
+- **Security:** the app has no access to Docker. It only stores a job with the target version; the updater checks it
+  and takes everything else from its own image.
 
-**Per SSH** (erste Einrichtung des Updaters, oder wenn die App nicht mehr startet):
+**Via SSH** (first setup of the updater, or when the app no longer starts):
 
 ```bash
-sudo GITHUB_TOKEN=… /opt/nestwerk/update.sh          # eingestellte Version (Standard: latest)
-sudo GITHUB_TOKEN=… /opt/nestwerk/update.sh 1.4.0    # bestimmte Version
+sudo GITHUB_TOKEN=… /opt/nestwerk/update.sh          # configured version (default: latest)
+sudo GITHUB_TOKEN=… /opt/nestwerk/update.sh 1.4.0    # a specific version
 ```
 
-`update.sh` holt die Installationsdateien der Zielversion (bei privatem Repository mit `GITHUB_TOKEN`), ergänzt
-`NESTWERK_DIR` in `.env`, sichert mit der laufenden Version, lädt die neuen Images und startet neu.
+`update.sh` fetches the installation files of the target version (with `GITHUB_TOKEN` if the repository is
+private), adds `NESTWERK_DIR` to `.env`, backs up with the running version, pulls the new images and restarts.
 
-**Bestehende Installation auf den Updater umstellen (einmalig):** die neue `update.sh` aus dem Repository nach
-`/opt/nestwerk/` kopieren und wie oben ausführen. Danach läuft der Dienst `updater`, und Updates gehen in Nestwerk.
-Hinter nginx-proxy zusätzlich `proxy/nestwerk-vhost.conf` erneut nach `/opt/proxy/vhost.d/<domain>` kopieren und
-`docker exec nginx-proxy nginx -s reload` ausführen: Dann sehen alle während des Neustarts eine Wartungsseite.
+**Switching an existing installation to the updater (once):** copy the new `update.sh` from the repository to
+`/opt/nestwerk/` and run it as above. After that the `updater` service runs and updates happen in Nestwerk. Behind
+nginx-proxy, also copy `proxy/nestwerk-vhost.conf` to `/opt/proxy/vhost.d/<domain>` again and run
+`docker exec nginx-proxy nginx -s reload`: then everyone sees a maintenance page during the restart.
 
-**Regeln für neue Versionen**, damit Updates nie Daten verlieren:
-- Migrationen nur hinzufügend oder mit Datenübernahme; `MigrationUpgradeTest` migriert Bestandsdaten von V18 auf den
-  neuesten Stand und vergleicht die Zeilen. Bei jedem Release einen weiteren Snapshot unter
-  `nestwerk-app/src/test/resources/db/upgrade/` ergänzen.
-- Neue Variablen in den Compose-Dateien immer mit Standardwert (`${VAR:-…}`): Ein Update ändert `.env` nur bei
+**Rules for new versions**, so that updates never lose data:
+- Migrations only add, or carry the data over; `MigrationUpgradeTest` migrates existing data from V18 to the latest
+  state and compares the rows. With every release add another snapshot under
+  `nestwerk-app/src/test/resources/db/upgrade/`.
+- New variables in the Compose files always with a default (`${VAR:-…}`): an update only changes `.env` for
   `NESTWERK_VERSION`.
 
-### Sicherungen
+### Backups
 
-Sicherungen verwaltet ein Administrator (Recht „Sicherungen verwalten“) unter „Sicherungen“ im Benutzermenü:
+Backups are managed by an administrator (permission "Sicherungen verwalten", manage backups) under "Sicherungen" in
+the user menu:
 
-- **Jetzt sichern** oder **regelmäßig** (täglich oder wöchentlich zu einer Uhrzeit). Eine Sicherung ist eine
-  ZIP-Datei mit allen Tabellen und Anhängen. Sie liegt im Volume `backups` und lässt sich herunterladen.
-- **Aufbewahrung:** die letzten N Sicherungen, dazu je eine pro Woche und Monat. Hochgeladene Sicherungen bleiben.
-- **Zusätzliche Ziele:** externe Platte (`NESTWERK_EXTERNAL_BACKUP_HOST_DIR` in `.env`, Nestwerk schreibt nur
-  bei vorhandener Markierungsdatei), WebDAV/Nextcloud und SFTP. Kopien dorthin lassen sich mit einer Passphrase
-  verschlüsseln (`.zip.enc`).
-- **Wiederherstellen:** aus der Liste oder nach dem Hochladen einer Datei, auch einer verschlüsselten Kopie. Vorher
-  legt Nestwerk automatisch eine Sicherheitskopie an. Ältere Sicherungen werden auf den aktuellen Stand migriert.
-- Bei einem Fehlschlag gibt es eine Benachrichtigung. Die Startseite warnt, wenn die letzte Sicherung älter als drei
-  Tage ist.
+- **Back up now** or **regularly** (daily or weekly at a given time). A backup is a ZIP file with all tables and
+  attachments. It lives in the `backups` volume and can be downloaded.
+- **Retention:** the last N backups, plus one per week and month. Uploaded backups are kept.
+- **Additional targets:** external disk (`NESTWERK_EXTERNAL_BACKUP_HOST_DIR` in `.env`, Nestwerk only writes if the
+  marker file exists), WebDAV/Nextcloud and SFTP. Copies sent there can be encrypted with a passphrase
+  (`.zip.enc`).
+- **Restoring:** from the list or after uploading a file, including an encrypted copy. Beforehand Nestwerk creates a
+  safety copy automatically. Older backups are migrated to the current state.
+- A failure triggers a notification. The home page warns if the last backup is older than three days.
 
-### Export und Import
+### Export and import
 
-- **Kalender:** „Export“ in der Kalenderleiste liefert alle sichtbaren Termine als `.ics`. „Import“ übernimmt
-  `.ics`-Dateien, etwa aus Google oder Outlook. Gleiche UIDs werden aktualisiert statt doppelt angelegt.
-- **Kontakte:** über „Austausch“ als vCard oder CSV (Excel). Der Import erkennt CSV aus Nestwerk, Google und Outlook
-  und ergänzt vorhandene Kontakte.
-- **ToDos:** über „Austausch“ die aktuelle Ansicht als CSV. Der Import nimmt dasselbe Format, mit ID wird ein
-  vorhandenes ToDo aktualisiert.
+- **Calendar:** "Export" in the calendar bar delivers all visible events as `.ics`. "Import" takes `.ics` files, for
+  example from Google or Outlook. Identical UIDs are updated instead of created twice.
+- **Contacts:** via "Austausch" (exchange) as vCard or CSV (Excel). The import recognises CSV from Nestwerk, Google
+  and Outlook and completes existing contacts.
+- **Todos:** via "Austausch" the current view as CSV. The import takes the same format; with an ID an existing todo
+  is updated.
 
-Jeder Import zeigt erst eine Vorschau und übernimmt erst nach Bestätigung.
+Every import shows a preview first and only takes over after confirmation.
 
-### Notfall: Sicherung von Hand
+### Emergency: manual backup
 
-Falls die App nicht startet, lassen sich Datenbank und Anhänge auch direkt sichern:
+If the app does not start, the database and attachments can also be backed up directly:
 
 ```bash
 cd /opt/nestwerk
 docker compose exec -T db pg_dump -U nestwerk nestwerk > backup.sql
 docker compose run --rm --no-deps -v "$PWD":/backup --entrypoint "" app \
-  tar czf /backup/anhaenge.tgz -C /data/attachments .
+  tar czf /backup/attachments.tgz -C /data/attachments .
 ```
