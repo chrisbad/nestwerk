@@ -415,4 +415,11 @@ public class HouseholdTools {
                 t.getStatus().name(), t.getChore().getPlanMinutes(),
                 t.getPlannedAt() == null ? null : t.getPlannedAt().toString());
     }
+
+    @McpTool(name = "get_chore", description = "Zeigt eine Hausarbeit mit allen Angaben (wie list_chores, für eine).",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public ChoreItem getChore(McpTransportContext context,
+                              @McpToolParam(description = "ID der Hausarbeit (choreId) aus list_chores") Long choreId) {
+        return tools.read(context, user -> chore(chores.get(Tools.required(choreId, "choreId"), user), names()));
+    }
 }

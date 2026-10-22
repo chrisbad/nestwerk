@@ -406,4 +406,44 @@ class McpToolsTest {
         assertThat(overview.notes()).anyMatch(n -> n.startsWith("Kalender"));
         assertThat(overview.myUrgentTodos()).extracting(TodoTools.TodoItem::title).contains("Heute erledigen");
     }
+
+    @Test
+    void deletesContactsAndReportsUnknownOnes() {
+        ContactTools.ContactItem contact = contactTools.createContact(as(admin), "Dr. Weiß", "Arzt", null, null,
+                null, null, null, null, null, null);
+
+        assertThat(contactTools.deleteContact(as(admin), contact.id())).contains("Dr. Weiß");
+
+        assertThat(contactTools.searchContacts(as(admin), null)).isEmpty();
+        assertThatThrownBy(() -> contactTools.deleteContact(as(admin), contact.id()))
+                .isInstanceOf(Tools.ToolException.class).hasMessage("Kontakt nicht gefunden");
+        assertThatThrownBy(() -> contactTools.deleteContact(as(admin), null))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("contactId");
+    }
+
+    @Test
+    void contactCannotBeDeletedWithoutTheRight() {
+        ContactTools.ContactItem contact = contactTools.createContact(as(admin), "Dr. Weiß", "Arzt", null, null,
+                null, null, null, null, null, null);
+
+        assertThatThrownBy(() -> contactTools.deleteContact(as(kid), contact.id()))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThat(contactTools.searchContacts(as(admin), null)).hasSize(1);
+    }
+
+    @Test
+    void readsOneChoreByIdAndRefusesUnknownOnes() {
+        HouseholdTools.ChoreItem created = householdTools.createChore(as(admin), "Bad putzen", "Bad", null, null,
+                "FREQ=DAILY;COUNT=3", LocalDate.now(clock).toString(), null, null, "FIXED", List.of(kidM.getId()),
+                null, null, null, null, null, null, null);
+
+        HouseholdTools.ChoreItem read = householdTools.getChore(as(mama), created.choreId());
+
+        assertThat(read.title()).isEqualTo("Bad putzen");
+        assertThat(read.members()).hasSize(1);
+        assertThatThrownBy(() -> householdTools.getChore(as(mama), 999_999L))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> householdTools.getChore(as(mama), null))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("choreId");
+    }
 }

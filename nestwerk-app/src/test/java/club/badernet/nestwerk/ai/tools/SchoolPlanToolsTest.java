@@ -169,4 +169,47 @@ class SchoolPlanToolsTest {
         assertThatThrownBy(() -> planTools.setSchoolPeriodGrid(as(admin), year.getId(), "08:00-08:45"))
                 .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Schule");
     }
+
+    @Test
+    void managesProfilesYearsAndTheWeekPlan() {
+        FamilyMember max = members.create("Max", "#112233", null);
+
+        assertThatThrownBy(() -> planTools.createSchoolProfile(as(viewer), max.getId(), "BY"))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Berechtigung");
+        assertThat(planTools.createSchoolProfile(as(admin), max.getId(), "NW")).contains("angelegt");
+        assertThatThrownBy(() -> planTools.createSchoolProfile(as(admin), max.getId(), "NW"))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("schon ein Schulprofil");
+        assertThatThrownBy(() -> planTools.createSchoolProfile(as(admin), 999_999L, null))
+                .isInstanceOf(Tools.ToolException.class);
+        Long profile = school.profileOf(max.getId()).orElseThrow().getId();
+        assertThat(planTools.setSchoolProfileState(as(admin), profile, "BY")).contains("gespeichert");
+        assertThat(school.profile(profile).orElseThrow().getState()).isEqualTo("BY");
+
+        assertThat(planTools.createSchoolYear(as(admin), profile, "2026/27", "1b", "2026-09-01", "2027-07-31", null))
+                .contains("aktiviert");
+        SchoolYear first = school.activeYear(profile).orElseThrow();
+        assertThat(first.getClassName()).isEqualTo("1b");
+        planTools.createSchoolYear(as(admin), profile, "2027/28", "2b", "2027-09-01", "2028-07-31", null);
+        assertThat(school.activeYear(profile).orElseThrow().getLabel()).isEqualTo("2027/28");
+
+        assertThat(planTools.activateSchoolYear(as(admin), first.getId())).contains("aktiviert");
+        assertThat(school.activeYear(profile).orElseThrow().getId()).isEqualTo(first.getId());
+        assertThat(planTools.updateSchoolYear(as(admin), first.getId(), null, "1c", null, null, null))
+                .contains("gespeichert");
+        assertThat(school.year(first.getId()).orElseThrow().getClassName()).isEqualTo("1c");
+        assertThat(school.year(first.getId()).orElseThrow().getLabel()).isEqualTo("2026/27");
+
+        assertThatThrownBy(() -> planTools.createSchoolYear(as(viewer), profile, "x", "1a", "2026-09-01",
+                "2027-07-31", null)).isInstanceOf(Tools.ToolException.class).hasMessageContaining("Berechtigung");
+        assertThatThrownBy(() -> planTools.createSchoolYear(as(admin), profile, "x", "1a", "2027-09-01",
+                "2026-07-31", null)).isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> planTools.updateSchoolYear(as(admin), 999_999L, "x", null, null, null, null))
+                .isInstanceOf(Tools.ToolException.class);
+
+        assertThat(planTools.setSchoolWeekPlan(as(admin), first.getId(), "2026-10-14")).contains("gespeichert");
+        assertThat(school.year(first.getId()).orElseThrow().getWeekAStart()).isEqualTo(LocalDate.of(2026, 10, 12));
+        assertThat(planTools.setSchoolWeekPlan(as(admin), first.getId(), null)).contains("abgeschaltet");
+        assertThatThrownBy(() -> planTools.setSchoolWeekPlan(as(viewer), first.getId(), "2026-10-14"))
+                .isInstanceOf(Tools.ToolException.class);
+    }
 }

@@ -38,6 +38,21 @@ Guidelines for working on Nestwerk, a family app built as a Maven multi-module p
 - Write clear tool and parameter descriptions: what the tool does, required formats
   (dates `YYYY-MM-DD`, times `HH:MM`), and where IDs come from.
 
+### Exceptions for MCP
+
+Security-critical administration stays web-only on purpose:
+
+- creating users and setting passwords,
+- restoring, deleting and uploading backups and external backup targets with credentials,
+- tablet devices and their PINs,
+- AI access tokens,
+- push subscriptions,
+- Bring! credentials.
+
+MCP keeps backup status, schedule, retention and start, updates and the notification settings.
+`McpCoverageTest` fails when a web action that deletes or cancels something has neither an MCP tool nor an
+entry in its list of documented exceptions; add the tool (or the exception with its reason) in the same change.
+
 ## Clean Code
 
 ### Naming

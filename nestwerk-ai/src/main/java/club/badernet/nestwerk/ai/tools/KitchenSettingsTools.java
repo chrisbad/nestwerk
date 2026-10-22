@@ -210,4 +210,27 @@ public class KitchenSettingsTools {
     private static GoalItem goal(FamilyMember m) {
         return new GoalItem(m.getId(), m.getName(), m.getKcalGoal());
     }
+
+    @McpTool(name = "delete_meal_slot", description = "Löscht eine Mahlzeit des Essensplans (z. B. Zwischenmahlzeit) samt der dort geplanten Einträge. Mindestens eine Mahlzeit muss bleiben. Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteMealSlot(McpTransportContext context,
+                           @McpToolParam(description = "slotId aus kitchen_settings") Long slotId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(slotId, "slotId");
+            settingsService.deleteSlot(id, user);
+            return "Mahlzeit wurde gelöscht.";
+        });
+    }
+
+    @McpTool(name = "get_meal_slot", description = "Zeigt eine Mahlzeit des Essensplans mit Kalorien-Anteil.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public SlotItem getMealSlot(McpTransportContext context,
+                                @McpToolParam(description = "slotId aus kitchen_settings") Long slotId) {
+        return tools.read(context, user -> {
+            access.require(user, KitchenPermission.KITCHEN_VIEW);
+            return slots.findById(Tools.required(slotId, "slotId")).map(KitchenSettingsTools::slot)
+                    .orElseThrow(() -> new Tools.ToolException("Die Mahlzeit gibt es nicht."));
+        });
+    }
 }

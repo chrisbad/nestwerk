@@ -1,5 +1,6 @@
 package club.badernet.nestwerk.ai.tools;
 
+import club.badernet.nestwerk.blocker.GermanHolidays;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.member.FamilyMemberRepository;
 import club.badernet.nestwerk.school.ChangeKind;
@@ -8,6 +9,7 @@ import club.badernet.nestwerk.school.ExamKind;
 import club.badernet.nestwerk.school.ExamService;
 import club.badernet.nestwerk.school.GradeKind;
 import club.badernet.nestwerk.school.GradeService;
+import club.badernet.nestwerk.school.HolidayException;
 import club.badernet.nestwerk.school.HolidayService;
 import club.badernet.nestwerk.school.HomeworkService;
 import club.badernet.nestwerk.school.LetterService;
@@ -15,6 +17,9 @@ import club.badernet.nestwerk.school.SchoolAccess;
 import club.badernet.nestwerk.school.SchoolContacts;
 import club.badernet.nestwerk.school.SchoolDays;
 import club.badernet.nestwerk.school.SchoolExam;
+import club.badernet.nestwerk.school.SchoolGrade;
+import club.badernet.nestwerk.school.SchoolHoliday;
+import club.badernet.nestwerk.school.SchoolLetter;
 import club.badernet.nestwerk.school.SchoolPermission;
 import club.badernet.nestwerk.school.SchoolProfile;
 import club.badernet.nestwerk.school.SchoolService;
@@ -65,7 +70,7 @@ public class SchoolTools {
                            String start, String end, String location, List<Long> participantIds) {
     }
 
-    public record HolidayItem(String name, LocalDate from, LocalDate to, String source) {
+    public record HolidayItem(Long holidayId, String name, LocalDate from, LocalDate to, String source) {
     }
 
     public record GradeItem(Long gradeId, String grade, String kind, LocalDate day, int weightPercent, String note) {
@@ -238,7 +243,7 @@ public class SchoolTools {
             }
             LocalDate now = LocalDate.now(clock);
             return holidays.list(state, now.minusMonths(1), now.plusYears(1)).stream()
-                    .map(h -> new HolidayItem(h.getName(), h.getStartsOn(), h.getEndsOn(), h.getSource())).toList();
+                    .map(h -> new HolidayItem(h.getId(), h.getName(), h.getStartsOn(), h.getEndsOn(), h.getSource())).toList();
         });
     }
 
@@ -447,6 +452,136 @@ public class SchoolTools {
             boolean value = signed == null || signed;
             letters.setSigned(Tools.required(letterId, "letterId"), value, user);
             return value ? "Als unterschrieben markiert." : "Unterschrift zurückgenommen.";
+        });
+    }
+
+    @McpTool(name = "delete_school_grade", description = "Löscht eine Note endgültig (nur mit Schulrecht zum Bearbeiten). Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteSchoolGrade(McpTransportContext context,
+                           @McpToolParam(description = "Noten-ID aus list_school_grades") Long gradeId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(gradeId, "gradeId");
+            grades.delete(id, user);
+            return "Note wurde gelöscht.";
+        });
+    }
+
+    @McpTool(name = "delete_school_letter", description = "Löscht einen Elternbrief endgültig samt Anhängen. Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteSchoolLetter(McpTransportContext context,
+                           @McpToolParam(description = "Brief-ID aus list_school_letters") Long letterId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(letterId, "letterId");
+            letters.delete(id, user);
+            return "Elternbrief wurde gelöscht.";
+        });
+    }
+
+    @McpTool(name = "delete_school_holiday", description = "Löscht selbst eingetragene Ferien (online geladene lassen sich nicht löschen). Braucht das Recht für die Schul-Einstellungen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteSchoolHoliday(McpTransportContext context,
+                           @McpToolParam(description = "Ferien-ID aus list_school_holidays") Long holidayId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(holidayId, "holidayId");
+            holidays.deleteManual(id, user);
+            return "Ferien wurden gelöscht.";
+        });
+    }
+
+    @McpTool(name = "get_school_exam", description = "Zeigt eine Klassenarbeit oder einen Schultermin.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public ExamItem getSchoolExam(McpTransportContext context,
+                                  @McpToolParam(description = "Termin-ID aus list_school_exams") Long examId) {
+        return tools.read(context, user -> {
+            SchoolExam exam = exams.get(Tools.required(examId, "examId"), user);
+            Map<Long, String> names = timetable.subjects(exam.getYearId()).stream()
+                    .collect(Collectors.toMap(s -> s.getId(), s -> s.getName()));
+            return examItem(exam, names);
+        });
+    }
+
+    @McpTool(name = "get_school_letter", description = "Zeigt einen Elternbrief mit Frist und Unterschrift.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public LetterItem getSchoolLetter(McpTransportContext context,
+                                      @McpToolParam(description = "Brief-ID aus list_school_letters") Long letterId) {
+        return tools.read(context, user -> {
+            access.require(user, SchoolPermission.SCHOOL_VIEW);
+            SchoolLetter letter = letters.get(Tools.required(letterId, "letterId"));
+            return letters.list(letter.getYearId()).stream().filter(i -> i.letter().getId().equals(letter.getId()))
+                    .findFirst().map(i -> new LetterItem(letter.getId(), letter.getTitle(), letter.getDueOn(),
+                            letter.isSigned(), letter.getNote(), i.attachments().size()))
+                    .orElseThrow(() -> new Tools.ToolException("Elternbrief nicht gefunden"));
+        });
+    }
+
+    @McpTool(name = "add_school_holiday", description = "Trägt selbst Ferien oder einen freien Tag (z. B. "
+            + "Brückentag) für ein Bundesland ein. state ist das Kürzel (BW, BY, NW …). Braucht das Recht für die "
+            + "Schul-Einstellungen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public HolidayItem addSchoolHoliday(McpTransportContext context,
+                                        @McpToolParam(description = "Bundesland-Kürzel, z. B. BY") String state,
+                                        @McpToolParam(description = "Bezeichnung, z. B. Brückentag") String name,
+                                        @McpToolParam(description = "Erster Tag, JJJJ-MM-TT") String from,
+                                        @McpToolParam(description = "Letzter Tag, JJJJ-MM-TT") String to) {
+        return tools.write(context, user -> {
+            SchoolHoliday h = holidays.addManual(Tools.required(state, "state"), Tools.required(name, "name"),
+                    Tools.required(Tools.date(from, "from"), "from"), Tools.required(Tools.date(to, "to"), "to"),
+                    user);
+            return new HolidayItem(h.getId(), h.getName(), h.getStartsOn(), h.getEndsOn(), h.getSource());
+        });
+    }
+
+    @McpTool(name = "refresh_school_holidays", description = "Lädt die Schulferien eines Bundeslands online neu "
+            + "(selbst eingetragene bleiben). Antwortet, ob sich etwas geändert hat. Braucht das Recht für die "
+            + "Schul-Einstellungen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public String refreshSchoolHolidays(McpTransportContext context,
+                                        @McpToolParam(description = "Bundesland-Kürzel, z. B. BY") String state) {
+        return tools.write(context, user -> {
+            access.require(user, SchoolPermission.SCHOOL_SETTINGS);
+            String code = Tools.required(state, "state");
+            if (!GermanHolidays.STATES.containsKey(code)) {
+                throw new Tools.ToolException("Unbekanntes Bundesland");
+            }
+            try {
+                return holidays.refresh(code, LocalDate.now(clock)) ? "Ferien aktualisiert." : "Die Ferien sind aktuell.";
+            } catch (HolidayException e) {
+                throw new Tools.ToolException(e.getMessage());
+            }
+        });
+    }
+
+    @McpTool(name = "update_school_grade", description = "Ändert eine Note (nur mit Schulrecht zum Bearbeiten). "
+            + "Nicht angegebene Felder bleiben. grade z. B. 2+, 3, 4-; kind wie bei add_school_grade.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public GradeItem updateSchoolGrade(McpTransportContext context,
+                                       @McpToolParam(description = "Noten-ID aus list_school_grades") Long gradeId,
+                                       @McpToolParam(description = "Neue Note", required = false) String grade,
+                                       @McpToolParam(description = "Fach-ID", required = false) Long subjectId,
+                                       @McpToolParam(description = "Halbjahr 1 oder 2", required = false)
+                                       Integer term,
+                                       @McpToolParam(description = "Gewicht in Prozent", required = false)
+                                       Integer weightPercent,
+                                       @McpToolParam(description = "Art (z. B. EXAM, TEST, ORAL)", required = false)
+                                       String kind,
+                                       @McpToolParam(description = "Tag JJJJ-MM-TT", required = false) String day,
+                                       @McpToolParam(description = "Notiz", required = false) String note) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(gradeId, "gradeId");
+            SchoolGrade current = grades.get(id, user);
+            grades.update(id, subjectId != null ? subjectId : current.getSubjectId(),
+                    term != null ? term : current.getTerm(), grade != null ? grade : current.getLabel(),
+                    weightPercent != null ? weightPercent : current.getWeight(),
+                    kind != null ? Tools.enumValue(GradeKind.class, kind, "kind") : current.getKind(),
+                    day != null ? Tools.date(day, "day") : current.getDay(),
+                    note != null ? note : current.getNote(), user);
+            SchoolGrade g = grades.get(id, user);
+            return new GradeItem(g.getId(), g.getLabel(), g.getKind().name(), g.getDay(), g.getWeight(), g.getNote());
         });
     }
 

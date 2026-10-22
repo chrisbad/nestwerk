@@ -84,6 +84,10 @@
                             <span>Aktiv</span></label>
                         <button type="submit" class="button button-ghost button-small">Speichern</button>
                     </form>
+                    <form method="post" th:action="@{/household/rewards/{id}/delete(id=${rw.id})}" data-confirm-tone="danger"
+                          th:attr="data-confirm=|Belohnung „${rw.title}“ löschen?|">
+                        <button type="submit" class="button button-danger button-small">Löschen</button>
+                    </form>
                 </details>
             </li>
         </ul>
@@ -121,5 +125,6 @@
     </section>
 </main>
 <div th:replace="~{fragments/layout :: toasts}"></div>
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
 </body>
 </html>

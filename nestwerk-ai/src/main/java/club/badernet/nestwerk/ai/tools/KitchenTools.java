@@ -630,4 +630,94 @@ public class KitchenTools {
         return new PantryEntry(i.getId(), i.getName(), club.badernet.nestwerk.kitchen.Amounts.format(i.getAmount(),
                 i.getUnit()), i.getLocation(), i.getBestBefore());
     }
+
+    @McpTool(name = "delete_food", description = "Löscht ein Lebensmittel endgültig (Zutaten, die darauf zeigen, bleiben als Text). Braucht das Recht zum Bearbeiten der Rezepte. Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteFood(McpTransportContext context,
+                           @McpToolParam(description = "ID des Lebensmittels aus search_foods") Long foodId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(foodId, "foodId");
+            String name = foods.get(id).getName();
+            foods.delete(id, user);
+            return "Lebensmittel „" + name + "“ wurde gelöscht.";
+        });
+    }
+
+    @McpTool(name = "delete_recipe", description = "Löscht ein Rezept endgültig samt der Einträge im Essensplan. Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteRecipe(McpTransportContext context,
+                           @McpToolParam(description = "ID des Rezepts aus search_recipes") Long recipeId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(recipeId, "recipeId");
+            String title = recipes.get(id, user).getTitle();
+            recipes.delete(id, user);
+            return "Rezept „" + title + "“ wurde gelöscht.";
+        });
+    }
+
+    @McpTool(name = "delete_pantry_item", description = "Entfernt einen Posten komplett aus dem Vorrat. Teilmengen nimmt take_from_pantry heraus.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deletePantryItem(McpTransportContext context,
+                           @McpToolParam(description = "ID des Vorratspostens aus list_pantry") Long itemId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(itemId, "itemId");
+            pantry.delete(id, user);
+            return "Vorratsposten wurde gelöscht.";
+        });
+    }
+
+    @McpTool(name = "delete_meal", description = "Löscht eine geplante Mahlzeit aus dem Essensplan (das Rezept bleibt).",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteMeal(McpTransportContext context,
+                           @McpToolParam(description = "ID der Mahlzeit aus get_meal_plan") Long mealId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(mealId, "mealId");
+            plan.delete(id, user);
+            return "Mahlzeit wurde aus dem Plan gelöscht.";
+        });
+    }
+
+    @McpTool(name = "delete_shopping_item", description = "Löscht einen Artikel von der Einkaufsliste.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteShoppingItem(McpTransportContext context,
+                           @McpToolParam(description = "ID des Artikels aus shopping_list") Long itemId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(itemId, "itemId");
+            shopping.delete(id, user);
+            return "Artikel wurde von der Einkaufsliste gelöscht.";
+        });
+    }
+
+    @McpTool(name = "get_food", description = "Zeigt ein Lebensmittel mit Nährwerten pro 100 g.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public FoodItem getFood(McpTransportContext context,
+                            @McpToolParam(description = "ID des Lebensmittels aus search_foods") Long foodId) {
+        return tools.read(context, user -> food(foods.get(Tools.required(foodId, "foodId"), user)));
+    }
+
+    @McpTool(name = "get_pantry_item", description = "Zeigt einen Vorratsposten mit Menge, Ort und Haltbarkeit.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public PantryEntry getPantryItem(McpTransportContext context,
+                                     @McpToolParam(description = "ID des Postens aus list_pantry") Long itemId) {
+        return tools.read(context, user -> pantryEntry(pantry.get(Tools.required(itemId, "itemId"), user)));
+    }
+
+    @McpTool(name = "update_meal", description = "Ändert, was bei einer geplanten Mahlzeit gekocht wird: ein "
+            + "anderes Rezept (recipeId) oder ein freier Titel. Tag, Mahlzeit und Mitesser bleiben; verschieben mit "
+            + "move_meal, Mitesser mit set_meal_eaters.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public MealItem updateMeal(McpTransportContext context,
+                               @McpToolParam(description = "ID der Mahlzeit aus get_meal_plan") Long mealId,
+                               @McpToolParam(description = "ID des neuen Rezepts", required = false) Long recipeId,
+                               @McpToolParam(description = "Freier Titel, wenn kein Rezept", required = false)
+                               String title) {
+        return tools.write(context, user -> meal(plan.change(Tools.required(mealId, "mealId"), recipeId, title, user),
+                names()));
+    }
 }

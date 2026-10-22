@@ -1,5 +1,6 @@
 package club.badernet.nestwerk.ai.tools;
 
+import java.util.List;
 import club.badernet.nestwerk.TestcontainersConfiguration;
 import club.badernet.nestwerk.ai.McpCaller;
 import club.badernet.nestwerk.member.FamilyMember;
@@ -107,5 +108,25 @@ class TodoStructureToolsTest {
         assertThat(todoTools.getTodo(as(mama), id).comments()).extracting(TodoTools.Comment::body)
                 .containsExactly("neu");
         assertThat(structureTools.setTodoNotifications(as(admin), id, "off", null)).contains("OFF");
+    }
+
+    @Test
+    void deletesOwnCommentsAndKeepsTheTodo() {
+        Long todo = todo("Umzug");
+        todoTools.addTodoComment(as(mama), todo, "Kartons sind da");
+        todoTools.addTodoComment(as(papa), todo, "Ich helfe");
+        List<TodoTools.Comment> comments = todoTools.getTodo(as(mama), todo).comments();
+        Long own = comments.stream().filter(c -> c.author().equals("mama")).findFirst().orElseThrow().id();
+        Long foreign = comments.stream().filter(c -> c.author().equals("papa")).findFirst().orElseThrow().id();
+
+        assertThatThrownBy(() -> structureTools.deleteTodoComment(as(mama), foreign))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Keine Berechtigung");
+        assertThat(structureTools.deleteTodoComment(as(mama), own)).contains("gelöscht");
+
+        assertThat(todoTools.getTodo(as(mama), todo).comments()).extracting(TodoTools.Comment::author)
+                .containsExactly("papa");
+        assertThatThrownBy(() -> structureTools.deleteTodoComment(as(mama), own))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThat(structureTools.deleteTodoComment(as(admin), foreign)).contains("gelöscht");
     }
 }

@@ -43,6 +43,9 @@ public class AttachmentTools {
     public record AttachmentContent(AttachmentItem attachment, boolean truncated, String text) {
     }
 
+    private static final java.util.regex.Pattern IMAGE_NAME = java.util.regex.Pattern
+            .compile(".+\\.(jpg|jpeg|png|webp|gif)", java.util.regex.Pattern.CASE_INSENSITIVE);
+
     private final Tools tools;
     private final AttachmentService attachments;
     private final TodoService todos;
@@ -126,21 +129,25 @@ public class AttachmentTools {
         return tools.write(context, user -> {
             AttachmentOwner owner = owner(ownerType, ownerId);
             requireVisible(owner, user);
-            byte[] data;
-            if (base64 != null && !base64.isBlank()) {
-                try {
-                    data = Base64.getDecoder().decode(base64.replaceAll("\\s+", ""));
-                } catch (IllegalArgumentException e) {
-                    throw new Tools.ToolException("base64: kein gültiger Base64-Inhalt.");
-                }
-            } else {
-                data = Tools.required(text, "text oder base64").getBytes(StandardCharsets.UTF_8);
-            }
-            if (data.length > MAX_UPLOAD_BYTES) {
-                throw new Tools.ToolException("Die Datei ist größer als 3 MB.");
-            }
+            byte[] data = base64 != null && !base64.isBlank() ? decode(base64)
+                    : checkedSize(Tools.required(text, "text oder base64").getBytes(StandardCharsets.UTF_8));
             return item(attachments.store(owner, new InMemoryFile(Tools.required(fileName, "fileName"), data), user));
         });
+    }
+
+    private static byte[] decode(String base64) {
+        try {
+            return checkedSize(Base64.getDecoder().decode(base64.replaceAll("\\s+", "")));
+        } catch (IllegalArgumentException e) {
+            throw new Tools.ToolException("base64: kein gültiger Base64-Inhalt.");
+        }
+    }
+
+    private static byte[] checkedSize(byte[] data) {
+        if (data.length > MAX_UPLOAD_BYTES) {
+            throw new Tools.ToolException("Die Datei ist größer als 3 MB.");
+        }
+        return data;
     }
 
     private void requireVisible(AttachmentOwner owner, User user) {
@@ -217,5 +224,39 @@ public class AttachmentTools {
         public void transferTo(File dest) throws IOException {
             java.nio.file.Files.write(dest.toPath(), data);
         }
+    }
+
+    @McpTool(name = "delete_attachment", description = "Löscht einen Anhang endgültig (Hochladende, Administratoren und wer den Besitzer bearbeiten darf). Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteAttachment(McpTransportContext context,
+                           @McpToolParam(description = "ID des Anhangs aus list_attachments") Long attachmentId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(attachmentId, "attachmentId");
+            attachments.delete(id, user);
+            return "Anhang wurde gelöscht.";
+        });
+    }
+
+    @McpTool(name = "set_recipe_photo", description = "Hängt ein Foto an ein Rezept (jpg, png, webp oder gif, bis "
+            + "ca. 3 MB, base64-kodiert). Das erste Foto ist das Titelbild. Braucht das Recht zum Bearbeiten der "
+            + "Rezepte.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public AttachmentItem setRecipePhoto(McpTransportContext context,
+                                         @McpToolParam(description = "ID des Rezepts aus search_recipes")
+                                         Long recipeId,
+                                         @McpToolParam(description = "Dateiname mit Endung, z. B. kuchen.jpg")
+                                         String fileName,
+                                         @McpToolParam(description = "Bild base64-kodiert") String base64) {
+        return tools.write(context, user -> {
+            String name = Tools.required(fileName, "fileName");
+            if (!IMAGE_NAME.matcher(name).matches()) {
+                throw new Tools.ToolException("Ein Foto muss als .jpg, .jpeg, .png, .webp oder .gif angegeben werden.");
+            }
+            AttachmentOwner owner = owner("RECIPE", recipeId);
+            requireVisible(owner, user);
+            byte[] data = decode(Tools.required(base64, "base64"));
+            return item(attachments.store(owner, new InMemoryFile(name, data), user));
+        });
     }
 }

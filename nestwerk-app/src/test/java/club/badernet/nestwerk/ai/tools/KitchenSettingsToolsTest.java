@@ -93,4 +93,33 @@ class KitchenSettingsToolsTest {
         assertThatThrownBy(() -> settingsTools.findFoodByBarcode(as(chef), "12"))
                 .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Ziffern");
     }
+
+    @Test
+    void deletesMealSlotsButKeepsTheLastOne() {
+        KitchenSettingsTools.SlotItem extra = settingsTools.createMealSlot(as(chef), "Brotzeit", 10, false);
+
+        assertThatThrownBy(() -> settingsTools.deleteMealSlot(as(guest), extra.slotId()))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Keine Berechtigung");
+        assertThat(settingsTools.deleteMealSlot(as(chef), extra.slotId())).contains("gelöscht");
+        assertThat(settingsTools.kitchenSettings(as(chef)).slots()).extracting(KitchenSettingsTools.SlotItem::name)
+                .doesNotContain("Brotzeit");
+        assertThatThrownBy(() -> settingsTools.deleteMealSlot(as(chef), extra.slotId()))
+                .isInstanceOf(Tools.ToolException.class).hasMessage("Die Mahlzeit gibt es nicht.");
+
+        java.util.List<KitchenSettingsTools.SlotItem> all = settingsTools.kitchenSettings(as(chef)).slots();
+        for (int i = 0; i < all.size() - 1; i++) {
+            settingsTools.deleteMealSlot(as(chef), all.get(i).slotId());
+        }
+        assertThatThrownBy(() -> settingsTools.deleteMealSlot(as(chef), all.getLast().slotId()))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Mindestens eine Mahlzeit");
+    }
+
+    @Test
+    void readsOneMealSlot() {
+        KitchenSettingsTools.SlotItem created = settingsTools.createMealSlot(as(chef), "Brotzeit", 10, true);
+
+        assertThat(settingsTools.getMealSlot(as(guest), created.slotId()).name()).isEqualTo("Brotzeit");
+        assertThatThrownBy(() -> settingsTools.getMealSlot(as(guest), 999_999L))
+                .isInstanceOf(Tools.ToolException.class).hasMessage("Die Mahlzeit gibt es nicht.");
+    }
 }

@@ -287,4 +287,34 @@ public class HouseholdAccountTools {
                 names.getOrDefault(r.getMemberId(), "#" + r.getMemberId()), r.getCostMinutes(),
                 r.getStatus().name(), String.valueOf(r.getRequestedAt()));
     }
+
+    @McpTool(name = "delete_reward", description = "Löscht eine Belohnung endgültig (braucht das Recht „Verwalten“). Hat jemand sie schon beantragt oder eingelöst, geht das nicht; dann mit update_reward active=false aus dem Angebot nehmen. Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteReward(McpTransportContext context,
+                           @McpToolParam(description = "ID der Belohnung aus list_rewards") Long rewardId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(rewardId, "rewardId");
+            String title = rewards.get(id).getTitle();
+            rewards.delete(id, user);
+            return "Belohnung „" + title + "“ wurde gelöscht.";
+        });
+    }
+
+    @McpTool(name = "get_reward", description = "Zeigt eine Belohnung mit Preis in Minuten. Deaktivierte sehen nur "
+            + "Verwaltende.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public RewardItem getReward(McpTransportContext context,
+                                @McpToolParam(description = "ID der Belohnung aus list_rewards") Long rewardId) {
+        return tools.read(context, user -> {
+            if (!rewards.can(user, "VIEW")) {
+                throw new AccessDeniedException("Belohnungen ansehen");
+            }
+            Reward reward = rewards.get(Tools.required(rewardId, "rewardId"));
+            if (!reward.isActive() && !rewards.can(user, "MANAGE")) {
+                throw new Tools.ToolException("Belohnung nicht gefunden");
+            }
+            return reward(reward);
+        });
+    }
 }

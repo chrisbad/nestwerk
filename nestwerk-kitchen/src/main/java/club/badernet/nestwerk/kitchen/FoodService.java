@@ -79,6 +79,13 @@ public class FoodService {
         return foods.findById(id).orElseThrow(() -> new NoSuchElementException("Lebensmittel nicht gefunden"));
     }
 
+    /** Das Lebensmittel für jemanden mit Küchenrecht; sonst wie „nicht vorhanden“. */
+    @Transactional(readOnly = true)
+    public Food get(Long id, User viewer) {
+        access.require(viewer, KitchenPermission.KITCHEN_VIEW);
+        return get(id);
+    }
+
     @Transactional
     public Food create(FoodInput input, FoodSource source, User actor) {
         access.require(actor, KitchenPermission.KITCHEN_RECIPES_EDIT);

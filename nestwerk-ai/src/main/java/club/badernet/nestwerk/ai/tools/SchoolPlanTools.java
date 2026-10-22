@@ -11,6 +11,7 @@ import club.badernet.nestwerk.school.SchoolAccess;
 import club.badernet.nestwerk.school.SchoolContacts;
 import club.badernet.nestwerk.school.SchoolPeriod;
 import club.badernet.nestwerk.school.SchoolPermission;
+import club.badernet.nestwerk.school.SchoolProfile;
 import club.badernet.nestwerk.school.SchoolService;
 import club.badernet.nestwerk.school.SchoolSubject;
 import club.badernet.nestwerk.school.SchoolYear;
@@ -18,6 +19,7 @@ import club.badernet.nestwerk.school.Timetable;
 import club.badernet.nestwerk.school.TimetableService;
 import club.badernet.nestwerk.school.WeekKind;
 import io.modelcontextprotocol.common.McpTransportContext;
+import java.time.LocalDate;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Component;
@@ -288,6 +290,106 @@ public class SchoolPlanTools {
     }
 
     // --- Cancellations -------------------------------------------------------------------------
+
+    @McpTool(name = "create_school_profile", description = "Legt für ein Familienmitglied ein Schulprofil an "
+            + "(Bundesland-Kürzel wie BY ist optional). Braucht das Recht für die Schul-Einstellungen. Danach "
+            + "create_school_year.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public String createSchoolProfile(McpTransportContext context,
+                                      @McpToolParam(description = "Mitglieds-ID aus list_members") Long memberId,
+                                      @McpToolParam(description = "Bundesland-Kürzel", required = false) String state) {
+        return tools.write(context, user -> {
+            access.require(user, SchoolPermission.SCHOOL_SETTINGS);
+            SchoolProfile profile = school.createProfile(Tools.required(memberId, "memberId"), state);
+            return "Schulprofil angelegt (profileId " + profile.getId() + ").";
+        });
+    }
+
+    @McpTool(name = "set_school_profile_state", description = "Setzt das Bundesland eines Schulprofils (Kürzel wie "
+            + "BY; leer entfernt es). Braucht das Recht für die Schul-Einstellungen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public String setSchoolProfileState(McpTransportContext context,
+                                        @McpToolParam(description = "profileId aus create_school_profile") Long profileId,
+                                        @McpToolParam(description = "Bundesland-Kürzel", required = false) String state) {
+        return tools.write(context, user -> {
+            access.require(user, SchoolPermission.SCHOOL_SETTINGS);
+            school.changeState(Tools.required(profileId, "profileId"), state);
+            return "Bundesland gespeichert.";
+        });
+    }
+
+    @McpTool(name = "create_school_year", description = "Legt ein Schuljahr an und macht es zum aktiven (das bisherige "
+            + "bleibt abrufbar). Braucht das Recht zum Bearbeiten der Schule.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
+    public String createSchoolYear(McpTransportContext context,
+                                   @McpToolParam(description = "profileId") Long profileId,
+                                   @McpToolParam(description = "Bezeichnung, z. B. 2026/27") String label,
+                                   @McpToolParam(description = "Klasse, z. B. 3a") String className,
+                                   @McpToolParam(description = "Beginn JJJJ-MM-TT") String startsOn,
+                                   @McpToolParam(description = "Ende JJJJ-MM-TT") String endsOn,
+                                   @McpToolParam(description = "Kontakt-ID der Schule", required = false)
+                                   Long schoolContactId) {
+        return tools.write(context, user -> {
+            access.require(user, SchoolPermission.SCHOOL_EDIT);
+            SchoolYear year = school.startYear(Tools.required(profileId, "profileId"), label, schoolContactId,
+                    className, Tools.date(startsOn, "startsOn"), Tools.date(endsOn, "endsOn"));
+            return "Schuljahr angelegt und aktiviert (yearId " + year.getId() + ").";
+        });
+    }
+
+    @McpTool(name = "update_school_year", description = "Ändert ein Schuljahr. Nicht angegebene Felder bleiben. Braucht "
+            + "das Recht zum Bearbeiten der Schule.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public String updateSchoolYear(McpTransportContext context,
+                                   @McpToolParam(description = "Schuljahr-ID") Long yearId,
+                                   @McpToolParam(description = "Bezeichnung", required = false) String label,
+                                   @McpToolParam(description = "Klasse", required = false) String className,
+                                   @McpToolParam(description = "Beginn JJJJ-MM-TT", required = false) String startsOn,
+                                   @McpToolParam(description = "Ende JJJJ-MM-TT", required = false) String endsOn,
+                                   @McpToolParam(description = "Kontakt-ID der Schule", required = false)
+                                   Long schoolContactId) {
+        return tools.write(context, user -> {
+            access.require(user, SchoolPermission.SCHOOL_EDIT);
+            SchoolYear current = year(yearId);
+            school.changeYear(current.getId(), label != null ? label : current.getLabel(),
+                    schoolContactId != null ? schoolContactId : current.getSchoolContactId(),
+                    className != null ? className : current.getClassName(),
+                    startsOn != null ? Tools.date(startsOn, "startsOn") : current.getStartsOn(),
+                    endsOn != null ? Tools.date(endsOn, "endsOn") : current.getEndsOn());
+            return "Schuljahr gespeichert.";
+        });
+    }
+
+    @McpTool(name = "activate_school_year", description = "Macht ein früheres Schuljahr wieder zum aktiven. Braucht "
+            + "das Recht zum Bearbeiten der Schule.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public String activateSchoolYear(McpTransportContext context,
+                                     @McpToolParam(description = "Schuljahr-ID") Long yearId) {
+        return tools.write(context, user -> {
+            access.require(user, SchoolPermission.SCHOOL_EDIT);
+            school.activate(year(yearId).getId());
+            return "Schuljahr aktiviert.";
+        });
+    }
+
+    @McpTool(name = "set_school_week_plan", description = "Stellt A/B-Wochen ein: weekAStart ist ein Tag in einer "
+            + "A-Woche (JJJJ-MM-TT); ohne Angabe werden A/B-Wochen abgeschaltet (nur wenn keine Stunden mehr für "
+            + "A oder B existieren).",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public String setSchoolWeekPlan(McpTransportContext context,
+                                    @McpToolParam(description = "Schuljahr-ID") Long yearId,
+                                    @McpToolParam(description = "Ein Tag einer A-Woche, JJJJ-MM-TT", required = false)
+                                    String weekAStart) {
+        return tools.write(context, user -> {
+            LocalDate start = Tools.date(weekAStart, "weekAStart");
+            timetable.setWeekPlan(year(yearId).getId(), start, user);
+            return start == null ? "A/B-Wochen abgeschaltet." : "A/B-Wochen gespeichert.";
+        });
+    }
 
     @McpTool(name = "report_lesson_change", description = "Trägt schnell Ausfall, Vertretung oder Raumwechsel ein, "
             + "z. B. \"Mathe morgen fällt aus\" (subject=Mathe) oder \"ab der 5. Stunde frei\" (periodFrom=5, "

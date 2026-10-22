@@ -282,4 +282,16 @@ public class TodoStructureTools {
     private TodoRef ref(Todo t) {
         return new TodoRef(t.getId(), t.getTitle(), t.getStatus().name(), t.isClosed());
     }
+
+    @McpTool(name = "delete_todo_comment", description = "Löscht einen Kommentar eines ToDos endgültig (eigene Kommentare, Administratoren alle). Nur nach Rückfrage benutzen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, openWorldHint = false,
+                    idempotentHint = false))
+    public String deleteTodoComment(McpTransportContext context,
+                           @McpToolParam(description = "ID des Kommentars (aus get_todo)") Long commentId) {
+        return tools.write(context, user -> {
+            Long id = Tools.required(commentId, "commentId");
+            comments.delete(id, user);
+            return "Kommentar wurde gelöscht.";
+        });
+    }
 }

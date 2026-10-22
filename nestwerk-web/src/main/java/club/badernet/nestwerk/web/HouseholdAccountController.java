@@ -177,6 +177,17 @@ public class HouseholdAccountController {
         return "redirect:/household/rewards";
     }
 
+    @PostMapping("/rewards/{id}/delete")
+    String deleteReward(@PathVariable Long id, RedirectAttributes redirect) {
+        try {
+            rewards.delete(id, requireRewards());
+            redirect.addFlashAttribute("success", "Belohnung wurde gelöscht.");
+        } catch (ChoreConflictException | IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/household/rewards";
+    }
+
     @PostMapping("/rewards/{id}/redeem")
     String redeem(@PathVariable Long id, @RequestParam(required = false) Long member, RedirectAttributes redirect) {
         try {

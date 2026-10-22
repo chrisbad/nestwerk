@@ -79,4 +79,23 @@ class AttachmentToolsTest {
         assertThatThrownBy(() -> attachmentTools.listAttachments(as(admin), "EVENT", todo))
                 .isInstanceOf(Tools.ToolException.class);
     }
+
+    @Test
+    void deletesAttachmentsOnlyForThoseWhoMayAndKeepsTheOwner() {
+        Long todo = todoTools.createTodo(as(admin), "Einkauf", null, null, null, null, null, null, null, null, null,
+                null, null, null).todo().id();
+        Long file = attachmentTools.addAttachment(as(admin), "TODO", todo, "liste.txt", "Milch", null)
+                .attachmentId();
+
+        assertThatThrownBy(() -> attachmentTools.deleteAttachment(as(outsider), file))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThat(attachmentTools.listAttachments(as(admin), "TODO", todo)).hasSize(1);
+
+        assertThat(attachmentTools.deleteAttachment(as(admin), file)).contains("gelöscht");
+
+        assertThat(attachmentTools.listAttachments(as(admin), "TODO", todo)).isEmpty();
+        assertThat(todoTools.getTodo(as(admin), todo).todo().title()).isEqualTo("Einkauf");
+        assertThatThrownBy(() -> attachmentTools.deleteAttachment(as(admin), file))
+                .isInstanceOf(Tools.ToolException.class);
+    }
 }
