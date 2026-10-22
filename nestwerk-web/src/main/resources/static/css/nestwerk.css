@@ -997,7 +997,8 @@ fieldset.field legend { padding: 0; margin-bottom: 0.35rem; font-weight: 600; }
 
 /* --- Kalender ------------------------------------------------------------ */
 
-.cal-main { max-width: 78rem; }
+.cal-main { max-width: none; }
+.cal-main-list { max-width: 78rem; }
 .cal-main.htmx-added, .cal-main.htmx-settling { animation: fade 0.2s var(--ease); }
 
 .cal-toolbar {
@@ -3407,7 +3408,7 @@ html { scroll-behavior: smooth; }
 
 /* --- Kalender: Zeitraster (Tag, 3 Tage, Woche) ------------------------------ */
 
-.cal-main-grid { max-width: 92rem; }
+.cal-main-grid { max-width: none; }
 [data-time-grid] {
     --hour-px: calc(56 * var(--zoom, 1));
     --text-scale: clamp(0.9, var(--zoom, 1), 1.35);
@@ -3871,6 +3872,8 @@ form.is-allday [data-time-field] { display: none; }
 /* Raster-Dialoge: gleichmäßige Abstände, auch mit versteckten Feldern dazwischen */
 #grid-quick .dialog-body, .grid-sheet-content [data-series-only] { display: grid; gap: 1rem; }
 .create-types { margin: 0 1.5rem 1rem; }
+.cal-slot { display: inline-flex; align-items: center; gap: 0.5rem; margin: 0; }
+.cal-slot select { min-width: 5.5rem; }
 .sheet-tabs.create-types [role="tab"] { padding-inline: 0.5rem; white-space: nowrap; }
 #grid-quick [data-chore-panel]:not([hidden]) { display: grid; gap: 1rem; }
 #grid-quick [data-chore-panel] > * { margin: 0; }
@@ -4011,7 +4014,7 @@ form.is-allday [data-time-field] { display: none; }
 
 /* --- Kalender: Tag in Bahnen (Zeit von links nach rechts, eine Bahn je Person) ----------------------------------- */
 
-.cal-main-lanes { max-width: 92rem; }
+.cal-main-lanes { max-width: none; }
 [data-lanes] {
     --hour-w: calc(6.5rem * var(--zoom, 1));
     --label-w: 10rem;
@@ -4272,7 +4275,9 @@ form.is-allday [data-time-field] { display: none; }
 
 /* Kalender-Leiste: Anzeige- und Mehr-Menü */
 .cal-menu { position: relative; }
-.cal-menu-panel { display: grid; gap: 0.6rem; padding: 0.75rem; min-width: 16rem; }
+/* "Anzeige" stands at the left of the toolbar: its panel opens to the right so that it stays on screen */
+.cal-menu-panel { display: grid; gap: 0.6rem; padding: 0.75rem; min-width: 16rem; max-width: calc(100vw - 1rem);
+    left: 0; right: auto; transform-origin: top left; }
 .cal-menu-panel[hidden] { display: none; }
 .cal-menu-panel .segmented { justify-self: start; }
 .occ-meal { border-style: dotted; background: color-mix(in srgb, var(--honey, #f0c56f) 12%, var(--surface)); }
