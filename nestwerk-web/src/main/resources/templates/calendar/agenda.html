@@ -3,7 +3,7 @@
 <head th:replace="~{fragments/layout :: head('Kalender')}"></head>
 <body>
 <header th:replace="~{fragments/layout :: nav(active='calendar')}"></header>
-<main class="cal-main" id="calendar" data-swipe-area>
+<main class="cal-main cal-main-list" id="calendar" data-swipe-area>
     <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
     <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
     <div th:replace="~{calendar/fragments :: toolbar('Agenda', 'agenda', ${from},

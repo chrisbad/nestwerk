@@ -112,6 +112,7 @@ public class TimeGridPage {
         model.addAttribute("nowMinute", now.getHour() * 60 + now.getMinute());
         model.addAttribute("slotFine", SlotSize.FINE.minutes());
         model.addAttribute("slotCoarse", SlotSize.COARSE.minutes());
+        model.addAttribute("slotOptions", SlotSize.OPTIONS);
         model.addAttribute("narrowColumns", NARROW_FROM.getOrDefault(view, 1));
         model.addAttribute("first", first);
         model.addAttribute("last", last);

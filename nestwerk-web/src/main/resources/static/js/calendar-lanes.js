@@ -25,21 +25,24 @@
 
     const lanesOf = root => [...root.querySelectorAll("[data-lane]")];
 
-    function readSlot() {
+    /** The remembered slot length in minutes; the old words "fine" and "coarse" still count. */
+    function readSlot(root) {
+        let stored = null;
         try {
-            return localStorage.getItem(SLOT_KEY) === "fine" ? "fine" : "coarse";
-        } catch (e) {
-            return "coarse";
-        }
+            stored = localStorage.getItem(SLOT_KEY);
+        } catch (e) { /* the default applies */ }
+        const minutes = stored === "fine" ? +root.dataset.slotFine : stored === "coarse" ? +root.dataset.slotCoarse
+            : +stored;
+        const offered = [...root.querySelectorAll("[data-slot-select] option")].map(option => +option.value);
+        return offered.includes(minutes) ? minutes : +root.dataset.slotCoarse;
     }
 
-    function applySlot(root, choice) {
-        root.dataset.slot = choice;
-        root.querySelectorAll("[data-slot-choice]").forEach(button =>
-            button.setAttribute("aria-pressed", String(button.dataset.slotChoice === choice)));
+    function applySlot(root, minutes) {
+        root.dataset.slot = String(minutes);
+        root.querySelectorAll("[data-slot-select]").forEach(select => { select.value = String(minutes); });
     }
 
-    const slotMinutes = root => +(root.dataset.slot === "fine" ? root.dataset.slotFine : root.dataset.slotCoarse);
+    const slotMinutes = root => +root.dataset.slot || +root.dataset.slotCoarse;
 
     /** Puts entries that would overlap on screen (including their minimum width) into rows below each other. */
     function stack(lane) {
@@ -79,12 +82,6 @@
         if (Date.now() - lastDragEnd < CLICK_GUARD_MS) {
             event.preventDefault();
             event.stopPropagation();
-            return;
-        }
-        const slotChoice = event.target.closest("[data-slot-choice]");
-        if (slotChoice) {
-            try { localStorage.setItem(SLOT_KEY, slotChoice.dataset.slotChoice); } catch (e) { /* only for this page */ }
-            applySlot(root, slotChoice.dataset.slotChoice);
             return;
         }
         const track = event.target.closest("[data-lane-track]");
@@ -339,7 +336,7 @@
         const root = document.querySelector("[data-lanes]");
         if (!root || root.dataset.lanesReady) return;
         root.dataset.lanesReady = "true";
-        applySlot(root, readSlot());
+        applySlot(root, readSlot(root));
         window.NestwerkGrid.bindDetails(root);
         layout(root);
         if (keptScrollLeft === null) scrollToStart(root);
@@ -357,6 +354,13 @@
 
     document.addEventListener("DOMContentLoaded", () => {
         document.addEventListener("click", onClick, true);
+        document.addEventListener("change", event => {
+            const select = event.target.closest?.("[data-slot-select]");
+            const root = select?.closest("[data-lanes]");
+            if (!root) return;
+            try { localStorage.setItem(SLOT_KEY, select.value); } catch (e) { /* only for this page */ }
+            applySlot(root, +select.value);
+        });
         document.addEventListener("pointerdown", onPointerDown);
         document.addEventListener("pointermove", onPointerMove);
         document.addEventListener("pointerup", onPointerUp);

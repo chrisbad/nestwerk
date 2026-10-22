@@ -41,27 +41,30 @@
     const snap = (minutes, slot) => Math.round(minutes / slot) * slot;
     const snapDown = (minutes, slot) => Math.floor(minutes / slot) * slot;
 
-    /* --- Snapping: fine (5 min) or coarse (15 min); only how times snap, not the size ----------------------------- */
+    /* --- Snapping: the chosen slot length in minutes; only how times snap, not the size ------------------------- */
 
-    function readSlot() {
+    /** The remembered slot length in minutes; the old words "fine" and "coarse" still count. */
+    function readSlot(root) {
+        let stored = null;
         try {
-            return localStorage.getItem(SLOT_KEY) === "fine" ? "fine" : "coarse";
-        } catch (e) {
-            return "coarse";
-        }
+            stored = localStorage.getItem(SLOT_KEY);
+        } catch (e) { /* the default applies */ }
+        const minutes = stored === "fine" ? +root.dataset.slotFine : stored === "coarse" ? +root.dataset.slotCoarse
+            : +stored;
+        const offered = [...root.querySelectorAll("[data-slot-select] option")].map(option => +option.value);
+        return offered.includes(minutes) ? minutes : +root.dataset.slotCoarse;
     }
 
-    function applySlot(root, choice) {
-        root.dataset.slot = choice;
-        root.querySelectorAll("[data-slot-choice]").forEach(button =>
-            button.setAttribute("aria-pressed", String(button.dataset.slotChoice === choice)));
+    function applySlot(root, minutes) {
+        root.dataset.slot = String(minutes);
+        root.querySelectorAll("[data-slot-select]").forEach(select => { select.value = String(minutes); });
     }
 
-    const slotMinutes = root => +(root.dataset.slot === "fine" ? root.dataset.slotFine : root.dataset.slotCoarse);
+    const slotMinutes = root => +root.dataset.slot || +root.dataset.slotCoarse;
 
-    function switchSlot(root, choice) {
-        try { localStorage.setItem(SLOT_KEY, choice); } catch (e) { /* only for this page */ }
-        applySlot(root, choice);
+    function switchSlot(root, minutes) {
+        try { localStorage.setItem(SLOT_KEY, String(minutes)); } catch (e) { /* only for this page */ }
+        applySlot(root, minutes);
     }
 
     /* --- Geometry ------------------------------------------------------------------------------------------------ */
@@ -824,11 +827,6 @@
         }
         const root = event.target.closest("[data-time-grid]");
         if (!root || event.target.closest("dialog")) return;
-        const slotChoice = event.target.closest("[data-slot-choice]");
-        if (slotChoice) {
-            switchSlot(root, slotChoice.dataset.slotChoice);
-            return;
-        }
         if (event.target.closest("[data-split-toggle]")) {
             toggleSplit(root);
             return;
@@ -871,7 +869,7 @@
             window.location.replace(`/calendar/days3?date=${root.dataset.focus}`);
             return;
         }
-        applySlot(root, readSlot());
+        applySlot(root, readSlot(root));
         root.querySelectorAll("[data-split-toggle]").forEach(button =>
             button.setAttribute("aria-pressed", String(root.dataset.split === "person")));
         const scroller = scrollerOf(root);
@@ -920,6 +918,11 @@
         document.addEventListener("pointerup", onPointerUp);
         document.addEventListener("pointercancel", onPointerCancel);
         document.addEventListener("click", onClick, true);
+        document.addEventListener("change", event => {
+            const select = event.target.closest?.("[data-slot-select]");
+            const root = select?.closest("[data-time-grid]");
+            if (root) switchSlot(root, +select.value);
+        });
         document.addEventListener("wheel", onWheel, { passive: false });
         // while dragging or pinching with fingers the page must not scroll; before, it scrolls as usual
         document.addEventListener("touchmove", event => {

@@ -38,12 +38,13 @@
                     <button type="button" class="chip-toggle" data-layer="busy" aria-pressed="true"
                             th:if="${gridDays != null}">Sperrzeiten</button>
                 </div>
-            <div class="segmented segmented-slots" role="group" aria-label="Raster" th:if="${gridDays != null}">
-                <button type="button" data-slot-choice="coarse" aria-pressed="true"
-                        th:title="|Grob: rastet auf ${slotCoarse} Minuten ein|">Grob</button>
-                <button type="button" data-slot-choice="fine" aria-pressed="false"
-                        th:title="|Fein: rastet auf ${slotFine} Minuten ein|">Fein</button>
-            </div>
+            <label class="field field-inline cal-slot" th:if="${gridDays != null}"
+                   title="Auf wie viele Minuten Einträge beim Ziehen einrasten">
+                <span>Raster</span>
+                <select data-slot-select aria-label="Rastergröße beim Ziehen">
+                    <option th:each="m : ${slotOptions}" th:value="${m}" th:text="|${m} Min|">15 Min</option>
+                </select>
+            </label>
             <div class="segmented segmented-zoom" role="group" aria-label="Zoom" th:if="${gridDays != null or view == 'month'}">
                 <button type="button" data-zoom-step="-1" title="Verkleinern (Strg + Mausrad)">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4M8 11h6"/></svg>
