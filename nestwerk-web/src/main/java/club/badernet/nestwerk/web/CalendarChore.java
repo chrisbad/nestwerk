@@ -10,7 +10,7 @@ import java.time.format.DateTimeFormatter;
  * {@code start}. {@code movable}: the viewer may plan it at another time or give it to someone else.
  */
 public record CalendarChore(Long id, String title, LocalDate day, LocalTime start, int minutes, String color,
-                            boolean movable, Long memberId) {
+                            boolean movable, Long memberId, boolean skipped) {
 
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
 

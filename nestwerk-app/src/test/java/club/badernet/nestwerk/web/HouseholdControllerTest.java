@@ -144,6 +144,35 @@ class HouseholdControllerTest {
     }
 
     @Test
+    void markingATaskAsNotNecessaryReturnsTheStruckThroughChipWithUndo() throws Exception {
+        ChoreTask t = todaysTask("Müll", kidM.getId());
+
+        mockMvc.perform(post("/household/tasks/{id}/skip", t.getId()).with(csrf()).with(as("kind"))
+                        .header("HX-Request", "true").param("back", "/household"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("is-skipped")))
+                .andExpect(content().string(containsString("nicht nötig")))
+                .andExpect(content().string(containsString("/household/tasks/" + t.getId() + "/undo")))
+                .andExpect(content().string(not(containsString("/household/tasks/" + t.getId() + "/skip"))));
+    }
+
+    @Test
+    void openTasksOfferTheNotNecessaryButton() throws Exception {
+        ChoreTask t = todaysTask("Müll", kidM.getId());
+
+        mockMvc.perform(get("/household").with(as("kind")))
+                .andExpect(content().string(containsString("/household/tasks/" + t.getId() + "/skip")));
+    }
+
+    @Test
+    void childCannotMarkSomebodyElsesTaskAsNotNecessary() throws Exception {
+        ChoreTask t = todaysTask("Bad", mamaM.getId());
+
+        mockMvc.perform(post("/household/tasks/{id}/skip", t.getId()).with(csrf()).with(as("kind")))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void completingWithoutHtmxRedirectsBack() throws Exception {
         ChoreTask t = todaysTask("Müll", kidM.getId());
 

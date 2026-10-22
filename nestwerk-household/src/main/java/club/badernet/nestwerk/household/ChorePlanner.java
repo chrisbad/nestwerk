@@ -166,10 +166,11 @@ public class ChorePlanner {
 
     private LocalDate nextIntervalDue(Chore chore, LocalDate today, java.util.Collection<ChoreTask> existing) {
         ZoneId zone = clock.getZone();
-        // a dropped date counts like a completion: the rhythm goes on from there
+        // a dropped or skipped date counts like a completion: the rhythm goes on from there
         return existing.stream()
-                .filter(t -> t.isCancelled() || !t.isOpen() && t.getCompletedAt() != null)
-                .map(t -> t.isCancelled() ? t.getDueOn() : t.getCompletedAt().atZone(zone).toLocalDate())
+                .filter(t -> t.isCancelled() || t.isSkipped() || !t.isOpen() && t.getCompletedAt() != null)
+                .map(t -> t.isCancelled() || t.isSkipped() ? t.getDueOn()
+                        : t.getCompletedAt().atZone(zone).toLocalDate())
                 .max(Comparator.naturalOrder())
                 .map(done -> done.plusDays(chore.getIntervalDays()))
                 .orElseGet(() -> chore.getStartsOn() != null && chore.getStartsOn().isAfter(today)

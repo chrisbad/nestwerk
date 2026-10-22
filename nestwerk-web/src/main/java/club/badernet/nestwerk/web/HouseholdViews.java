@@ -38,7 +38,8 @@ public class HouseholdViews {
     public record TaskChip(Long id, String title, String area, String time, int minutes, String effort,
                            String effortLabel, boolean done, boolean overdue, String dayLabel,
                            FamilyMember assignee, boolean canComplete, boolean canUndo, int minutesEasy,
-                           int minutesMedium, int minutesHard, boolean noOneFree) {
+                           int minutesMedium, int minutesHard, boolean noOneFree, boolean skipped,
+                           boolean canSkip) {
     }
 
     /** Was der Betrachter darf und wer er ist; einmal je Anfrage ermittelt. */
@@ -97,9 +98,10 @@ public class HouseholdViews {
         boolean noOneFree = t.isOpen() && t.getAssigneeMemberId() == null && !t.isAdHoc()
                 && c.getDistribution() != club.badernet.nestwerk.household.Distribution.OPEN;
         return new TaskChip(t.getId(), c.getTitle(), c.getArea(), time, minutes(t),
-                effortKey(t.getEffort()), t.getEffort() == null ? null : t.getEffort().label(), !t.isOpen(),
+                effortKey(t.getEffort()), t.getEffort() == null ? null : t.getEffort().label(), t.isDone(),
                 t.isOverdue(ctx.today()), dayLabel(t.getDueOn(), ctx.today()), assignee, canComplete, canUndo,
-                c.getMinutesEasy(), c.getMinutesMedium(), c.getMinutesHard(), noOneFree);
+                c.getMinutesEasy(), c.getMinutesMedium(), c.getMinutesHard(), noOneFree, t.isSkipped(),
+                canComplete && !t.isAdHoc());
     }
 
     /** Planwert bei offenen Aufgaben, gebuchte Dauer (des Erledigers) bei erledigten. */

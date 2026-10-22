@@ -93,6 +93,13 @@ public class CalendarChoreActionsController {
         return ActionResult.of("Die Hausarbeit ist wieder offen.");
     }
 
+    /** Marks the task as not necessary on its date; undo brings it back. */
+    @PostMapping("/{id}/skip")
+    ActionResult skip(@PathVariable Long id) {
+        tasks.skip(id, requireModule());
+        return ActionResult.of("Als nicht nötig markiert.");
+    }
+
     /**
      * Moves the task to another day and time and, if {@code member} is sent, gives it to that member (empty: nobody).
      * Used by the dialog and by dragging, also into another person's column.
