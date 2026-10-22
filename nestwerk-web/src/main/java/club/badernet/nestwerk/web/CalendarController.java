@@ -375,7 +375,7 @@ public class CalendarController {
                 event.getDescription(), event.getLocation(), event.getStartsAt().atZone(settings.zone()),
                 event.getEndsAt().atZone(settings.zone()), event.isAllDay(), event.isPrivateEvent(),
                 event.getRrule() != null, event.getCreatedBy(), event.getMemberIds(),
-                event.getCategoryId().orElse(null));
+                event.getCategoryId().orElse(null), event.isNoOverlap());
     }
 
     private void addFormData(Model model) {

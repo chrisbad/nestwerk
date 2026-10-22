@@ -209,6 +209,22 @@ class HouseholdControllerTest {
     }
 
     @Test
+    void noOverlapCheckboxIsOfferedAndSavedForChores() throws Exception {
+        mockMvc.perform(get("/household/chores/new").with(as("mama")))
+                .andExpect(content().string(containsString("name=\"noOverlap\"")))
+                .andExpect(content().string(containsString("Nicht überschneiden")));
+
+        mockMvc.perform(post("/household/chores").with(csrf()).with(as("mama"))
+                        .param("title", "Fenster putzen").param("minutesEasy", "15").param("minutesMedium", "30")
+                        .param("minutesHard", "60").param("kind", "ON_DEMAND").param("distribution", "OPEN")
+                        .param("noOverlap", "true"))
+                .andExpect(status().is3xxRedirection());
+
+        assertThat(choreRepository.findAll()).filteredOn(c -> c.getTitle().equals("Fenster putzen")).singleElement()
+                .satisfies(c -> assertThat(c.isNoOverlap()).isTrue());
+    }
+
+    @Test
     void formShowsValidationError() throws Exception {
         mockMvc.perform(post("/household/chores").with(csrf()).with(as("mama"))
                         .param("title", "Bad").param("minutesEasy", "0").param("minutesMedium", "10")

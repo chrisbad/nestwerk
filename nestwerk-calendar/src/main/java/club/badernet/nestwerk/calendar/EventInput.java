@@ -6,12 +6,20 @@ import java.util.Set;
 
 /**
  * Input for creating or changing an event. For all-day events {@code endDate} is inclusive. {@code categoryId} is
- * optional ({@code null} = no category).
+ * optional ({@code null} = no category). {@code noOverlap}: chores must not be planned over the event.
  */
 public record EventInput(String title, String description, String location,
                          LocalDate startDate, LocalTime startTime, LocalDate endDate, LocalTime endTime,
                          boolean allDay, String rrule, boolean privateEvent, Set<Long> memberIds,
-                         boolean absence, Long categoryId) {
+                         boolean absence, Long categoryId, boolean noOverlap) {
+
+    public EventInput(String title, String description, String location,
+                      LocalDate startDate, LocalTime startTime, LocalDate endDate, LocalTime endTime,
+                      boolean allDay, String rrule, boolean privateEvent, Set<Long> memberIds,
+                      boolean absence, Long categoryId) {
+        this(title, description, location, startDate, startTime, endDate, endTime, allDay, rrule, privateEvent,
+                memberIds, absence, categoryId, false);
+    }
 
     public EventInput(String title, String description, String location,
                       LocalDate startDate, LocalTime startTime, LocalDate endDate, LocalTime endTime,

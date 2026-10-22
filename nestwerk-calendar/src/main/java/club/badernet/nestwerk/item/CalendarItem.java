@@ -38,7 +38,8 @@ public sealed interface CalendarItem {
     /** One occurrence of an event; {@code occurrence} identifies it within a series. */
     record Event(Long id, String title, LocalDateTime start, LocalDateTime end, boolean allDay, Set<Long> memberIds,
                  String color, String status, Long seriesId, Set<ItemAction> actions, String location,
-                 boolean privateEvent, Long categoryId, Instant occurrence) implements CalendarItem {
+                 boolean privateEvent, Long categoryId, Instant occurrence, boolean noOverlap)
+            implements CalendarItem {
 
         @Override
         public ItemType type() {
@@ -48,8 +49,8 @@ public sealed interface CalendarItem {
 
     /** A chore task of one date; {@code choreId} is the chore it belongs to. */
     record Chore(Long id, String title, LocalDateTime start, LocalDateTime end, boolean allDay, Set<Long> memberIds,
-                 String color, String status, Long seriesId, Set<ItemAction> actions, int minutes, boolean planned)
-            implements CalendarItem {
+                 String color, String status, Long seriesId, Set<ItemAction> actions, int minutes, boolean planned,
+                 boolean noOverlap) implements CalendarItem {
 
         @Override
         public ItemType type() {

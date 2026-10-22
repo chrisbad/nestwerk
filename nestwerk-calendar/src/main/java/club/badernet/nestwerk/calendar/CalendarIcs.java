@@ -41,7 +41,7 @@ public final class CalendarIcs {
      */
     public record Parsed(String uid, String title, String description, String location, LocalDate startDate,
                          ZonedDateTime start, LocalDate endDate, ZonedDateTime end, boolean allDay, String rrule,
-                         boolean privateEvent, String category) {
+                         boolean privateEvent, String category, boolean noOverlap) {
     }
 
     /** Ergebnis des Einlesens: Termine und übersprungene Einträge mit Grund. */
@@ -49,6 +49,8 @@ public final class CalendarIcs {
     }
 
     public static final int MAX_EVENTS = 5000;
+    /** Nestwerk's own property: chores must not be planned over the event. */
+    static final String NO_OVERLAP = "X-NESTWERK-NO-OVERLAP";
     private static final DateTimeFormatter DATE = DateTimeFormatter.BASIC_ISO_DATE;
     private static final DateTimeFormatter LOCAL = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
 
@@ -85,6 +87,9 @@ public final class CalendarIcs {
             text(out, "CATEGORIES", e.getCategoryId().map(categoryNames::get).orElse(null));
             if (e.isPrivateEvent()) {
                 line(out, "CLASS:PRIVATE");
+            }
+            if (e.isNoOverlap()) {
+                line(out, NO_OVERLAP + ":TRUE");
             }
             if (e.getRrule() != null) {
                 line(out, "RRULE:" + e.getRrule());
@@ -210,6 +215,7 @@ public final class CalendarIcs {
         }
         String rrule = value(event, Property.RRULE).orElse(null);
         boolean privateEvent = value(event, Property.CLASS).map(v -> !v.equalsIgnoreCase("PUBLIC")).orElse(false);
+        boolean noOverlap = value(event, NO_OVERLAP).map(v -> v.equalsIgnoreCase("TRUE")).orElse(false);
         String description = value(event, Property.DESCRIPTION).orElse(null);
         String location = value(event, Property.LOCATION).orElse(null);
         String category = value(event, Property.CATEGORIES).map(CalendarIcs::firstCategory).orElse(null);
@@ -220,7 +226,7 @@ public final class CalendarIcs {
                 endDay = day;
             }
             return new Parsed(uid, title, description, location, day, null, endDay, null, true, rrule, privateEvent,
-                    category);
+                    category, noOverlap);
         }
         ZonedDateTime begin = (ZonedDateTime) start;
         ZonedDateTime finish = endProp.map(p -> time(p, zone)).filter(ZonedDateTime.class::isInstance)
@@ -231,7 +237,7 @@ public final class CalendarIcs {
             finish = begin.plusMinutes(1);
         }
         return new Parsed(uid, title, description, location, null, begin.withZoneSameInstant(zone), null,
-                finish.withZoneSameInstant(zone), false, rrule, privateEvent, category);
+                finish.withZoneSameInstant(zone), false, rrule, privateEvent, category, noOverlap);
     }
 
     /** The first name of a CATEGORIES list; names may contain escaped commas. */

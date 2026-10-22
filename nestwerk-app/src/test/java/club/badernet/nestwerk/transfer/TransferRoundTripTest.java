@@ -126,6 +126,24 @@ class TransferRoundTripTest {
     }
 
     @Test
+    void noOverlapFlagTravelsInTheIcsFile() {
+        CalendarEvent flagged = events.create(new EventInput("Operation", null, null, LocalDate.of(2026, 11, 3),
+                LocalTime.of(9, 0), LocalDate.of(2026, 11, 3), LocalTime.of(11, 0), false, null, false, Set.of(),
+                false, null, true), admin);
+        events.create(new EventInput("Kaffee", null, null, LocalDate.of(2026, 11, 3), LocalTime.of(15, 0),
+                LocalDate.of(2026, 11, 3), LocalTime.of(16, 0), false, null, false, Set.of()), admin);
+
+        String ics = calendarTransfer.exportIcs(admin);
+        assertThat(ics.split("X-NESTWERK-NO-OVERLAP:TRUE", -1)).hasSize(2);
+
+        jdbc.update("DELETE FROM calendar_events");
+        calendarTransfer.importIcs(ics.getBytes(StandardCharsets.UTF_8), admin, true);
+
+        assertThat(eventRepository.findByUid(flagged.getUid()).orElseThrow().isNoOverlap()).isTrue();
+        assertThat(eventRepository.findAll()).filteredOn(e -> !e.isNoOverlap()).hasSize(1);
+    }
+
+    @Test
     void categoriesTravelByNameAndUnknownNamesAreIgnored() {
         Long doctor = categories.findByName("Arzt", admin).orElseThrow().getId();
         CalendarEvent checkup = events.create(new EventInput("Vorsorge", null, null, LocalDate.of(2026, 11, 2),

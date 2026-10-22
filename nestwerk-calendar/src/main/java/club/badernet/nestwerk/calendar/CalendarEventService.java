@@ -375,6 +375,7 @@ public class CalendarEventService {
         event.setLocation(location(in.location()));
         event.setPrivateEvent(in.privateEvent());
         event.setAbsence(in.absence());
+        event.setNoOverlap(in.noOverlap());
         if (in.categoryId() != null && !categories.existsById(in.categoryId())) {
             throw new IllegalArgumentException("Unbekannte Terminkategorie ausgewählt.");
         }

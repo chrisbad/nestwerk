@@ -89,7 +89,7 @@ public class RecurrenceExpander {
                 result.add(new Occurrence(event.getId(), event.getUid(), original, title, description,
                         location, start.atZone(zone), end.atZone(zone), event.isAllDay(), event.isPrivateEvent(),
                         event.getRrule() != null, event.getCreatedBy(), event.getMemberIds(),
-                        event.getCategoryId().orElse(null)));
+                        event.getCategoryId().orElse(null), event.isNoOverlap()));
             }
         }
         result.sort(Comparator.comparing(Occurrence::start));

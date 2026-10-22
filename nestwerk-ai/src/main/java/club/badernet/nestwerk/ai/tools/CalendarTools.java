@@ -42,12 +42,12 @@ public class CalendarTools {
     public record Event(Long eventId, String title, String start, String end, boolean allDay, String location,
                         String description, boolean recurring, String rrule, boolean privateEvent, boolean absence,
                         List<String> participants, List<String> warnings, String recurrenceId, Long categoryId,
-                        String category) {
+                        String category, boolean noOverlap) {
 
         /** Notes of blockers of the participants (the event is saved nevertheless). */
         Event withWarnings(List<String> found) {
             return new Event(eventId, title, start, end, allDay, location, description, recurring, rrule,
-                    privateEvent, absence, participants, found, recurrenceId, categoryId, category);
+                    privateEvent, absence, participants, found, recurrenceId, categoryId, category, noOverlap);
         }
     }
 
@@ -137,13 +137,16 @@ public class CalendarTools {
                              @McpToolParam(description = "IDs der teilnehmenden Familienmitglieder", required = false)
                              List<Long> participantIds,
                              @McpToolParam(description = "ID der Terminkategorie aus list_event_categories",
-                                     required = false) Long categoryId) {
+                                     required = false) Long categoryId,
+                             @McpToolParam(description = "true = Hausarbeiten werden nicht über den Termin gelegt "
+                                     + "(bei Serien für alle Vorkommen)", required = false) Boolean noOverlap) {
         return tools.write(context, user -> {
             EventForm form = EventForm.forNew(Tools.required(Tools.date(startDate, "startDate"), "startDate"));
             form.setTitle(title);
             apply(form, null, startTime, endDate, endTime, allDay, location, description, rrule, privateEvent,
                     absence, participantIds);
             form.setCategoryId(categoryId);
+            form.setNoOverlap(Boolean.TRUE.equals(noOverlap));
             if (endDate == null || endDate.isBlank()) {
                 form.setEndDate(form.getStartDate());
             }
@@ -178,7 +181,9 @@ public class CalendarTools {
                              @McpToolParam(description = "IDs der Teilnehmer (ersetzt die Liste)", required = false)
                              List<Long> participantIds,
                              @McpToolParam(description = "ID der Terminkategorie aus list_event_categories, 0 = "
-                                     + "keine Kategorie", required = false) Long categoryId) {
+                                     + "keine Kategorie", required = false) Long categoryId,
+                             @McpToolParam(description = "true = Hausarbeiten werden nicht über den Termin gelegt",
+                                     required = false) Boolean noOverlap) {
         return tools.write(context, user -> {
             Long id = Tools.required(eventId, "eventId");
             EventForm form = EventForm.from(events.get(id, user));
@@ -189,6 +194,9 @@ public class CalendarTools {
                     absence, participantIds);
             if (categoryId != null) {
                 form.setCategoryId(categoryId == NO_CATEGORY ? null : categoryId);
+            }
+            if (noOverlap != null) {
+                form.setNoOverlap(noOverlap);
             }
             List<String> warnings = warnings(events.conflicts(form.toInput(), id, user));
             events.update(id, form.toInput(), user);
@@ -406,7 +414,8 @@ public class CalendarTools {
                 o.allDay(), o.location(), o.description(), o.recurring(), null, o.privateEvent(), false,
                 participants(o.memberIds(), names.members()), List.of(),
                 o.recurring() ? String.valueOf(o.recurrenceId()) : null,
-                o.categoryId(), o.categoryId() == null ? null : names.categories().get(o.categoryId()));
+                o.categoryId(), o.categoryId() == null ? null : names.categories().get(o.categoryId()),
+                o.noOverlap());
     }
 
     private Event view(CalendarEvent e, Names names) {
@@ -418,7 +427,7 @@ public class CalendarTools {
                 format(e.isAllDay() ? end.minusDays(1) : end, e.isAllDay()), e.isAllDay(), e.getLocation(),
                 e.getDescription(), e.getRrule() != null, e.getRrule(), e.isPrivateEvent(), e.isAbsence(),
                 participants(e.getMemberIds(), names.members()), List.of(), null, categoryId,
-                categoryId == null ? null : names.categories().get(categoryId));
+                categoryId == null ? null : names.categories().get(categoryId), e.isNoOverlap());
     }
 
     private String format(ZonedDateTime value, boolean allDay) {
