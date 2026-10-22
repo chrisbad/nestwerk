@@ -18,6 +18,22 @@ public sealed interface GridEntry {
     /** The family members the entry belongs to; decides its columns when the grid is split by person. */
     Set<Long> memberIds();
 
+    /** Start in local time of the app zone; all-day entries start at midnight of their first day. */
+    LocalDateTime startsAt();
+
+    /** End in local time of the app zone, exclusive. */
+    LocalDateTime endsAt();
+
+    /** First day the entry touches. */
+    default LocalDate firstDay() {
+        return startsAt().toLocalDate();
+    }
+
+    /** Last day the entry touches (the end is exclusive). */
+    default LocalDate lastDay() {
+        return endsAt().minusNanos(1).toLocalDate();
+    }
+
     /**
      * An occurrence with its times in local time of the app zone. {@code color} comes from the category, else from
      * the first member ({@code null} = default colour).
@@ -35,11 +51,6 @@ public sealed interface GridEntry {
             return occurrence.memberIds();
         }
 
-        /** Last day the occurrence touches (the end is exclusive). */
-        public LocalDate lastDay() {
-            return endsAt.minusNanos(1).toLocalDate();
-        }
-
         /** Member ids as comma separated list for the drag logic. */
         public String memberList() {
             return occurrence.memberIds().stream().map(String::valueOf).collect(Collectors.joining(","));
@@ -47,6 +58,16 @@ public sealed interface GridEntry {
     }
 
     record Chore(CalendarChore chore) implements GridEntry {
+
+        @Override
+        public LocalDateTime startsAt() {
+            return chore.startsAt();
+        }
+
+        @Override
+        public LocalDateTime endsAt() {
+            return chore.endsAt();
+        }
 
         @Override
         public String kind() {
@@ -63,6 +84,16 @@ public sealed interface GridEntry {
     record DayChore(UntimedChore chore) implements GridEntry {
 
         @Override
+        public LocalDateTime startsAt() {
+            return chore.day().atStartOfDay();
+        }
+
+        @Override
+        public LocalDateTime endsAt() {
+            return chore.day().plusDays(1).atStartOfDay();
+        }
+
+        @Override
         public String kind() {
             return "chore";
         }
@@ -75,6 +106,16 @@ public sealed interface GridEntry {
 
     /** A due to-do; {@code editable}: the viewer may move it to another day. */
     record DueTodo(Todo todo, boolean editable) implements GridEntry {
+
+        @Override
+        public LocalDateTime startsAt() {
+            return todo.getDueOn().atStartOfDay();
+        }
+
+        @Override
+        public LocalDateTime endsAt() {
+            return todo.getDueOn().plusDays(1).atStartOfDay();
+        }
 
         @Override
         public String kind() {
