@@ -147,4 +147,17 @@ class HouseholdAccountToolsTest {
         assertThat(accountTools.listRewards(as(admin)).rewards()).extracting(HouseholdAccountTools.RewardItem::title)
                 .containsExactly("Eis essen");
     }
+
+    @Test
+    void readsOneRewardAndHidesInactiveOnesFromNormalUsers() {
+        HouseholdAccountTools.RewardItem active = accountTools.createReward(as(admin), "Eis essen", 15, null);
+        HouseholdAccountTools.RewardItem retired = accountTools.createReward(as(admin), "Kino", 100, null);
+        accountTools.updateReward(as(admin), retired.rewardId(), null, null, null, false);
+
+        assertThat(accountTools.getReward(as(kid), active.rewardId()).title()).isEqualTo("Eis essen");
+        assertThat(accountTools.getReward(as(admin), retired.rewardId()).active()).isFalse();
+        assertThatThrownBy(() -> accountTools.getReward(as(kid), retired.rewardId()))
+                .isInstanceOf(Tools.ToolException.class).hasMessage("Belohnung nicht gefunden");
+        assertThatThrownBy(() -> accountTools.getReward(as(admin), 999_999L)).isInstanceOf(Tools.ToolException.class);
+    }
 }

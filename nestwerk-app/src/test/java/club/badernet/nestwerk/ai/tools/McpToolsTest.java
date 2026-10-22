@@ -430,4 +430,20 @@ class McpToolsTest {
                 .isInstanceOf(Tools.ToolException.class);
         assertThat(contactTools.searchContacts(as(admin), null)).hasSize(1);
     }
+
+    @Test
+    void readsOneChoreByIdAndRefusesUnknownOnes() {
+        HouseholdTools.ChoreItem created = householdTools.createChore(as(admin), "Bad putzen", "Bad", null, null,
+                "FREQ=DAILY;COUNT=3", LocalDate.now(clock).toString(), null, null, "FIXED", List.of(kidM.getId()),
+                null, null, null, null, null, null, null);
+
+        HouseholdTools.ChoreItem read = householdTools.getChore(as(mama), created.choreId());
+
+        assertThat(read.title()).isEqualTo("Bad putzen");
+        assertThat(read.members()).hasSize(1);
+        assertThatThrownBy(() -> householdTools.getChore(as(mama), 999_999L))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> householdTools.getChore(as(mama), null))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("choreId");
+    }
 }

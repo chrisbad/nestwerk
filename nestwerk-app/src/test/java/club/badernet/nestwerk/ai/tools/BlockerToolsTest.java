@@ -124,4 +124,18 @@ class BlockerToolsTest {
         assertThat(blockerTools.listRestGoals(as(mama), mamaM.getId())).isEmpty();
         assertThatThrownBy(() -> blockerTools.deleteRestGoal(as(mama), goal)).isInstanceOf(Tools.ToolException.class);
     }
+
+    @Test
+    void readsOneBlockerWithTheSameMaskingAsTheList() {
+        BlockerTools.BlockerItem busy = blockerTools.createBlocker(as(mama), "Büro", "work", "08:00", "16:30",
+                List.of("MONDAY"), List.of(mamaM.getId()), null, null, null, "busy", null, null, null, null);
+        BlockerTools.BlockerItem hidden = blockerTools.createBlocker(as(mama), "Therapie", "custom", "17:00", "18:00",
+                List.of("TUESDAY"), List.of(mamaM.getId()), null, null, null, "hidden", null, null, null, null);
+
+        assertThat(blockerTools.getBlocker(as(mama), busy.blockerId()).title()).isEqualTo("Büro");
+        assertThat(blockerTools.getBlocker(as(papa), busy.blockerId()).title()).isEqualTo("belegt");
+        assertThatThrownBy(() -> blockerTools.getBlocker(as(papa), hidden.blockerId()))
+                .isInstanceOf(Tools.ToolException.class).hasMessage("Zeit nicht gefunden");
+        assertThatThrownBy(() -> blockerTools.getBlocker(as(mama), 999_999L)).isInstanceOf(Tools.ToolException.class);
+    }
 }

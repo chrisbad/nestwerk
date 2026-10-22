@@ -222,4 +222,15 @@ public class KitchenSettingsTools {
             return "Mahlzeit wurde gelöscht.";
         });
     }
+
+    @McpTool(name = "get_meal_slot", description = "Zeigt eine Mahlzeit des Essensplans mit Kalorien-Anteil.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public SlotItem getMealSlot(McpTransportContext context,
+                                @McpToolParam(description = "slotId aus kitchen_settings") Long slotId) {
+        return tools.read(context, user -> {
+            access.require(user, KitchenPermission.KITCHEN_VIEW);
+            return slots.findById(Tools.required(slotId, "slotId")).map(KitchenSettingsTools::slot)
+                    .orElseThrow(() -> new Tools.ToolException("Die Mahlzeit gibt es nicht."));
+        });
+    }
 }

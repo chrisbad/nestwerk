@@ -238,4 +238,61 @@ class SchoolToolsTest {
         assertThatThrownBy(() -> schoolTools.deleteSchoolHoliday(as(admin), online.getId()))
                 .isInstanceOf(Tools.ToolException.class).hasMessageContaining("selbst eingetragene");
     }
+
+    @Test
+    void readsOneExamAndOneLetter() {
+        SchoolTools.ExamItem exam = schoolTools.addSchoolExam(as(admin), year.getId(), "exam", "2026-10-20",
+                math.getId(), "Brüche", 3, null, null, null, null);
+        SchoolTools.LetterItem letter = schoolTools.addSchoolLetter(as(admin), year.getId(), "Zoo", "2026-10-20", null);
+
+        assertThat(schoolTools.getSchoolExam(as(kid), exam.examId()).title()).isEqualTo("Brüche");
+        assertThat(schoolTools.getSchoolLetter(as(kid), letter.letterId()).title()).isEqualTo("Zoo");
+        assertThatThrownBy(() -> schoolTools.getSchoolExam(as(stranger), exam.examId()))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> schoolTools.getSchoolLetter(as(stranger), letter.letterId()))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> schoolTools.getSchoolExam(as(admin), 999_999L))
+                .isInstanceOf(Tools.ToolException.class).hasMessage("Termin nicht gefunden");
+        assertThatThrownBy(() -> schoolTools.getSchoolLetter(as(admin), 999_999L))
+                .isInstanceOf(Tools.ToolException.class);
+    }
+
+    @Test
+    void addsManualHolidaysAndRefusesWithoutSettingsRight() {
+        SchoolTools.HolidayItem added = schoolTools.addSchoolHoliday(as(admin), "BY", "Brückentag",
+                LocalDate.now().plusDays(3).toString(), LocalDate.now().plusDays(3).toString());
+
+        assertThat(added.source()).isEqualTo("MANUAL");
+        assertThat(schoolTools.listSchoolHolidays(as(admin), year.getId())).extracting(SchoolTools.HolidayItem::name)
+                .containsExactly("Brückentag");
+        assertThatThrownBy(() -> schoolTools.addSchoolHoliday(as(kid), "BY", "Frei", "2026-12-01", "2026-12-01"))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Berechtigung");
+        assertThatThrownBy(() -> schoolTools.addSchoolHoliday(as(admin), "BY", "Falsch", "2026-12-05", "2026-12-01"))
+                .isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> schoolTools.refreshSchoolHolidays(as(kid), "BY"))
+                .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Berechtigung");
+        assertThatThrownBy(() -> schoolTools.refreshSchoolHolidays(as(admin), "XX"))
+                .isInstanceOf(Tools.ToolException.class).hasMessage("Unbekanntes Bundesland");
+    }
+
+    @Test
+    void updatesAGradeKeepingWhatIsNotGiven() {
+        SchoolTools.GradeItem grade = schoolTools.addSchoolGrade(as(admin), year.getId(), math.getId(), 1, "2+", null,
+                "2026-10-01", 100, "Brüche");
+
+        SchoolTools.GradeItem changed = schoolTools.updateSchoolGrade(as(admin), grade.gradeId(), "3", null, null, null,
+                null, null, null);
+
+        assertThat(changed.grade()).isEqualTo("3");
+        assertThat(changed.note()).isEqualTo("Brüche");
+        assertThat(changed.day()).isEqualTo(LocalDate.of(2026, 10, 1));
+        assertThat(schoolTools.updateSchoolGrade(as(admin), grade.gradeId(), null, null, null, 200, null, null, "neu")
+                .weightPercent()).isEqualTo(200);
+        assertThatThrownBy(() -> schoolTools.updateSchoolGrade(as(kid), grade.gradeId(), "1", null, null, null, null,
+                null, null)).isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> schoolTools.updateSchoolGrade(as(admin), 999_999L, "1", null, null, null, null, null,
+                null)).isInstanceOf(Tools.ToolException.class).hasMessage("Note nicht gefunden");
+        assertThatThrownBy(() -> schoolTools.updateSchoolGrade(as(admin), grade.gradeId(), "7", null, null, null, null,
+                null, null)).isInstanceOf(Tools.ToolException.class);
+    }
 }

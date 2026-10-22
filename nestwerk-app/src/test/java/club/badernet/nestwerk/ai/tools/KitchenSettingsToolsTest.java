@@ -113,4 +113,13 @@ class KitchenSettingsToolsTest {
         assertThatThrownBy(() -> settingsTools.deleteMealSlot(as(chef), all.getLast().slotId()))
                 .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Mindestens eine Mahlzeit");
     }
+
+    @Test
+    void readsOneMealSlot() {
+        KitchenSettingsTools.SlotItem created = settingsTools.createMealSlot(as(chef), "Brotzeit", 10, true);
+
+        assertThat(settingsTools.getMealSlot(as(guest), created.slotId()).name()).isEqualTo("Brotzeit");
+        assertThatThrownBy(() -> settingsTools.getMealSlot(as(guest), 999_999L))
+                .isInstanceOf(Tools.ToolException.class).hasMessage("Die Mahlzeit gibt es nicht.");
+    }
 }

@@ -135,6 +135,30 @@ public class MealPlanService {
         return meal;
     }
 
+    /**
+     * Ändert, was gekocht wird: ein Rezept (der Titel wird der des Rezepts) oder einen freien Titel. Tag, Mahlzeit
+     * und Mitesser bleiben.
+     */
+    @Transactional
+    public Meal change(Long id, Long recipeId, String title, User actor) {
+        access.require(actor, KitchenPermission.KITCHEN_PLAN);
+        Meal meal = get(id, actor);
+        if (recipeId != null) {
+            Recipe recipe = recipes.findById(recipeId)
+                    .orElseThrow(() -> new NoSuchElementException("Rezept nicht gefunden"));
+            meal.setRecipe(recipe);
+            meal.setTitle(recipe.getTitle().length() > 200 ? recipe.getTitle().substring(0, 200) : recipe.getTitle());
+            return meal;
+        }
+        String clean = title == null ? "" : title.strip();
+        if (clean.isEmpty()) {
+            throw new IllegalArgumentException("Bitte ein Rezept wählen oder einen Titel eingeben.");
+        }
+        meal.setRecipe(null);
+        meal.setTitle(clean.length() > 200 ? clean.substring(0, 200) : clean);
+        return meal;
+    }
+
     /** Setzt Mitesser und Portionen; leere Auswahl ist erlaubt (dann zählt die Mahlzeit für niemanden). */
     @Transactional
     public Meal updateEaters(Long id, Map<Long, Double> portions, User actor) {

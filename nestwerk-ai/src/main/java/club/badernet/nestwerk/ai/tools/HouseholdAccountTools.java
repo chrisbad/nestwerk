@@ -300,4 +300,21 @@ public class HouseholdAccountTools {
             return "Belohnung „" + title + "“ wurde gelöscht.";
         });
     }
+
+    @McpTool(name = "get_reward", description = "Zeigt eine Belohnung mit Preis in Minuten. Deaktivierte sehen nur "
+            + "Verwaltende.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public RewardItem getReward(McpTransportContext context,
+                                @McpToolParam(description = "ID der Belohnung aus list_rewards") Long rewardId) {
+        return tools.read(context, user -> {
+            if (!rewards.can(user, "VIEW")) {
+                throw new AccessDeniedException("Belohnungen ansehen");
+            }
+            Reward reward = rewards.get(Tools.required(rewardId, "rewardId"));
+            if (!reward.isActive() && !rewards.can(user, "MANAGE")) {
+                throw new Tools.ToolException("Belohnung nicht gefunden");
+            }
+            return reward(reward);
+        });
+    }
 }

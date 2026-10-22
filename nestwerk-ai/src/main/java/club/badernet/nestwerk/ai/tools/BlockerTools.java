@@ -314,4 +314,19 @@ public class BlockerTools {
             return "Ruhe-Ziel wurde gelöscht.";
         });
     }
+
+    @McpTool(name = "get_blocker", description = "Zeigt eine Zeit (Arbeit, Schlaf, Ruhe …). Fremde Zeiten mit "
+            + "Sichtbarkeit „nur belegt“ erscheinen ohne Titel, unsichtbare gibt es für andere nicht.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public BlockerItem getBlocker(McpTransportContext context,
+                                  @McpToolParam(description = "blockerId aus list_blockers") Long blockerId) {
+        return tools.read(context, user -> {
+            BlockerItem item = item(blockers.get(Tools.required(blockerId, "blockerId")), user,
+                    blockers.ownMember(user).orElse(null), names());
+            if (item == null) {
+                throw new Tools.ToolException("Zeit nicht gefunden");
+            }
+            return item;
+        });
+    }
 }

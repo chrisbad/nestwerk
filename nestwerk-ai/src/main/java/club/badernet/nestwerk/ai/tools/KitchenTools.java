@@ -692,4 +692,32 @@ public class KitchenTools {
             return "Artikel wurde von der Einkaufsliste gelöscht.";
         });
     }
+
+    @McpTool(name = "get_food", description = "Zeigt ein Lebensmittel mit Nährwerten pro 100 g.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public FoodItem getFood(McpTransportContext context,
+                            @McpToolParam(description = "ID des Lebensmittels aus search_foods") Long foodId) {
+        return tools.read(context, user -> food(foods.get(Tools.required(foodId, "foodId"), user)));
+    }
+
+    @McpTool(name = "get_pantry_item", description = "Zeigt einen Vorratsposten mit Menge, Ort und Haltbarkeit.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
+    public PantryEntry getPantryItem(McpTransportContext context,
+                                     @McpToolParam(description = "ID des Postens aus list_pantry") Long itemId) {
+        return tools.read(context, user -> pantryEntry(pantry.get(Tools.required(itemId, "itemId"), user)));
+    }
+
+    @McpTool(name = "update_meal", description = "Ändert, was bei einer geplanten Mahlzeit gekocht wird: ein "
+            + "anderes Rezept (recipeId) oder ein freier Titel. Tag, Mahlzeit und Mitesser bleiben; verschieben mit "
+            + "move_meal, Mitesser mit set_meal_eaters.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public MealItem updateMeal(McpTransportContext context,
+                               @McpToolParam(description = "ID der Mahlzeit aus get_meal_plan") Long mealId,
+                               @McpToolParam(description = "ID des neuen Rezepts", required = false) Long recipeId,
+                               @McpToolParam(description = "Freier Titel, wenn kein Rezept", required = false)
+                               String title) {
+        return tools.write(context, user -> meal(plan.change(Tools.required(mealId, "mealId"), recipeId, title, user),
+                names()));
+    }
 }

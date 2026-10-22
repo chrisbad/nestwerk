@@ -96,6 +96,16 @@ public class GradeService {
         return grades.save(created);
     }
 
+    /** Die Note für Berechtigte, die die Noten des Kindes sehen dürfen. */
+    @Transactional(readOnly = true)
+    public SchoolGrade get(Long id, User viewer) {
+        SchoolGrade grade = grades.findById(id).orElseThrow(() -> new IllegalArgumentException("Note nicht gefunden"));
+        if (!mayView(grade.getYearId(), viewer)) {
+            throw new AccessDeniedException("Keine Berechtigung für die Noten dieses Kindes");
+        }
+        return grade;
+    }
+
     @Transactional
     public void update(Long id, Long subjectId, int term, String grade, int weight, GradeKind kind, LocalDate day,
                        String note, User actor) {
