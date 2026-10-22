@@ -420,7 +420,7 @@
         const { root, item } = g;
         const type = item?.dataset.gridItem;
         const mode = !item ? (g.cell ? "allday-create" : "create")
-            : type === "allday" ? (g.handle ? "allday-resize" : "allday-move")
+            : type === "allday" ? (g.handle ? "allday-resize-" + g.handle.dataset.handle : "allday-move")
                 : type === "todo" ? "todo-move"
                     : type === "chore" ? "chore-move"
                         : g.handle ? "resize-" + g.handle.dataset.handle : "move";
@@ -544,7 +544,12 @@
                 d.result = { allDay: true, first: date, last: date };
                 break;
             }
-            case "allday-resize": {
+            case "allday-resize-start": {
+                const date = nearest(cells(root), d.x).dataset.date;
+                d.result = { allDay: true, first: date > d.origin.last ? d.origin.last : date, last: d.origin.last };
+                break;
+            }
+            case "allday-resize-end": {
                 const date = nearest(cells(root), d.x).dataset.date;
                 d.result = { allDay: true, first: d.origin.first, last: date < d.origin.first ? d.origin.first : date };
                 break;

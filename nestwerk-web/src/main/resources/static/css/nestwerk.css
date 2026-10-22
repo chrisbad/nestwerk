@@ -3680,7 +3680,8 @@ html { scroll-behavior: smooth; }
     opacity: 0;
     transition: opacity 0.15s;
 }
-.tgrid-handle-right::after { width: 4px; height: 1.1rem; }
+.tgrid-handle-left { top: 0; bottom: 0; left: 0; right: auto; width: 12px; height: auto; cursor: ew-resize; }
+.tgrid-handle-right::after, .tgrid-handle-left::after { width: 4px; height: 1.1rem; }
 @media (hover: hover) and (pointer: fine) {
     .tgrid-item.is-editable:hover .tgrid-handle::after { opacity: 0.9; }
 }
@@ -3688,6 +3689,7 @@ html { scroll-behavior: smooth; }
 .tgrid-item.is-selected .tgrid-handle-start { top: -22px; }
 .tgrid-item.is-selected .tgrid-handle-end { bottom: -22px; }
 .tgrid-item.is-selected .tgrid-handle-right { width: 44px; height: auto; right: -22px; }
+.tgrid-item.is-selected .tgrid-handle-left { width: 44px; height: auto; left: -22px; }
 .tgrid-item.is-selected .tgrid-handle::after {
     width: 14px;
     height: 14px;
