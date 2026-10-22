@@ -165,7 +165,7 @@ public class TimeGridPage {
         for (int p = 0; p < width; p++) {
             Long member = columns.get(p).memberId();
             for (TimeGridLayout.Lane<GridEntry> lane : TimeGridLayout.lanes(of(columns.get(p), split, allDay, people),
-                    days, this::firstDay, this::lastDay)) {
+                    days, GridEntry::firstDay, GridEntry::lastDay)) {
                 if (split == GridSplit.NONE) {
                     result.add(new AllDayItem(lane.entry(), lane.firstColumn(), lane.span(), lane.lane(),
                             lane.continuesBefore(), lane.continuesAfter(), null));
@@ -241,39 +241,11 @@ public class TimeGridPage {
     }
 
     private ZonedDateTime start(GridEntry entry) {
-        return switch (entry) {
-            case GridEntry.Event e -> e.startsAt().atZone(zone);
-            case GridEntry.Chore c -> c.chore().startsAt().atZone(zone);
-            case GridEntry.DayChore c -> c.chore().day().atStartOfDay(zone);
-            case GridEntry.DueTodo t -> t.todo().getDueOn().atStartOfDay(zone);
-        };
+        return entry.startsAt().atZone(zone);
     }
 
     private ZonedDateTime end(GridEntry entry) {
-        return switch (entry) {
-            case GridEntry.Event e -> e.endsAt().atZone(zone);
-            case GridEntry.Chore c -> c.chore().endsAt().atZone(zone);
-            case GridEntry.DayChore c -> c.chore().day().plusDays(1).atStartOfDay(zone);
-            case GridEntry.DueTodo t -> t.todo().getDueOn().plusDays(1).atStartOfDay(zone);
-        };
-    }
-
-    private LocalDate firstDay(GridEntry entry) {
-        return switch (entry) {
-            case GridEntry.Event e -> e.startsAt().toLocalDate();
-            case GridEntry.Chore c -> c.chore().day();
-            case GridEntry.DayChore c -> c.chore().day();
-            case GridEntry.DueTodo t -> t.todo().getDueOn();
-        };
-    }
-
-    private LocalDate lastDay(GridEntry entry) {
-        return switch (entry) {
-            case GridEntry.Event e -> e.lastDay();
-            case GridEntry.Chore c -> c.chore().day();
-            case GridEntry.DayChore c -> c.chore().day();
-            case GridEntry.DueTodo t -> t.todo().getDueOn();
-        };
+        return entry.endsAt().atZone(zone);
     }
 
     private static boolean isWeekend(LocalDate day) {
