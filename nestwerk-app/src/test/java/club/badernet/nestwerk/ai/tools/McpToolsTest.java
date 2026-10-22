@@ -135,9 +135,28 @@ class McpToolsTest {
     }
 
     @Test
+    void noOverlapFlagCanBeSetOnEventsAndChoresViaTools() {
+        CalendarTools.Event event = calendarTools.createEvent(as(mama), "Operation", "2030-05-06", "09:00", null,
+                "11:00", null, null, null, null, null, null, null, null, true);
+        assertThat(event.noOverlap()).isTrue();
+        assertThat(calendarTools.getEvent(as(mama), event.eventId()).noOverlap()).isTrue();
+        assertThat(calendarTools.listEvents(as(mama), "2030-05-06", "2030-05-06")).singleElement()
+                .satisfies(listed -> assertThat(listed.noOverlap()).isTrue());
+
+        assertThat(calendarTools.updateEvent(as(mama), event.eventId(), null, null, null, null, null, null, null,
+                null, null, null, null, null, null, false).noOverlap()).isFalse();
+
+        HouseholdTools.ChoreItem chore = householdTools.createChore(as(admin), "Fenster", null, null, "ON_DEMAND",
+                null, null, null, null, "OPEN", null, null, null, null, null, null, null, true);
+        assertThat(chore.noOverlap()).isTrue();
+        assertThat(householdTools.updateChore(as(admin), chore.choreId(), null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, false, false).noOverlap()).isFalse();
+    }
+
+    @Test
     void managesSingleOccurrencesAndMovesEvents() {
         CalendarTools.Event series = calendarTools.createEvent(as(mama), "Chor", "2030-03-04", "18:00", null,
-                "19:00", null, null, null, "FREQ=WEEKLY", null, null, null, null);
+                "19:00", null, null, null, "FREQ=WEEKLY", null, null, null, null, null);
         List<CalendarTools.Event> listed = calendarTools.listEvents(as(mama), "2030-03-04", "2030-03-18");
         assertThat(listed).hasSize(3).allMatch(e -> e.recurrenceId() != null);
 
@@ -150,7 +169,7 @@ class McpToolsTest {
                         org.assertj.core.api.Assertions.tuple("Chor extra", "2030-03-18T17:00:00"));
 
         CalendarTools.Event single = calendarTools.createEvent(as(mama), "Arzt", "2030-04-01", "09:00", null,
-                "10:00", null, null, null, null, null, null, null, null);
+                "10:00", null, null, null, null, null, null, null, null, null);
         assertThat(calendarTools.moveEvent(as(mama), single.eventId(), "2030-04-03").start())
                 .isEqualTo("2030-04-03T09:00:00");
         assertThatThrownBy(() -> calendarTools.moveEvent(as(mama), series.eventId(), "2030-04-03"))
@@ -184,7 +203,7 @@ class McpToolsTest {
     @Test
     void createsEventAndHidesForeignPrivateEvents() {
         CalendarTools.Event event = calendarTools.createEvent(as(mama), "Zahnarzt", "2030-03-04", "09:30", null,
-                "10:15", null, "Praxis", null, null, null, null, List.of(mamaM.getId()), null);
+                "10:15", null, "Praxis", null, null, null, null, List.of(mamaM.getId()), null, null);
         events.create(new EventInput("Geheim", null, null, LocalDate.of(2030, 3, 4), LocalTime.of(12, 0),
                 LocalDate.of(2030, 3, 4), LocalTime.of(13, 0), false, null, true, Set.of()), papa);
 
@@ -195,7 +214,7 @@ class McpToolsTest {
                 .extracting(CalendarTools.Event::title).containsExactly("Zahnarzt");
 
         CalendarTools.Event moved = calendarTools.updateEvent(as(mama), event.eventId(), null, null, "11:00", null,
-                "12:00", null, null, null, null, null, null, null, null);
+                "12:00", null, null, null, null, null, null, null, null, null);
         assertThat(moved.start()).isEqualTo("2030-03-04T11:00:00");
         assertThat(moved.location()).isEqualTo("Praxis");
     }
@@ -213,19 +232,19 @@ class McpToolsTest {
 
         // 4.3.2030 ist ein Montag
         CalendarTools.Event event = calendarTools.createEvent(as(papa), "Elterngespräch", "2030-03-04", "10:00", null,
-                "11:00", null, null, null, null, null, null, List.of(mamaM.getId()), null);
+                "11:00", null, null, null, null, null, null, List.of(mamaM.getId()), null, null);
         assertThat(event.eventId()).isNotNull();
         assertThat(event.warnings()).singleElement().asString().contains("Mama arbeitet da");
 
         assertThatThrownBy(() -> calendarTools.createEvent(as(papa), "Zahnarzt", "2030-03-04", "10:00", null,
-                "11:00", null, null, null, null, null, null, List.of(kidM.getId()), null))
+                "11:00", null, null, null, null, null, null, List.of(kidM.getId()), null, null))
                 .isInstanceOf(Tools.ToolException.class).hasMessageContaining("Kind ist da nicht verfügbar");
     }
 
     @Test
     void allDayEventsShowInclusiveEnd() {
         CalendarTools.Event event = calendarTools.createEvent(as(mama), "Urlaub", "2030-07-01", null, "2030-07-03",
-                null, true, null, null, null, null, true, List.of(mamaM.getId()), null);
+                null, true, null, null, null, null, true, List.of(mamaM.getId()), null, null);
 
         assertThat(event.start()).isEqualTo("2030-07-01");
         assertThat(event.end()).isEqualTo("2030-07-03");
@@ -296,7 +315,7 @@ class McpToolsTest {
         LocalDate today = LocalDate.now(clock);
         HouseholdTools.ChoreItem created = householdTools.createChore(as(admin), "Bad putzen", "Bad", null, null,
                 "FREQ=DAILY;COUNT=3", today.toString(), null, null, "FIXED", List.of(kidM.getId()), null, null, null,
-                null, null, null);
+                null, null, null, null);
         entityManager.flush();
 
         assertThat(created.kind()).isEqualTo("RECURRING");
@@ -308,7 +327,7 @@ class McpToolsTest {
         assertThat(planned).hasSize(3);
 
         assertThat(householdTools.updateChore(as(admin), created.choreId(), null, null, null, null, null, null, null,
-                null, null, null, 5, 8, 12, null, null, null).minutesMedium()).isEqualTo(8);
+                null, null, null, 5, 8, 12, null, null, null, null).minutesMedium()).isEqualTo(8);
         // Ändern plant die offenen Aufgaben neu, die IDs sind danach andere
         Long taskId = householdTools.listChoreTasks(as(admin), today.toString(), today.plusDays(2).toString())
                 .getFirst().taskId();
@@ -316,12 +335,12 @@ class McpToolsTest {
                 .isEqualTo("Mama");
 
         HouseholdTools.ChoreItem dated = householdTools.createChore(as(admin), "Sperrmüll", null, null, "DATES", null,
-                null, null, null, "OPEN", null, null, null, null, null, null, null);
+                null, null, null, "OPEN", null, null, null, null, null, null, null, null);
         assertThat(householdTools.addChoreDate(as(admin), dated.choreId(), today.plusDays(5).toString(), "10:00")
                 .dates()).containsExactly(today.plusDays(5) + " 10:00");
 
         HouseholdTools.ChoreItem onDemand = householdTools.createChore(as(admin), "Staubsaugen", null, null,
-                "ON_DEMAND", null, null, null, null, "OPEN", null, null, null, null, null, null, null);
+                "ON_DEMAND", null, null, null, null, "OPEN", null, null, null, null, null, null, null, null);
         assertThat(householdTools.bookChore(as(admin), onDemand.choreId(), kidM.getId(), null, "EASY", null).status())
                 .isNotEqualTo("OPEN");
 
@@ -337,13 +356,13 @@ class McpToolsTest {
         assertThat(householdTools.setChoreActive(as(admin), created.choreId(), false).active()).isFalse();
         assertThat(householdTools.setChoreActive(as(admin), created.choreId(), true).active()).isTrue();
         assertThatThrownBy(() -> householdTools.createChore(as(kid), "Verboten", null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null)).isInstanceOf(Tools.ToolException.class);
+                null, null, null, null, null, null, null, null, null, null)).isInstanceOf(Tools.ToolException.class);
     }
 
     @Test
     void oncePerDayChoreRejectsSecondBookingViaTools() {
         HouseholdTools.ChoreItem chore = householdTools.createChore(as(admin), "Spülmaschine", null, null,
-                "ON_DEMAND", null, null, null, null, "OPEN", null, null, null, null, null, null, true);
+                "ON_DEMAND", null, null, null, null, "OPEN", null, null, null, null, null, null, true, null);
         assertThat(chore.oncePerDay()).isTrue();
 
         householdTools.bookChore(as(admin), chore.choreId(), kidM.getId(), null, "EASY", null);
@@ -352,7 +371,7 @@ class McpToolsTest {
                 .isInstanceOf(Tools.ToolException.class)
                 .hasMessageContaining("einmal pro Tag");
         assertThat(householdTools.updateChore(as(admin), chore.choreId(), null, null, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, false).oncePerDay()).isFalse();
+                null, null, null, null, null, null, null, null, false, null).oncePerDay()).isFalse();
         assertThat(householdTools.bookChore(as(admin), chore.choreId(), kidM.getId(), null, "EASY", null).status())
                 .isNotEqualTo("OPEN");
     }

@@ -27,6 +27,7 @@ public class EventForm {
     private String rrule;
     private boolean privateEvent;
     private boolean absence;
+    private boolean noOverlap;
     private Set<Long> memberIds = new HashSet<>();
     private Long categoryId;
     private Long todoId;
@@ -62,6 +63,7 @@ public class EventForm {
         f.rrule = e.getRrule();
         f.privateEvent = e.isPrivateEvent();
         f.absence = e.isAbsence();
+        f.noOverlap = e.isNoOverlap();
         f.memberIds = new HashSet<>(e.getMemberIds());
         f.categoryId = e.getCategoryId().orElse(null);
         return f;
@@ -69,7 +71,7 @@ public class EventForm {
 
     public EventInput toInput() {
         return new EventInput(title, description, location, startDate, startTime, endDate, endTime,
-                allDay, rrule, privateEvent, memberIds, absence, categoryId);
+                allDay, rrule, privateEvent, memberIds, absence, categoryId, noOverlap);
     }
 
     public Long getCategoryId() { return categoryId; }
@@ -99,6 +101,8 @@ public class EventForm {
     public void setPrivateEvent(boolean privateEvent) { this.privateEvent = privateEvent; }
     public boolean isAbsence() { return absence; }
     public void setAbsence(boolean absence) { this.absence = absence; }
+    public boolean isNoOverlap() { return noOverlap; }
+    public void setNoOverlap(boolean noOverlap) { this.noOverlap = noOverlap; }
     public Set<Long> getMemberIds() { return memberIds; }
     public void setMemberIds(Set<Long> memberIds) { this.memberIds = memberIds == null ? new HashSet<>() : memberIds; }
 

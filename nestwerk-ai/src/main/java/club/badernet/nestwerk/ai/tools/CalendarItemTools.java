@@ -105,10 +105,12 @@ public class CalendarItemTools {
                 put(details, "location", e.location());
                 put(details, "recurrenceId", e.occurrence() == null ? null : e.occurrence().toString());
                 put(details, "private", e.privateEvent() ? "true" : null);
+                put(details, "noOverlap", e.noOverlap() ? "true" : null);
             }
             case CalendarItem.Chore c -> {
                 details.put("minutes", String.valueOf(c.minutes()));
                 details.put("planned", String.valueOf(c.planned()));
+                put(details, "noOverlap", c.noOverlap() ? "true" : null);
             }
             case CalendarItem.Todo t -> details.put("priority", t.priority());
             case CalendarItem.School s -> details.put("kind", s.kind());

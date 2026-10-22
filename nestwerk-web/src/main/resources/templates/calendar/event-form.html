@@ -141,6 +141,15 @@
                 <p class="hint">Die ausgewählten Mitglieder werden in dieser Zeit im Haushaltsplan übersprungen.</p>
             </div>
 
+            <div class="field-switch">
+                <label class="switch">
+                    <input type="checkbox" th:field="*{noOverlap}">
+                    <span class="switch-track" aria-hidden="true"></span>
+                    Nicht überschneiden
+                </label>
+                <p class="hint">Hausarbeiten, die nicht überschnitten werden dürfen, werden nicht über diesen Termin gelegt.</p>
+            </div>
+
             <div class="field-switch" sec:authorize="hasAuthority('CALENDAR_PRIVATE_CREATE')">
                 <label class="switch">
                     <input type="checkbox" th:field="*{privateEvent}">

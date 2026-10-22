@@ -97,6 +97,6 @@ public class EventItems implements CalendarItemSource {
         return new CalendarItem.Event(o.eventId(), o.title(), o.start().withZoneSameInstant(zone).toLocalDateTime(),
                 o.end().withZoneSameInstant(zone).toLocalDateTime(), o.allDay(), o.memberIds(), color, SCHEDULED,
                 o.recurring() ? o.eventId() : null, Set.copyOf(actions), o.location(), o.privateEvent(),
-                o.categoryId(), o.recurring() ? o.recurrenceId() : null);
+                o.categoryId(), o.recurring() ? o.recurrenceId() : null, o.noOverlap());
     }
 }

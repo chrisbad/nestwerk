@@ -40,6 +40,10 @@
                 <dt>Haushaltsplan</dt>
                 <dd>Abwesend – wird übersprungen</dd>
             </th:block>
+            <th:block th:if="${event.noOverlap}">
+                <dt>Überschneidung</dt>
+                <dd>Hausarbeiten werden nicht darüber gelegt</dd>
+            </th:block>
             <th:block th:if="${o.privateEvent}">
                 <dt>Sichtbarkeit</dt>
                 <dd>Privat</dd>

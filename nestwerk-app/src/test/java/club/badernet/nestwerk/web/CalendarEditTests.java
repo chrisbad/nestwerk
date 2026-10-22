@@ -65,6 +65,22 @@ class CalendarEditTests {
     }
 
     @Test
+    void noOverlapCheckboxIsOfferedAndSaved() throws Exception {
+        mockMvc.perform(get("/calendar/events/new").param("date", "2026-10-20").with(editor()))
+                .andExpect(content().string(containsString("name=\"noOverlap\"")))
+                .andExpect(content().string(containsString("Nicht überschneiden")));
+
+        mockMvc.perform(post("/calendar/events").with(csrf()).with(editor())
+                        .param("title", "Operation").param("noOverlap", "true")
+                        .param("startDate", "2026-10-20").param("startTime", "09:00")
+                        .param("endDate", "2026-10-20").param("endTime", "11:00"))
+                .andExpect(status().is3xxRedirection());
+
+        assertThat(repository.findAll()).filteredOn(e -> e.getTitle().equals("Operation")).singleElement()
+                .satisfies(e -> assertThat(e.isNoOverlap()).isTrue());
+    }
+
+    @Test
     void invalidFormRerendersWithErrorAndKeepsInput() throws Exception {
         mockMvc.perform(post("/calendar/events").with(csrf()).with(editor())
                         .param("title", "Kaputt")

@@ -84,7 +84,8 @@ public class ChoreItems implements CalendarItemSource {
         String title = task.getChore().getTitle() + " · " + (who == null ? "offen" : who.getName());
         return new CalendarItem.Chore(task.getId(), title, start, end, !planned,
                 who == null ? Set.of() : Set.of(who.getId()), who == null ? null : who.getColor(),
-                task.getStatus().name(), task.getChore().getId(), actions(task, viewer), minutes, planned);
+                task.getStatus().name(), task.getChore().getId(), actions(task, viewer), minutes, planned,
+                task.getChore().isNoOverlap());
     }
 
     private Set<ItemAction> actions(ChoreTask task, User viewer) {
