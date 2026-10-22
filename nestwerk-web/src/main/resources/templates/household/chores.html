@@ -7,6 +7,7 @@
     <div th:replace="~{household/fragments :: head('Hausarbeiten', null)}"></div>
 
     <p hidden data-toast="success" th:if="${success}" th:text="${success}"></p>
+    <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
 
     <div class="household-actions" th:if="${canCreate}">
         <a class="button" th:href="@{/household/chores/new}">
@@ -15,30 +16,91 @@
         </a>
     </div>
 
-    <p class="sheet sheet-empty" th:if="${#maps.isEmpty(groups)}">
+    <p class="sheet sheet-empty" th:if="${#lists.isEmpty(rows)}">
         Noch keine Hausarbeiten.
         <th:block th:if="${canCreate}">Lege die erste über „Hausarbeit“ an, zum Beispiel „Spülmaschine ausräumen“.</th:block>
     </p>
 
-    <section class="chore-group" th:each="g : ${groups}">
-        <h2 th:text="${g.key}">Küche</h2>
-        <ul class="sheet chore-rows">
-            <li th:each="ch : ${g.value}" th:classappend="${!ch.active} ? 'is-inactive'">
-                <a th:href="@{/household/chores/{id}(id=${ch.id})}">
-                    <span class="chore-row-title" th:text="${ch.title}">Spülmaschine</span>
-                    <span class="chore-row-meta">
-                        <span th:text="${T(club.badernet.nestwerk.web.HouseholdViews).schedule(ch)}">Täglich</span>
-                        <span th:text="${ch.minutesRange()} + ' Min'">10–30 Min</span>
-                        <span th:unless="${ch.kind.name() == 'ON_DEMAND'}" th:text="${ch.distribution.label()}">Reihum</span>
-                    </span>
-                </a>
-                <button type="button" class="button button-ghost button-small chore-row-book"
-                        th:if="${bookable.contains(ch.id)}"
-                        th:attr="data-drawer-url=@{/household/chores/{id}/book-form(id=${ch.id})}, data-drawer-title=|${ch.title} buchen|">Buchen</button>
-            </li>
-        </ul>
-    </section>
+    <th:block th:unless="${#lists.isEmpty(rows)}">
+        <div class="table-tools" data-table-for="chores">
+            <label class="search">
+                <span class="visually-hidden">Hausarbeit suchen</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+                <input class="input" type="search" placeholder="Suchen" data-table-search autocomplete="off">
+            </label>
+            <div class="table-selects">
+                <label class="field field-inline">
+                    <span>Bereich</span>
+                    <select data-table-select="area">
+                        <option value="">Alle</option>
+                        <option th:each="a : ${areas}" th:value="${a}" th:text="${a}">Küche</option>
+                    </select>
+                </label>
+                <label class="field field-inline">
+                    <span>Rhythmus</span>
+                    <select data-table-select="kind">
+                        <option value="">Alle</option>
+                        <option th:each="k : ${kinds}" th:value="${k.name()}" th:text="${k.label()}">Regelmäßig</option>
+                    </select>
+                </label>
+                <label class="field field-inline">
+                    <span>Status</span>
+                    <select data-table-select="status">
+                        <option value="">Alle</option>
+                        <option value="ACTIVE">Aktiv</option>
+                        <option value="INACTIVE">Deaktiviert</option>
+                    </select>
+                </label>
+            </div>
+            <p class="table-count muted" data-table-count aria-live="polite"></p>
+            <button type="button" class="button button-ghost button-small" data-table-reset hidden>Filter zurücksetzen</button>
+        </div>
+        <div class="sheet">
+            <table class="table data-table" data-table="chores" data-table-persist data-sort-default="area">
+                <thead>
+                <tr>
+                    <th scope="col" data-col="title" data-sort="text">Hausarbeit</th>
+                    <th scope="col" data-col="area" data-sort="text">Bereich</th>
+                    <th scope="col" data-col="schedule" data-sort="text">Rhythmus</th>
+                    <th scope="col" data-col="minutes" data-sort="number" class="num">Dauer</th>
+                    <th scope="col" data-col="distribution" data-sort="text">Verteilung</th>
+                    <th scope="col" data-col="status" data-sort="text">Status</th>
+                    <th scope="col"><span class="visually-hidden">Aktionen</span></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="r : ${rows}" th:classappend="${!r.chore().active} ? 'is-inactive'"
+                    th:attr="data-open=@{/household/chores/{id}(id=${r.chore().id})}, data-filter-kind=${r.chore().kind.name()}">
+                    <td data-col="title" data-label="Hausarbeit" th:attr="data-value=${r.chore().title}">
+                        <a th:href="@{/household/chores/{id}(id=${r.chore().id})}" th:text="${r.chore().title}">Spülmaschine</a>
+                    </td>
+                    <td data-col="area" data-label="Bereich" th:attr="data-value=${r.areaKey}" th:text="${r.area}">Küche</td>
+                    <td data-col="schedule" data-label="Rhythmus" th:text="${r.schedule}">Täglich</td>
+                    <td data-col="minutes" data-label="Dauer" class="num" th:attr="data-value=${r.chore().planMinutes}"
+                        th:text="${r.chore().minutesRange()} + ' Min'">10–30 Min</td>
+                    <td data-col="distribution" data-label="Verteilung" th:text="${r.distribution.isEmpty()} ? '–' : ${r.distribution}">Reihum</td>
+                    <td data-col="status" data-label="Status" th:attr="data-value=${r.chore().active} ? 'ACTIVE' : 'INACTIVE'"
+                        th:text="${r.chore().active} ? 'Aktiv' : 'Deaktiviert'">Aktiv</td>
+                    <td class="cell-actions">
+                        <button type="button" class="button button-ghost button-small" th:if="${r.canBook}"
+                                th:attr="data-drawer-url=@{/household/chores/{id}/book-form(id=${r.chore().id})}, data-drawer-title=|${r.chore().title} buchen|">Buchen</button>
+                        <a class="button button-ghost button-small" th:if="${r.canEdit}"
+                           th:href="@{/household/chores/{id}/edit(id=${r.chore().id})}">Bearbeiten</a>
+                        <form th:if="${r.canDelete}" method="post" data-confirm-tone="danger"
+                              th:action="@{/household/chores/{id}/delete(id=${r.chore().id})}"
+                              th:attr="data-confirm=|Hausarbeit „${r.chore().title}“ löschen?|">
+                            <input type="hidden" name="back" value="/household/chores">
+                            <button type="submit" class="button button-danger button-small">Löschen</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="muted table-empty" data-table-empty="chores" hidden>Keine Hausarbeit passt zur Suche.</p>
+    </th:block>
 </main>
+<div th:replace="~{fragments/layout :: confirmDialog}"></div>
 <div th:replace="~{fragments/layout :: toasts}"></div>
 </body>
 </html>

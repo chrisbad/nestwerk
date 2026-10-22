@@ -161,14 +161,13 @@ public class HouseholdController {
     @GetMapping("/chores")
     String chores(Model model) {
         User viewer = requireModule();
-        Map<String, List<Chore>> groups = new LinkedHashMap<>();
-        for (Chore c : chores.visible(viewer)) {
-            String key = !c.isActive() ? "Deaktiviert" : (c.getArea() == null ? "Ohne Bereich" : c.getArea());
-            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(c);
-        }
-        model.addAttribute("groups", groups);
-        model.addAttribute("bookable", groups.values().stream().flatMap(List::stream)
-                .filter(c -> tasks.canBook(viewer, c)).map(Chore::getId).collect(java.util.stream.Collectors.toSet()));
+        List<ChoreRow> rows = chores.visible(viewer).stream()
+                .map(c -> ChoreRow.of(c, tasks.canBook(viewer, c), access.can(viewer, "EDIT", c),
+                        access.can(viewer, "DELETE", c)))
+                .toList();
+        model.addAttribute("rows", rows);
+        model.addAttribute("areas", rows.stream().map(ChoreRow::areaKey).distinct().sorted().toList());
+        model.addAttribute("kinds", ChoreKind.values());
         model.addAttribute("canCreate", chores.canCreate(viewer));
         addCommon(model, viewer, "chores");
         return "household/chores";
@@ -281,14 +280,14 @@ public class HouseholdController {
     }
 
     @PostMapping("/chores/{id}/delete")
-    String delete(@PathVariable Long id, RedirectAttributes redirect) {
+    String delete(@PathVariable Long id, @RequestParam(required = false) String back, RedirectAttributes redirect) {
         try {
             chores.delete(id, requireModule());
             redirect.addFlashAttribute("success", "Hausarbeit wurde gelöscht.");
-            return "redirect:/household/chores";
+            return "redirect:" + SafeRedirect.target(back, "/household/chores");
         } catch (IllegalArgumentException e) {
             redirect.addFlashAttribute("error", e.getMessage());
-            return "redirect:/household/chores/" + id;
+            return "redirect:" + SafeRedirect.target(back, "/household/chores/" + id);
         }
     }
 

@@ -1868,7 +1868,7 @@ form.inline { display: inline; margin: 0; }
 .effort-hard i { background: var(--honey); }
 
 .chore-overdue, .chore-section { margin-bottom: 1.75rem; }
-.chore-overdue h2, .chore-section h2, .plan-daygroup h2, .chore-group h2 { font-size: var(--step-1); margin-bottom: 0.6rem; }
+.chore-overdue h2, .chore-section h2, .plan-daygroup h2 { font-size: var(--step-1); margin-bottom: 0.6rem; }
 .chore-section.is-overdue h2 { color: var(--brick); }
 .chore-overdue .chore-list { grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
 
@@ -1907,14 +1907,7 @@ form.inline { display: inline; margin: 0; }
 .plan-daygroup.is-today h2 { color: var(--moss); }
 .plan-daygroup.is-today h2::after { content: ""; display: block; width: 2.5rem; height: 3px; margin-top: 0.2rem; background: var(--honey); border-radius: 2px; }
 
-.chore-group { margin-bottom: 1.5rem; }
-.chore-rows { list-style: none; margin: 0; padding: 0.25rem 0; }
-.chore-rows li + li { border-top: 1px solid var(--line); }
-.chore-rows a { display: grid; gap: 0.2rem; padding: 0.75rem 1.25rem; color: inherit; text-decoration: none; }
-.chore-rows a:hover .chore-row-title { text-decoration: underline; }
-.chore-row-title { font-weight: 650; }
-.chore-row-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.2rem 0.75rem; font-size: var(--step--1); color: var(--ink-soft); }
-.chore-rows li.is-inactive { opacity: 0.6; }
+.data-table tr.is-inactive { opacity: 0.6; }
 
 .kind-section[hidden] { display: none !important; }
 .order-badge:empty { display: none; }
@@ -4170,6 +4163,10 @@ form.is-allday [data-time-field] { display: none; }
 .data-table th { white-space: nowrap; }
 .data-table td[data-col="area"], .data-table td[data-col="scope"], .data-table td[data-col="status"] { white-space: nowrap; }
 .table-selects select { min-width: 8rem; }
+.data-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+/* several actions per row wrap instead of widening the table */
+.data-table .cell-actions { white-space: normal; width: auto; min-width: 9rem; }
+.data-table .cell-actions > * { margin: 0.15rem 0 0.15rem 0.25rem; vertical-align: middle; }
 .table-note { display: block; font-size: var(--step--1); margin-top: 0.15rem; font-weight: 400; }
 .status-attention { color: var(--brick); font-weight: 600; }
 .table-empty { padding: 1rem 0; }
@@ -4187,6 +4184,8 @@ form.is-allday [data-time-field] { display: none; }
     .data-table td[data-col="title"]::before { content: none; }
     .data-table td[data-col="summary"]:empty { display: none; }
     .data-table .cell-actions { margin-top: 0.5rem; }
+    .data-table .num { text-align: left; }
+    .data-table .cell-actions > * { margin: 0.15rem 0.25rem 0.15rem 0; }
 }
 .table-tools [hidden] { display: none; }
 
@@ -4259,9 +4258,6 @@ form.is-allday [data-time-field] { display: none; }
 .my-chore form { margin: 0; }
 .segmented-choice label { cursor: pointer; }
 .hide-chores .my-chore { display: none; }
-.chore-rows li { display: flex; align-items: center; gap: 0.75rem; padding-right: 1rem; }
-.chore-rows li > a { flex: 1; min-width: 0; }
-.chore-row-book { flex: none; }
 
 /* Haushalt: Tag und Woche; bei genug Platz nebeneinander, sonst untereinander */
 .household-layout { display: grid; gap: 1.75rem; }

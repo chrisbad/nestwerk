@@ -48,6 +48,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -291,6 +292,69 @@ class HouseholdControllerTest {
         mockMvc.perform(get("/").with(as("kind")))
                 .andExpect(content().string(containsString("Meine Hausarbeiten")))
                 .andExpect(content().string(containsString("Zimmer aufräumen")));
+    }
+
+    @Test
+    void choreListIsATableAndOffersEditAndDeleteOnlyWithPermission() throws Exception {
+        Chore c = chores.create(new ChoreInput("Fenster putzen", "Haus", null, 10, 20, 30, ChoreKind.ON_DEMAND, null,
+                null, null, null, Distribution.OPEN, List.of()), admin);
+        entityManager.flush();
+        String editLink = "href=\"/household/chores/" + c.getId() + "/edit\"";
+        String deleteAction = "action=\"/household/chores/" + c.getId() + "/delete\"";
+
+        mockMvc.perform(get("/household/chores").with(as("mama")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("data-table=\"chores\"")))
+                .andExpect(content().string(containsString("Fenster putzen")))
+                .andExpect(content().string(containsString("Bei Bedarf")))
+                .andExpect(content().string(containsString("10–30 Min")))
+                .andExpect(content().string(containsString(editLink)))
+                .andExpect(content().string(containsString(deleteAction)));
+        mockMvc.perform(get("/household/chores").with(as("kind")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Fenster putzen")))
+                .andExpect(content().string(containsString("/book-form")))
+                .andExpect(content().string(not(containsString(editLink))))
+                .andExpect(content().string(not(containsString(deleteAction))));
+    }
+
+    @Test
+    void deletingFromTheListReturnsToTheList() throws Exception {
+        Chore c = chores.create(new ChoreInput("Fenster putzen", "Haus", null, 10, 20, 30, ChoreKind.ON_DEMAND, null,
+                null, null, null, Distribution.OPEN, List.of()), admin);
+        entityManager.flush();
+
+        mockMvc.perform(post("/household/chores/{id}/delete", c.getId()).with(csrf()).with(as("mama"))
+                        .param("back", "/household/chores"))
+                .andExpect(redirectedUrl("/household/chores"));
+
+        assertThat(choreRepository.findById(c.getId())).isEmpty();
+    }
+
+    @Test
+    void deletingAChoreWithCreditsKeepsItAndExplainsWhy() throws Exception {
+        ChoreTask t = todaysTask("Müll", kidM.getId());
+        mockMvc.perform(post("/household/tasks/{id}/complete", t.getId()).with(csrf()).with(as("kind")));
+        entityManager.flush();
+        Long choreId = t.getChore().getId();
+
+        mockMvc.perform(post("/household/chores/{id}/delete", choreId).with(csrf()).with(as("mama"))
+                        .param("back", "/household/chores"))
+                .andExpect(redirectedUrl("/household/chores"))
+                .andExpect(flash().attribute("error", containsString("deaktivieren")));
+
+        assertThat(choreRepository.findById(choreId)).isPresent();
+    }
+
+    @Test
+    void deleteIgnoresAForeignReturnTarget() throws Exception {
+        Chore c = chores.create(new ChoreInput("Fenster putzen", "Haus", null, 10, 20, 30, ChoreKind.ON_DEMAND, null,
+                null, null, null, Distribution.OPEN, List.of()), admin);
+        entityManager.flush();
+
+        mockMvc.perform(post("/household/chores/{id}/delete", c.getId()).with(csrf()).with(as("mama"))
+                        .param("back", "https://evil.example/"))
+                .andExpect(redirectedUrl("/household/chores"));
     }
 
     @Test
