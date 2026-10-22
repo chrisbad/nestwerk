@@ -57,6 +57,20 @@ public class BlockerBands {
         return result;
     }
 
+    /**
+     * Only the bands of the other modules (e.g. school holidays). The time grid draws the blockers inline as
+     * {@link BusyBlocks}, so it keeps just these in the day header.
+     */
+    @Transactional(readOnly = true)
+    public Map<LocalDate, List<Band>> sourceBands(LocalDate from, LocalDate to, User viewer) {
+        Map<LocalDate, List<Band>> result = new LinkedHashMap<>();
+        for (CalendarBandSource source : sources) {
+            source.bands(from, to, viewer).forEach((day, bands) ->
+                    result.computeIfAbsent(day, d -> new ArrayList<>()).addAll(bands));
+        }
+        return result;
+    }
+
     private Map<LocalDate, List<Band>> blockerBands(LocalDate from, LocalDate to, User viewer) {
         Map<LocalDate, List<Band>> result = new LinkedHashMap<>();
         List<Blocker> all = blockers.findAll();

@@ -125,6 +125,10 @@
                              th:attr="data-date=${d.date}, data-member=${col.memberId},
                                       data-member-name=${splitByPerson} ? ${persons[ci.index].name} : null"
                              th:classappend="${(d.today ? 'is-today ' : '') + (d.weekend ? 'is-weekend ' : '') + (ci.first and splitByPerson ? 'is-day-start' : '')}">
+                            <div class="tgrid-busy" th:each="b : ${col.blocks}" th:classappend="'tgrid-busy-' + ${b.kind}"
+                                 th:style="|--start: ${b.startMinute}; --dur: ${b.endMinute - b.startMinute}; --stripe: ${b.stripe}; --stripes: ${b.stripes};${b.color != null ? ' --busy-color: ' + b.color + ';' : ''}|">
+                                <span class="tgrid-busy-label" th:text="${b.label}" th:title="|${b.label}, ${b.times}|">Lena · Arbeit</span>
+                            </div>
                             <div class="tgrid-zone" th:each="z : ${col.zones}" th:classappend="'tgrid-zone-' + ${z.strength}"
                                  th:style="|--start: ${z.startMinute}; --dur: ${z.endMinute - z.startMinute}|"
                                  th:attr="data-member=${z.memberId}, data-strength=${z.strength},

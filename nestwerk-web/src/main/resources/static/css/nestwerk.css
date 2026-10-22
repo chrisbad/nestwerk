@@ -3663,6 +3663,36 @@ html { scroll-behavior: smooth; }
     box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
 }
 
+/* Blocked times drawn inline behind the entries: transparent and hatched in the colour of the person */
+.tgrid-busy {
+    --busy-color: var(--ink-soft);
+    position: absolute;
+    z-index: 0;
+    top: calc(var(--start) * var(--hour-height) / 60);
+    height: calc(var(--dur) * var(--hour-height) / 60);
+    left: calc(var(--stripe) * 100% / var(--stripes));
+    width: calc(100% / var(--stripes));
+    box-sizing: border-box;
+    border-top: 2px solid color-mix(in srgb, var(--busy-color) 60%, transparent);
+    background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--busy-color) 22%, transparent) 0 5px,
+        transparent 5px 10px);
+    pointer-events: none;
+}
+.tgrid-busy-label {
+    display: block;
+    max-width: 100%;
+    padding: 0.1rem 0.3rem;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 0.66rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: auto;
+}
+.hide-busy .tgrid-busy { display: none; }
+
 /* Sperren und Warnungen der Personen, sichtbar beim Ziehen */
 .tgrid-zone {
     position: absolute;

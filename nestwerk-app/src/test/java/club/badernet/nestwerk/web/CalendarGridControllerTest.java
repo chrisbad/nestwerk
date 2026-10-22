@@ -170,6 +170,14 @@ class CalendarGridControllerTest {
     }
 
     @Test
+    void gridDrawsBlockedTimesInlineAtTheirTime() throws Exception {
+        mockMvc.perform(get("/calendar/days3").param("date", TUESDAY.toString()).with(as("editor")))
+                .andExpect(content().string(containsString("class=\"tgrid-busy ")))
+                .andExpect(content().string(containsString("--start: 480;")))
+                .andExpect(content().string(containsString("tgrid-busy-label")));
+    }
+
+    @Test
     void foreignEventsAreNotEditableInTheGrid() throws Exception {
         event("Meins", 15, null);
 
