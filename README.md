@@ -330,3 +330,13 @@ docker compose exec -T db pg_dump -U nestwerk nestwerk > backup.sql
 docker compose run --rm --no-deps -v "$PWD":/backup --entrypoint "" app \
   tar czf /backup/attachments.tgz -C /data/attachments .
 ```
+
+## License
+
+Nestwerk is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE): you may use, change and share it
+for any noncommercial purpose, such as running it for your own family or household. Commercial use needs a separate
+agreement with the author.
+
+This is a *source-available* licence, not an OSI-approved open-source licence, because of its noncommercial clause.
+It was chosen so that families and hobbyists can self-host and adapt Nestwerk freely while commercial resale is
+excluded.

@@ -15,6 +15,13 @@
     <packaging>pom</packaging>
     <name>nestwerk</name>
     <description>nestwerk</description>
+    <licenses>
+        <license>
+            <name>PolyForm Noncommercial License 1.0.0</name>
+            <url>https://polyformproject.org/licenses/noncommercial/1.0.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
     <properties>
         <java.version>25</java.version>
         <revision>0.0.1-SNAPSHOT</revision>
