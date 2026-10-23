@@ -2764,7 +2764,7 @@ a { color: var(--moss); }
     min-width: 0;
     padding: 0.2rem 0.55rem;
     border-radius: 8px;
-    border-left: 3px solid var(--band-color);
+    border-left: 2px solid var(--band-color);
     background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--band-color) 14%, transparent) 0 6px,
             color-mix(in srgb, var(--band-color) 6%, transparent) 6px 12px);
     color: var(--ink-soft);
@@ -3728,7 +3728,7 @@ html { scroll-behavior: smooth; }
     white-space: nowrap;
     pointer-events: auto;
 }
-.hide-busy .tgrid-busy { display: none; }
+.hide-busy .tgrid-busy, .hide-busy .lanes-busy { display: none; }
 
 /* Sperren und Warnungen der Personen, sichtbar beim Ziehen */
 .tgrid-zone {
@@ -4069,6 +4069,35 @@ form.is-allday [data-time-field] { display: none; }
     background-image: repeating-linear-gradient(to right, var(--line) 0, var(--line) 1px, transparent 1px, transparent var(--hour-w));
 }
 [data-lanes][data-can-create="true"] .lanes-track { cursor: copy; }
+/* Blocked times behind the entries: hatched in the colour of the person, like in the time grid */
+.lanes-busy {
+    --busy-color: var(--ink-soft);
+    position: absolute;
+    z-index: 0;
+    left: calc(var(--start) * var(--hour-w) / 60);
+    width: calc(var(--dur) * var(--hour-w) / 60);
+    top: calc(var(--stripe) * 100% / var(--stripes));
+    height: calc(100% / var(--stripes));
+    box-sizing: border-box;
+    display: flex;
+    align-items: flex-end;
+    border-left: 1px solid color-mix(in srgb, var(--busy-color) 60%, transparent);
+    background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--busy-color) 22%, transparent) 0 5px,
+        transparent 5px 10px);
+    pointer-events: none;
+}
+.lanes-busy-label {
+    max-width: 100%;
+    padding: 0.1rem 0.3rem;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 0.66rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: auto;
+}
 .lanes-entry {
     position: absolute;
     top: 6px;
