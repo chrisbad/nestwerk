@@ -9,6 +9,7 @@
     const DEFAULT_MINUTES = 60;
     const FIRST_HOUR_SHOWN = 7;
     const ENTRY_GAP_PX = 6;
+    const ROUNDING_TOLERANCE_PX = 1;
     const LANE_PADDING_PX = 6;
     const LONG_PRESS_MS = 300;
     const TOUCH_TOLERANCE_PX = 8;
@@ -44,13 +45,14 @@
 
     const slotMinutes = root => +root.dataset.slot || +root.dataset.slotCoarse;
 
-    /** Puts entries that would overlap on screen (including their minimum width) into rows below each other. */
+    /** Puts entries that would overlap on screen (including their minimum width) into rows below each other.
+        Entries that follow each other directly stay in one row; their width already leaves a small visual gap. */
     function stack(lane) {
         const entries = [...lane.querySelectorAll("[data-lane-entry]")]
             .sort((a, b) => a.offsetLeft - b.offsetLeft);
         const rows = [];
         entries.forEach(entry => {
-            let row = rows.find(r => r.end + ENTRY_GAP_PX <= entry.offsetLeft);
+            let row = rows.find(r => r.end <= entry.offsetLeft + ROUNDING_TOLERANCE_PX);
             if (!row) {
                 row = { end: 0, height: 0, items: [] };
                 rows.push(row);
