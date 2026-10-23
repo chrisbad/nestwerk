@@ -10,27 +10,34 @@
     <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
 
     <div class="plan-nav">
-        <a class="icon-button" th:href="@{/household/stats(period=${period.key}, date=${period.previous})}" title="Zurück">
+        <a class="icon-button" th:href="@{/household/stats(period=${period.key}, date=${period.previous}, unit=${unit.key()}, member=${member})}" title="Zurück">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
             <span class="visually-hidden">Vorheriger Zeitraum</span>
         </a>
         <nav class="segmented" aria-label="Zeitraum">
-            <a th:href="@{/household/stats(period='day', date=${period.anchor})}" th:aria-current="${period.key == 'day'} ? 'page'">Tag</a>
-            <a th:href="@{/household/stats(period='week', date=${period.anchor})}" th:aria-current="${period.key == 'week'} ? 'page'">Woche</a>
-            <a th:href="@{/household/stats(period='month', date=${period.anchor})}" th:aria-current="${period.key == 'month'} ? 'page'">Monat</a>
-            <a th:href="@{/household/stats(period='year', date=${period.anchor})}" th:aria-current="${period.key == 'year'} ? 'page'">Jahr</a>
+            <a th:href="@{/household/stats(period='day', date=${period.anchor}, unit=${unit.key()}, member=${member})}" th:aria-current="${period.key == 'day'} ? 'page'">Tag</a>
+            <a th:href="@{/household/stats(period='week', date=${period.anchor}, unit=${unit.key()}, member=${member})}" th:aria-current="${period.key == 'week'} ? 'page'">Woche</a>
+            <a th:href="@{/household/stats(period='month', date=${period.anchor}, unit=${unit.key()}, member=${member})}" th:aria-current="${period.key == 'month'} ? 'page'">Monat</a>
+            <a th:href="@{/household/stats(period='year', date=${period.anchor}, unit=${unit.key()}, member=${member})}" th:aria-current="${period.key == 'year'} ? 'page'">Jahr</a>
         </nav>
-        <a class="icon-button" th:href="@{/household/stats(period=${period.key}, date=${period.next})}" title="Weiter">
+        <a class="icon-button" th:href="@{/household/stats(period=${period.key}, date=${period.next}, unit=${unit.key()}, member=${member})}" title="Weiter">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
             <span class="visually-hidden">Nächster Zeitraum</span>
         </a>
     </div>
+    <nav class="segmented segmented-wrap" aria-label="Einheit">
+        <a th:each="u : ${units}" th:href="@{/household/stats(period=${period.key}, date=${period.anchor}, unit=${u.key()}, member=${member})}"
+           th:aria-current="${u == unit} ? 'page'" th:text="${u.label()}">Minuten</a>
+    </nav>
     <nav class="segmented" aria-label="Schnellauswahl">
-        <a th:href="@{/household/stats(period='day', date=${today})}">Heute</a>
-        <a th:href="@{/household/stats(period='week', date=${today})}">Diese Woche</a>
-        <a th:href="@{/household/stats(period='month', date=${today})}">Dieser Monat</a>
+        <a th:href="@{/household/stats(period='day', date=${today}, unit=${unit.key()}, member=${member})}">Heute</a>
+        <a th:href="@{/household/stats(period='week', date=${today}, unit=${unit.key()}, member=${member})}">Diese Woche</a>
+        <a th:href="@{/household/stats(period='month', date=${today}, unit=${unit.key()}, member=${member})}">Dieser Monat</a>
     </nav>
 
+    <p class="hint" th:if="${unit.name() == 'PERSON_DAYS' or unit.name() == 'AUTO'}">
+        <a th:href="@{/household/settings}">Länge eines Personentags einstellen</a>
+    </p>
     <p class="hint" th:unless="${seesAll}">Du siehst hier deine eigenen Werte.</p>
 
     <div class="sheet stats-table-wrap" th:unless="${#lists.isEmpty(rows)}">
@@ -38,7 +45,7 @@
             <thead>
             <tr>
                 <th scope="col">Mitglied</th>
-                <th scope="col" class="num">Minuten</th>
+                <th scope="col" class="num" th:text="${format.columnLabel()}">Minuten</th>
                 <th scope="col" class="num">leicht</th>
                 <th scope="col" class="num">mittel</th>
                 <th scope="col" class="num">schwer</th>
@@ -48,10 +55,12 @@
             <tbody>
             <tr th:each="r : ${rows}" th:style="|--member-color: ${r.member().color}|">
                 <th scope="row">
-                    <span class="stats-name" th:text="${r.member().name}">Lena</span>
+                    <a class="stats-name" th:text="${r.member().name}"
+                       th:href="@{/household/stats(period=${period.key}, date=${period.anchor}, unit=${unit.key()}, member=${r.member().id})}"
+                       th:title="|Nur ${r.member().name} zeigen|">Lena</a>
                     <span class="stats-bar" aria-hidden="true"><i th:style="|width: ${r.minutes() * 100 / maxMinutes}%|"></i></span>
                 </th>
-                <td class="num stats-minutes" th:text="${r.minutes()}">120</td>
+                <td class="num stats-minutes" th:text="${format.of(r.minutes())}" th:title="${format.hint()}">120 Min</td>
                 <td class="num" th:text="${r.easy()}">3</td>
                 <td class="num" th:text="${r.medium()}">2</td>
                 <td class="num" th:text="${r.hard()}">1</td>
@@ -64,8 +73,59 @@
         Dein Konto ist mit keinem Familienmitglied verknüpft, daher gibt es hier nichts auszuwerten.
     </p>
 
+    <section class="chore-section" th:unless="${#maps.isEmpty(bookableAreas)}">
+        <details class="sheet quick-book">
+            <summary>Schnell buchen</summary>
+            <form method="post" th:action="@{/household/stats/book}" class="quick-book-form" data-book-form>
+                <input type="hidden" name="back" th:value="@{/household/stats(period=${period.key}, date=${period.anchor}, unit=${unit.key()}, member=${member})}">
+                <div class="field">
+                    <label for="quick-chore">Hausarbeit</label>
+                    <select id="quick-chore" name="chore" class="input" required data-book-chore>
+                        <optgroup th:each="area : ${bookableAreas}" th:label="${area.key}">
+                            <option th:each="c : ${area.value}" th:value="${c.id}" th:text="${c.title}"
+                                    th:attr="data-easy=${c.minutesEasy}, data-medium=${c.minutesMedium}, data-hard=${c.minutesHard}">Bad putzen</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="field" th:if="${completeAny or ownMember == null}">
+                    <label for="quick-doer">Erledigt von</label>
+                    <select id="quick-doer" name="doer" class="input">
+                        <option th:each="m : ${allMembers.values()}" th:value="${m.id}" th:text="${m.name}"
+                                th:selected="${m.id == ownMember}">Lena</option>
+                    </select>
+                </div>
+                <fieldset class="field choices effort-choices">
+                    <legend>Aufwand</legend>
+                    <label class="choice effort-choice" th:each="e : ${@householdViews.efforts()}">
+                        <input type="radio" name="effort" th:value="${e}" th:checked="${e.name() == 'MEDIUM'}" data-minutes="">
+                        <span th:text="${e.label()}">leicht</span>
+                        <span class="effort-minutes"></span>
+                    </label>
+                </fieldset>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="quick-minutes">Tatsächliche Dauer <span class="hint">Minuten</span></label>
+                        <input id="quick-minutes" class="input" type="number" name="minutes" min="1" max="600" required data-book-minutes>
+                    </div>
+                    <div class="field">
+                        <label for="quick-at">Erledigt am</label>
+                        <input id="quick-at" class="input" type="datetime-local" name="performedAt" th:value="${bookAt}" required>
+                    </div>
+                </div>
+                <div class="form-actions"><button type="submit" class="button">Buchen</button></div>
+            </form>
+        </details>
+    </section>
+
     <section class="chore-section">
         <h2>Erledigt im Zeitraum</h2>
+        <nav class="segmented segmented-wrap member-filter" aria-label="Nach Mitglied filtern" th:if="${seesAll and !#lists.isEmpty(rows)}">
+            <a th:href="@{/household/stats(period=${period.key}, date=${period.anchor}, unit=${unit.key()})}"
+               th:aria-current="${member == null} ? 'page'">Alle</a>
+            <a th:each="r : ${rows}" th:text="${r.member().name}" th:style="|--member-color: ${r.member().color}|"
+               th:href="@{/household/stats(period=${period.key}, date=${period.anchor}, unit=${unit.key()}, member=${r.member().id})}"
+               th:aria-current="${member == r.member().id} ? 'page'">Lena</a>
+        </nav>
         <p class="muted" th:if="${#lists.isEmpty(credits)}">In diesem Zeitraum wurde nichts abgehakt.</p>
         <ul class="sheet credit-list" th:unless="${#lists.isEmpty(credits)}">
             <li th:each="cr : ${credits}">
@@ -74,14 +134,14 @@
                     <a th:href="@{/household/tasks/{id}(id=${cr.taskId()})}" th:text="${cr.title()}">Bad</a>
                     <span class="member-chip" th:if="${cr.member() != null}" th:style="|--member-color: ${cr.member().color}|"
                           th:text="${cr.member().name}">Lena</span>
-                    <strong class="credit-minutes" th:text="${cr.minutes()} + ' Min'">30 Min</strong>
+                    <strong class="credit-minutes" th:text="${format.of(cr.minutes())}" th:title="${format.hint()}">30 Min</strong>
                 </div>
                 <p class="hint" th:if="${cr.corrected()}"
-                   th:text="'Korrigiert von ' + ${cr.planned()} + ' Min: ' + ${cr.reason()}">Korrigiert</p>
+                   th:text="'Korrigiert von ' + ${format.of(cr.planned())} + ': ' + ${cr.reason()}">Korrigiert</p>
                 <details th:if="${canCorrect}" class="credit-correct">
                     <summary>Korrigieren</summary>
                     <form method="post" th:action="@{/household/credits/{id}/correct(id=${cr.id()})}" class="inline-form">
-                        <input type="hidden" name="back" th:value="@{/household/stats(period=${period.key}, date=${period.anchor})}">
+                        <input type="hidden" name="back" th:value="@{/household/stats(period=${period.key}, date=${period.anchor}, unit=${unit.key()}, member=${member})}">
                         <label class="field">
                             <span>Minuten</span>
                             <input class="input" type="number" name="minutes" min="0" max="600" th:value="${cr.minutes()}" required>

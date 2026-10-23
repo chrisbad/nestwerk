@@ -23,6 +23,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.DateTimeException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
@@ -98,6 +99,17 @@ public class Tools {
             return LocalDate.parse(value.trim());
         } catch (DateTimeParseException e) {
             throw new ToolException(name + ": Datum im Format JJJJ-MM-TT erwartet, nicht „" + value + "“.");
+        }
+    }
+
+    static LocalDateTime dateTime(String value, String name) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(value.trim());
+        } catch (DateTimeParseException e) {
+            throw new ToolException(name + ": Zeitpunkt im Format JJJJ-MM-TTTHH:MM erwartet, nicht „" + value + "“.");
         }
     }
 

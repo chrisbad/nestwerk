@@ -1,15 +1,22 @@
 package club.badernet.nestwerk.web;
 
+import club.badernet.nestwerk.household.Chore;
 import club.badernet.nestwerk.household.ChoreConflictException;
 import club.badernet.nestwerk.household.ChoreCredit;
+import club.badernet.nestwerk.household.ChoreEffort;
+import club.badernet.nestwerk.household.ChoreService;
 import club.badernet.nestwerk.household.ChoreStats;
+import club.badernet.nestwerk.household.ChoreTaskService;
+import club.badernet.nestwerk.household.DurationUnit;
 import club.badernet.nestwerk.household.HouseholdAccess;
+import club.badernet.nestwerk.household.HouseholdSettings;
 import club.badernet.nestwerk.household.Redemption;
 import club.badernet.nestwerk.household.Reward;
 import club.badernet.nestwerk.household.RewardService;
 import club.badernet.nestwerk.member.FamilyMember;
 import club.badernet.nestwerk.security.CurrentUser;
 import club.badernet.nestwerk.user.User;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,15 +27,21 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.IsoFields;
 import java.time.temporal.TemporalAdjusters;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /** Auswertung mit Korrektur sowie Minutenkonto und Belohnungen. */
 @Controller
@@ -45,6 +58,13 @@ public class HouseholdAccountController {
                             int planned, boolean corrected, String reason) {
     }
 
+    /** Quick booking on the stats page; {@code back} returns to the page with its period, unit and filter. */
+    public record QuickBooking(Long chore, Long doer, ChoreEffort effort, Integer minutes,
+                               @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime performedAt,
+                               String back) {
+    }
+
+    private static final String NO_AREA = "Ohne Bereich";
     private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEE d.M.", Locale.GERMAN);
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.GERMAN);
 
@@ -53,36 +73,67 @@ public class HouseholdAccountController {
     private final HouseholdAccess access;
     private final HouseholdViews views;
     private final CurrentUser currentUser;
+    private final HouseholdSettings settings;
+    private final ChoreService chores;
+    private final ChoreTaskService tasks;
 
     public HouseholdAccountController(ChoreStats stats, RewardService rewards, HouseholdAccess access,
-                                      HouseholdViews views, CurrentUser currentUser) {
+                                      HouseholdViews views, CurrentUser currentUser, HouseholdSettings settings,
+                                      ChoreService chores, ChoreTaskService tasks) {
         this.stats = stats;
         this.rewards = rewards;
         this.access = access;
         this.views = views;
         this.currentUser = currentUser;
+        this.settings = settings;
+        this.chores = chores;
+        this.tasks = tasks;
     }
 
     /* --- Auswertung ------------------------------------------------------------ */
 
     @GetMapping("/stats")
     String stats(@RequestParam(defaultValue = "week") String period, @RequestParam(required = false) String date,
-                 Model model) {
+                 @RequestParam(defaultValue = "minutes") String unit,
+                 @RequestParam(required = false) Long member, Model model) {
         User viewer = requireModule();
         HouseholdViews.Context ctx = views.context(viewer);
         Period p = period(period, parse(date, ctx.today()));
         List<ChoreStats.MemberStats> rows = stats.forPeriod(viewer, p.from(), p.to());
         int max = rows.stream().mapToInt(ChoreStats.MemberStats::minutes).max().orElse(0);
+        DurationUnit selected = DurationUnit.fromKey(unit);
         model.addAttribute("period", p);
+        model.addAttribute("unit", selected);
+        model.addAttribute("units", DurationUnit.values());
+        model.addAttribute("format", settings.format(selected, p.key()));
         model.addAttribute("today", ctx.today());
         model.addAttribute("rows", rows);
         model.addAttribute("maxMinutes", Math.max(max, 1));
-        model.addAttribute("credits", stats.credits(viewer, p.from(), p.to()).stream()
+        model.addAttribute("member", member);
+        model.addAttribute("credits", stats.credits(viewer, p.from(), p.to(), member).stream()
                 .map(c -> row(c, ctx.members())).toList());
+        model.addAttribute("bookableAreas", bookableByArea(viewer));
+        model.addAttribute("allMembers", ctx.members());
+        model.addAttribute("ownMember", ctx.ownMember());
+        model.addAttribute("completeAny", ctx.completeAny());
+        model.addAttribute("bookAt", bookingTime(p.anchor(), ctx.today()));
         model.addAttribute("seesAll", stats.seesAll(viewer));
         model.addAttribute("canCorrect", access.canAny(viewer, "CORRECT"));
         model.addAttribute("tab", "stats");
         return "household/stats";
+    }
+
+    @PostMapping("/stats/book")
+    String quickBook(QuickBooking booking, RedirectAttributes redirect) {
+        User actor = requireModule();
+        try {
+            tasks.bookAdHoc(booking.chore(), actor, booking.doer(), Set.of(),
+                    new ChoreTaskService.Booking(booking.effort(), booking.minutes(), booking.performedAt()));
+            redirect.addFlashAttribute("success", "Gebucht – danke!");
+        } catch (ChoreConflictException | IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:" + SafeRedirect.target(booking.back(), "/household/stats");
     }
 
     @PostMapping("/credits/{id}/correct")
@@ -96,6 +147,18 @@ public class HouseholdAccountController {
             redirect.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:" + SafeRedirect.target(back, "/household/stats");
+    }
+
+    /** The chores the viewer may book, grouped by area in the order of {@link ChoreService#visible}. */
+    private Map<String, List<Chore>> bookableByArea(User viewer) {
+        return chores.visible(viewer).stream().filter(c -> tasks.canBook(viewer, c))
+                .collect(Collectors.groupingBy(c -> c.getArea() == null ? NO_AREA : c.getArea(),
+                        LinkedHashMap::new, Collectors.toList()));
+    }
+
+    /** Booking time preset: now for the current period, otherwise noon of the selected day. */
+    private String bookingTime(LocalDate anchor, LocalDate today) {
+        return anchor.isBefore(today) ? anchor.atTime(LocalTime.NOON).toString() : views.nowInput();
     }
 
     private static CreditRow row(ChoreCredit c, Map<Long, FamilyMember> members) {
@@ -124,6 +187,29 @@ public class HouseholdAccountController {
                                 + monday.plusDays(6).format(DAY), monday.minusWeeks(1), monday.plusWeeks(1));
             }
         };
+    }
+
+    /* --- Einstellungen --------------------------------------------------------- */
+
+    @GetMapping("/settings")
+    String settings(Model model) {
+        User viewer = requireModule();
+        model.addAttribute("hoursPerPersonDay", settings.hoursPerPersonDay().stripTrailingZeros().toPlainString());
+        model.addAttribute("maxHours", HouseholdSettings.MAX_HOURS_PER_PERSON_DAY);
+        model.addAttribute("canManage", settings.canManage(viewer));
+        model.addAttribute("tab", "settings");
+        return "household/settings";
+    }
+
+    @PostMapping("/settings")
+    String saveSettings(@RequestParam(required = false) BigDecimal hoursPerPersonDay, RedirectAttributes redirect) {
+        try {
+            settings.setHoursPerPersonDay(hoursPerPersonDay, requireModule());
+            redirect.addFlashAttribute("success", "Die Einstellung wurde gespeichert.");
+        } catch (IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/household/settings";
     }
 
     /* --- Belohnungen ----------------------------------------------------------- */

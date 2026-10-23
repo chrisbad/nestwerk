@@ -62,6 +62,10 @@
                     </div>
 
                     <div class="lanes-track" data-lane-track>
+                        <div class="lanes-busy" th:each="b : ${column.blocks}" th:classappend="'lanes-busy-' + ${b.kind}"
+                             th:style="|--start: ${b.startMinute}; --dur: ${b.endMinute - b.startMinute}; --stripe: ${b.stripe}; --stripes: ${b.stripes};${b.color != null ? ' --busy-color: ' + b.color + ';' : ''}|">
+                            <span class="lanes-busy-label" th:text="${b.label}" th:title="|${b.label}, ${b.times}|">Lena · Arbeit</span>
+                        </div>
                         <th:block th:each="p2 : ${column.entries}">
                             <a th:if="${p2.entry.kind == 'event'}" th:with="e=${p2.entry}, o=${e.occurrence}"
                                class="occ lanes-entry" data-lane-entry

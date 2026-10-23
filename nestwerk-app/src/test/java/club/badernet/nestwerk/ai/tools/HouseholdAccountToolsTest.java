@@ -79,14 +79,14 @@ class HouseholdAccountToolsTest {
         householdTools.completeChoreTask(as(kid), task.getId(), null, null, null, null);
         entityManager.flush();
 
-        HouseholdAccountTools.Stats stats = accountTools.choreStats(as(admin), "month", null);
+        HouseholdAccountTools.Stats stats = accountTools.choreStats(as(admin), "month", null, null);
         assertThat(stats.members()).filteredOn(m -> m.memberId().equals(kidM.getId()))
                 .extracting(HouseholdAccountTools.MemberStat::minutes).containsExactly(30);
 
-        List<HouseholdAccountTools.CreditItem> credits = accountTools.listChoreCredits(as(admin), "day", null);
+        List<HouseholdAccountTools.CreditItem> credits = accountTools.listChoreCredits(as(admin), "day", null, null);
         assertThat(credits).hasSize(1);
         accountTools.correctChoreCredit(as(admin), credits.get(0).creditId(), 20, "Nur halb fertig");
-        assertThat(accountTools.listChoreCredits(as(admin), "day", null).get(0))
+        assertThat(accountTools.listChoreCredits(as(admin), "day", null, null).get(0))
                 .satisfies(c -> assertThat(c.minutes()).isEqualTo(20))
                 .satisfies(c -> assertThat(c.corrected()).isTrue());
         assertThatThrownBy(() -> accountTools.correctChoreCredit(as(admin), credits.get(0).creditId(), 20, ""))
@@ -103,6 +103,59 @@ class HouseholdAccountToolsTest {
         assertThat(accountTools.listRewards(as(admin)).pending()).isEmpty();
         assertThatThrownBy(() -> accountTools.decideRedemption(as(admin), request.redemptionId(), true))
                 .isInstanceOf(Tools.ToolException.class);
+    }
+
+    @Test
+    void listChoreCreditsCanBeFilteredByMember() {
+        FamilyMember other = members.save(new FamilyMember("Mama", "#aa0000", null));
+        Chore chore = chores.create(new ChoreInput("Küche aufräumen", null, null, 30, 30, 30, ChoreKind.ON_DEMAND, null,
+                null, null, null, Distribution.FIXED, List.of(kidM.getId())), admin);
+        householdTools.bookChore(as(admin), chore.getId(), kidM.getId(), null, "MEDIUM", null, null);
+        entityManager.flush();
+
+        assertThat(accountTools.listChoreCredits(as(admin), "day", null, null)).hasSize(1);
+        assertThat(accountTools.listChoreCredits(as(admin), "day", null, kidM.getId())).hasSize(1);
+        assertThat(accountTools.listChoreCredits(as(admin), "day", null, other.getId())).isEmpty();
+    }
+
+    @Test
+    void bookChoreCanBookForAnotherMemberOnAPastDay() {
+        LocalDate yesterday = LocalDate.now(clock).minusDays(1);
+        Chore chore = chores.create(new ChoreInput("Staubsaugen", null, null, 20, 20, 20, ChoreKind.ON_DEMAND, null,
+                null, null, null, Distribution.FIXED, List.of(kidM.getId())), admin);
+
+        HouseholdTools.ChoreTaskItem booked = householdTools.bookChore(as(admin), chore.getId(), kidM.getId(), null,
+                "EASY", 25, yesterday + "T12:00");
+
+        assertThat(booked.dueOn()).isEqualTo(yesterday);
+        assertThat(accountTools.listChoreCredits(as(admin), "day", yesterday.toString(), kidM.getId())).hasSize(1);
+        assertThatThrownBy(() -> householdTools.bookChore(as(admin), chore.getId(), kidM.getId(), null, "EASY", null,
+                "gestern")).isInstanceOf(Tools.ToolException.class);
+    }
+
+    @Test
+    void choreStatsDisplaysEffortInTheRequestedUnit() {
+        HouseholdAccountTools.Stats minutes = accountTools.choreStats(as(admin), "week", null, null);
+        HouseholdAccountTools.Stats persondays = accountTools.choreStats(as(admin), "week", null, "person_days");
+
+        assertThat(minutes.unit()).isEqualTo("MINUTES");
+        assertThat(minutes.personDay()).isNull();
+        assertThat(persondays.unit()).isEqualTo("PERSON_DAYS");
+        assertThat(persondays.personDay()).isEqualTo("1 PT = 8 h");
+        assertThat(persondays.members()).allSatisfy(m -> assertThat(m.display()).endsWith(" PT"));
+        assertThatThrownBy(() -> accountTools.choreStats(as(admin), "week", null, "furlongs"))
+                .isInstanceOf(Tools.ToolException.class);
+    }
+
+    @Test
+    void personDayLengthIsConfigurableAndValidated() {
+        assertThat(accountTools.setPersonDayHours(as(admin), 7.5)).isEqualTo("1 PT = 7,5 h");
+        assertThat(accountTools.choreStats(as(admin), "week", null, "PERSON_DAYS").personDay())
+                .isEqualTo("1 PT = 7,5 h");
+
+        assertThatThrownBy(() -> accountTools.setPersonDayHours(as(admin), 0.0)).isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> accountTools.setPersonDayHours(as(admin), 25.0)).isInstanceOf(Tools.ToolException.class);
+        assertThatThrownBy(() -> accountTools.setPersonDayHours(as(kid), 6.0)).isInstanceOf(Tools.ToolException.class);
     }
 
     @Test

@@ -1938,7 +1938,13 @@ form.inline { display: inline; margin: 0; }
 .stats-table tbody tr + tr th, .stats-table tbody tr + tr td { border-top: 1px solid var(--line); }
 .stats-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .stats-table tbody th { min-width: 10rem; }
-.stats-name { display: block; font-weight: 650; }
+.stats-name { display: block; color: inherit; font-weight: 650; text-decoration: none; }
+a.stats-name:hover { text-decoration: underline; }
+.segmented-wrap { flex-wrap: wrap; border-radius: 1.25rem; }
+.member-filter a[aria-current="page"] { box-shadow: inset 0 -3px 0 var(--member-color, var(--ink-soft)), 0 1px 3px rgb(34 48 42 / 0.15); }
+.quick-book { padding: 0.9rem 1.1rem; }
+.quick-book > summary { cursor: pointer; font-weight: 650; }
+.quick-book-form { display: grid; gap: 0.9rem; margin-top: 0.9rem; }
 .stats-bar { display: block; height: 0.4rem; margin-top: 0.35rem; border-radius: 999px; background: var(--sage); overflow: hidden; }
 .stats-bar i { display: block; height: 100%; background: var(--member-color); border-radius: 999px; }
 .stats-minutes { font-family: var(--font-display); font-size: var(--step-1); font-weight: 650; }
@@ -2764,7 +2770,7 @@ a { color: var(--moss); }
     min-width: 0;
     padding: 0.2rem 0.55rem;
     border-radius: 8px;
-    border-left: 3px solid var(--band-color);
+    border-left: 2px solid var(--band-color);
     background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--band-color) 14%, transparent) 0 6px,
             color-mix(in srgb, var(--band-color) 6%, transparent) 6px 12px);
     color: var(--ink-soft);
@@ -2920,7 +2926,8 @@ a { color: var(--moss); }
 .day-chip input:checked + span { background: var(--grad-violet); color: #fff; border-color: transparent; box-shadow: var(--glow-violet); }
 .day-chip input:focus-visible + span { outline: 2px solid var(--moss); outline-offset: 2px; }
 .day-chip:active span { transform: scale(0.9); }
-.occ-chore { border-style: dashed; background: color-mix(in srgb, var(--occ-color, var(--ok)) 10%, var(--surface)); }
+/* a width is needed: a bare dashed style would draw the default 3px border in the text color on every side */
+.occ-chore { border: 1px dashed color-mix(in srgb, var(--occ-color, var(--ok)) 60%, transparent); background: color-mix(in srgb, var(--occ-color, var(--ok)) 10%, var(--surface)); }
 
 /* ---------- Küche ---------- */
 .kitchen-tabs {
@@ -3727,7 +3734,7 @@ html { scroll-behavior: smooth; }
     white-space: nowrap;
     pointer-events: auto;
 }
-.hide-busy .tgrid-busy { display: none; }
+.hide-busy .tgrid-busy, .hide-busy .lanes-busy { display: none; }
 
 /* Sperren und Warnungen der Personen, sichtbar beim Ziehen */
 .tgrid-zone {
@@ -4068,6 +4075,35 @@ form.is-allday [data-time-field] { display: none; }
     background-image: repeating-linear-gradient(to right, var(--line) 0, var(--line) 1px, transparent 1px, transparent var(--hour-w));
 }
 [data-lanes][data-can-create="true"] .lanes-track { cursor: copy; }
+/* Blocked times behind the entries: hatched in the colour of the person, like in the time grid */
+.lanes-busy {
+    --busy-color: var(--ink-soft);
+    position: absolute;
+    z-index: 0;
+    left: calc(var(--start) * var(--hour-w) / 60);
+    width: calc(var(--dur) * var(--hour-w) / 60);
+    top: calc(var(--stripe) * 100% / var(--stripes));
+    height: calc(100% / var(--stripes));
+    box-sizing: border-box;
+    display: flex;
+    align-items: flex-end;
+    border-left: 1px solid color-mix(in srgb, var(--busy-color) 60%, transparent);
+    background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--busy-color) 22%, transparent) 0 5px,
+        transparent 5px 10px);
+    pointer-events: none;
+}
+.lanes-busy-label {
+    max-width: 100%;
+    padding: 0.1rem 0.3rem;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 0.66rem;
+    font-weight: 600;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: auto;
+}
 .lanes-entry {
     position: absolute;
     top: 6px;
@@ -4085,10 +4121,11 @@ form.is-allday [data-time-field] { display: none; }
     line-height: 1.25;
 }
 .lanes-entry.occ-chore { background: color-mix(in srgb, var(--occ-color) 14%, var(--surface-2)); }
+.lanes-entry .occ-time, .lanes-entry .occ-place { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lanes-entry .occ-time { font-size: calc(0.65rem * var(--text-scale)); font-weight: 600; }
-.lanes-entry .occ-title { display: flex; align-items: flex-start; font-weight: 650; }
-.lanes-entry .occ-title span { white-space: normal; overflow-wrap: anywhere; hyphens: auto; }
-.lanes-entry .occ-place { color: var(--ink-soft); font-size: calc(0.65rem * var(--text-scale)); overflow-wrap: anywhere; }
+.lanes-entry .occ-title { display: flex; align-items: center; min-width: 0; font-weight: 650; }
+.lanes-entry .occ-title span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lanes-entry .occ-place { color: var(--ink-soft); font-size: calc(0.65rem * var(--text-scale)); }
 .lanes-entry.continues-before { border-top-left-radius: 2px; border-bottom-left-radius: 2px; }
 .lanes-entry.continues-after { border-top-right-radius: 2px; border-bottom-right-radius: 2px; }
 .lanes-now {

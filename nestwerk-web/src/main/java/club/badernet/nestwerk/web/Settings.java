@@ -4,6 +4,7 @@ import club.badernet.nestwerk.backup.BackupRun;
 import club.badernet.nestwerk.backup.BackupService;
 import club.badernet.nestwerk.calendar.EventCategoryService;
 import club.badernet.nestwerk.household.HouseholdAccess;
+import club.badernet.nestwerk.household.HouseholdSettings;
 import club.badernet.nestwerk.member.FamilyMemberService;
 import club.badernet.nestwerk.role.RoleService;
 import club.badernet.nestwerk.security.PermissionCatalog;
@@ -42,11 +43,12 @@ public class Settings {
     private final RoleService roles;
     private final BackupService backups;
     private final UpdateCheck updates;
+    private final HouseholdSettings householdSettings;
     private final Clock clock;
 
     public Settings(HouseholdAccess householdAccess, PermissionCatalog permissions, EventCategoryService categories,
                     FamilyMemberService members, UserService users, RoleService roles, BackupService backups,
-                    UpdateCheck updates, Clock clock) {
+                    UpdateCheck updates, HouseholdSettings householdSettings, Clock clock) {
         this.permissions = permissions;
         this.categories = categories;
         this.members = members;
@@ -54,6 +56,7 @@ public class Settings {
         this.roles = roles;
         this.backups = backups;
         this.updates = updates;
+        this.householdSettings = householdSettings;
         this.clock = clock;
         Predicate<User> household = user -> householdAccess.mayOpen(user.getUsername());
         this.descriptors = List.of(
@@ -75,6 +78,11 @@ public class Settings {
                 setting("household.rewards", SettingArea.HOUSEHOLD, SettingScope.FAMILY, "Belohnungen",
                         "Belohnungen, die man mit Haushaltspunkten einlösen kann.", Set.of("Punkte", "Konto"),
                         "/household/rewards", household, user -> SettingValue.NONE),
+                setting("household.personDay", SettingArea.HOUSEHOLD, SettingScope.FAMILY, "Personentag",
+                        "Stunden pro Personentag für die Auswertung des Haushaltsplans.",
+                        Set.of("Personentage", "PT", "Stunden", "Auswertung"), "/household/settings", household,
+                        user -> SettingValue.ok(HouseholdSettings.plain(householdSettings.hoursPerPersonDay())
+                                + " Stunden pro Personentag")),
                 setting("household.tablets", SettingArea.HOUSEHOLD, SettingScope.SYSTEM, "Wand-Tablets",
                         "Tablets, die den Haushaltsplan an der Wand zeigen.", Set.of("Gerät", "Kopplung"),
                         "/admin/devices", authority("HOUSEHOLD_DEVICE_MANAGE"),
