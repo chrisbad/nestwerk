@@ -85,12 +85,19 @@ public class ChoreStats {
     /** Gutschriften im Zeitraum (nach Zeitpunkt der Erledigung), neueste zuerst. */
     @Transactional(readOnly = true)
     public List<ChoreCredit> credits(User viewer, LocalDate from, LocalDate to) {
+        return credits(viewer, from, to, null);
+    }
+
+    /** Wie {@link #credits(User, LocalDate, LocalDate)}, aber nur die Gutschriften eines Mitglieds; {@code null} heißt alle. */
+    @Transactional(readOnly = true)
+    public List<ChoreCredit> credits(User viewer, LocalDate from, LocalDate to, Long memberId) {
         Instant start = from.atStartOfDay(clock.getZone()).toInstant();
         Instant end = to.plusDays(1).atStartOfDay(clock.getZone()).toInstant();
         boolean all = seesAll(viewer);
         Optional<Long> own = access.memberId(viewer);
         return credits.findAllByCreatedAtGreaterThanEqualAndCreatedAtLessThan(start, end).stream()
                 .filter(c -> all || own.map(c.getMemberId()::equals).orElse(false))
+                .filter(c -> memberId == null || memberId.equals(c.getMemberId()))
                 .sorted(Comparator.comparing(ChoreCredit::getCreatedAt).reversed().thenComparing(ChoreCredit::getId))
                 .toList();
     }

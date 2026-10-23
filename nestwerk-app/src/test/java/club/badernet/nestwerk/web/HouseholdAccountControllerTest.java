@@ -264,4 +264,61 @@ class HouseholdAccountControllerTest {
         mockMvc.perform(post("/household/settings").param("hoursPerPersonDay", "6").with(user("kind")).with(csrf()))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    void memberFilterListsOnlyThatMembersCreditsAndSurvivesNavigation() throws Exception {
+        kidDid("Staubsaugen", 25);
+        FamilyMember mamaM = members.findAll().stream().filter(m -> m.getName().equals("Mama")).findFirst().orElseThrow();
+
+        mockMvc.perform(get("/household/stats").param("member", mamaM.getId().toString()).with(user("mama")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("In diesem Zeitraum wurde nichts abgehakt.")))
+                .andExpect(content().string(containsString("member=" + mamaM.getId())));
+        mockMvc.perform(get("/household/stats").param("member", kidM.getId().toString()).with(user("mama")))
+                .andExpect(content().string(not(containsString("In diesem Zeitraum wurde nichts abgehakt."))))
+                .andExpect(content().string(containsString("Nur Lena zeigen")));
+    }
+
+    @Test
+    void quickBookingBooksAChoreForAMemberAndReturnsToTheStatsPage() throws Exception {
+        Chore chore = chores.create(new ChoreInput("Staubsaugen", null, null, 10, 20, 30, ChoreKind.ON_DEMAND, null,
+                null, null, null, Distribution.FIXED, List.of(kidM.getId())), admin);
+        String back = "/household/stats?period=day&unit=hours";
+
+        mockMvc.perform(post("/household/stats/book").param("chore", chore.getId().toString())
+                        .param("doer", kidM.getId().toString()).param("effort", "MEDIUM").param("minutes", "20")
+                        .param("back", back).with(user("mama")).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("success", "Gebucht – danke!"));
+        entityManager.flush();
+
+        assertThat(credits.findAll()).singleElement().satisfies(c -> {
+            assertThat(c.getMemberId()).isEqualTo(kidM.getId());
+            assertThat(c.effectiveMinutes()).isEqualTo(20);
+        });
+    }
+
+    @Test
+    void quickBookingReportsInvalidInputAsAnError() throws Exception {
+        Chore chore = chores.create(new ChoreInput("Staubsaugen", null, null, 10, 20, 30, ChoreKind.ON_DEMAND, null,
+                null, null, null, Distribution.FIXED, List.of(kidM.getId())), admin);
+
+        mockMvc.perform(post("/household/stats/book").param("chore", chore.getId().toString())
+                        .param("effort", "MEDIUM").param("minutes", "0").with(user("mama")).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attributeExists("error"));
+        assertThat(credits.findAll()).isEmpty();
+    }
+
+    @Test
+    void statsPageOffersQuickBookingOfBookableChores() throws Exception {
+        chores.create(new ChoreInput("Staubsaugen", "Wohnzimmer", null, 10, 20, 30, ChoreKind.ON_DEMAND, null,
+                null, null, null, Distribution.FIXED, List.of(kidM.getId())), admin);
+
+        mockMvc.perform(get("/household/stats").with(user("mama")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Schnell buchen")))
+                .andExpect(content().string(containsString("Wohnzimmer")))
+                .andExpect(content().string(containsString("/household/stats/book")));
+    }
 }

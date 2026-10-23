@@ -124,18 +124,23 @@ public class HouseholdAccountTools {
     }
 
     @McpTool(name = "list_chore_credits", description = "Listet die Gutschriften (erledigte Hausarbeiten mit "
-            + "Minuten) eines Zeitraums, neueste zuerst. creditId braucht correct_chore_credit.",
+            + "Minuten) eines Zeitraums, neueste zuerst, optional nur eines Mitglieds. creditId braucht "
+            + "correct_chore_credit.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
     public List<CreditItem> listChoreCredits(McpTransportContext context,
                                              @McpToolParam(description = "DAY, WEEK, MONTH oder YEAR", required = false)
                                              String period,
                                              @McpToolParam(description = "Datum im Zeitraum, JJJJ-MM-TT",
-                                                     required = false) String date) {
+                                                     required = false) String date,
+                                             @McpToolParam(description = "Nur Gutschriften dieses Mitglieds "
+                                                     + "(Mitglieds-ID aus list_members)", required = false)
+                                             Long memberId) {
         return tools.read(context, user -> {
             LocalDate day = Tools.date(date, "date");
             Range range = range(period, day == null ? LocalDate.now(clock) : day);
             Map<Long, String> names = names();
-            return stats.credits(user, range.from(), range.to()).stream().map(c -> credit(c, names)).toList();
+            return stats.credits(user, range.from(), range.to(), memberId).stream().map(c -> credit(c, names))
+                    .toList();
         });
     }
 

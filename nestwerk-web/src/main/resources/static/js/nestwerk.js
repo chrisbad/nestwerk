@@ -410,7 +410,27 @@
         });
     }
 
+    // Quick booking with a chore select: take the minutes of the chosen chore into the effort choices
+    function applyChoreMinutes(select) {
+        const form = select.closest("[data-book-form]");
+        const option = select.selectedOptions[0];
+        if (!form || !option) return;
+        form.querySelectorAll("input[name=effort]").forEach(radio => {
+            const minutes = option.dataset[radio.value.toLowerCase()];
+            radio.dataset.minutes = minutes;
+            const label = radio.parentElement.querySelector(".effort-minutes");
+            if (label) label.textContent = minutes + " Min";
+        });
+        const minutes = form.querySelector("[data-book-minutes]");
+        const checked = form.querySelector("input[name=effort]:checked");
+        if (minutes && checked && !minutes.dataset.touched) minutes.value = checked.dataset.minutes;
+    }
+
     function initBookForms() {
+        document.querySelectorAll("[data-book-chore]").forEach(applyChoreMinutes);
+        document.addEventListener("change", event => {
+            if (event.target.matches("[data-book-chore]")) applyChoreMinutes(event.target);
+        });
         document.addEventListener("input", event => {
             if (event.target.matches("[data-book-minutes], [data-book-now]")) event.target.dataset.touched = "1";
         });
