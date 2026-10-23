@@ -221,4 +221,47 @@ class HouseholdAccountControllerTest {
 
         assertThat(rewardRepository.findAll()).extracting(Reward::getTitle).containsExactly("Eis");
     }
+
+    @Test
+    void statsPageShowsEffortInTheSelectedUnitAndKeepsItWhenNavigating() throws Exception {
+        kidDid("Staubsaugen", 90);
+
+        mockMvc.perform(get("/household/stats").param("unit", "hours").with(user("mama")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("1,5 h")))
+                .andExpect(content().string(containsString("unit=hours")))
+                .andExpect(content().string(not(containsString("90 Min"))));
+        mockMvc.perform(get("/household/stats").param("unit", "days").with(user("mama")))
+                .andExpect(content().string(containsString("0,2 PT")))
+                .andExpect(content().string(containsString("1 PT = 8 h")));
+    }
+
+    @Test
+    void unknownUnitFallsBackToMinutes() throws Exception {
+        kidDid("Staubsaugen", 90);
+
+        mockMvc.perform(get("/household/stats").param("unit", "furlongs").with(user("mama")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("90 Min")));
+    }
+
+    @Test
+    void parentsCanChangeTheHoursPerPersonDay() throws Exception {
+        mockMvc.perform(post("/household/settings").param("hoursPerPersonDay", "6").with(user("mama")).with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attributeExists("success"));
+        kidDid("Staubsaugen", 180);
+
+        mockMvc.perform(get("/household/stats").param("unit", "days").with(user("mama")))
+                .andExpect(content().string(containsString("0,5 PT")))
+                .andExpect(content().string(containsString("1 PT = 6 h")));
+    }
+
+    @Test
+    void invalidHoursPerPersonDayAreRejectedAndChildrenMayNotChangeThem() throws Exception {
+        mockMvc.perform(post("/household/settings").param("hoursPerPersonDay", "0").with(user("mama")).with(csrf()))
+                .andExpect(flash().attributeExists("error"));
+        mockMvc.perform(post("/household/settings").param("hoursPerPersonDay", "6").with(user("kind")).with(csrf()))
+                .andExpect(status().isForbidden());
+    }
 }

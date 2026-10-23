@@ -4,6 +4,9 @@ import club.badernet.nestwerk.household.ChoreCredit;
 import club.badernet.nestwerk.household.ChoreDate;
 import club.badernet.nestwerk.household.ChoreService;
 import club.badernet.nestwerk.household.ChoreStats;
+import club.badernet.nestwerk.household.DurationFormat;
+import club.badernet.nestwerk.household.DurationUnit;
+import club.badernet.nestwerk.household.HouseholdSettings;
 import club.badernet.nestwerk.household.IcalImporter;
 import club.badernet.nestwerk.household.Redemption;
 import club.badernet.nestwerk.household.Reward;
@@ -16,6 +19,7 @@ import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -29,11 +33,11 @@ import java.util.stream.Collectors;
 @Component
 public class HouseholdAccountTools {
 
-    public record MemberStat(Long memberId, String member, int minutes, int easy, int medium, int hard,
-                             int overdue) {
+    public record MemberStat(Long memberId, String member, int minutes, String display, int easy, int medium,
+                             int hard, int overdue) {
     }
 
-    public record Stats(String from, String to, List<MemberStat> members) {
+    public record Stats(String from, String to, String unit, String personDay, List<MemberStat> members) {
     }
 
     public record CreditItem(Long creditId, Long taskId, String chore, LocalDate dueOn, String member, int minutes,
@@ -60,35 +64,63 @@ public class HouseholdAccountTools {
     private final ChoreService chores;
     private final IcalImporter importer;
     private final FamilyMemberRepository members;
+    private final HouseholdSettings settings;
     private final Clock clock;
 
     public HouseholdAccountTools(Tools tools, ChoreStats stats, RewardService rewards, ChoreService chores,
-                                 IcalImporter importer, FamilyMemberRepository members, Clock clock) {
+                                 IcalImporter importer, FamilyMemberRepository members, HouseholdSettings settings,
+                                 Clock clock) {
         this.tools = tools;
         this.stats = stats;
         this.rewards = rewards;
         this.chores = chores;
         this.importer = importer;
         this.members = members;
+        this.settings = settings;
         this.clock = clock;
     }
 
     @McpTool(name = "chore_stats", description = "Auswertung des Haushaltsplans: erledigte Minuten und Aufgaben "
             + "je Mitglied und Zeitraum. period: DAY, WEEK, MONTH oder YEAR (Standard WEEK) um das Datum "
-            + "(Standard heute). Ohne Auswerte-Recht nur die eigenen Zahlen.",
+            + "(Standard heute). Ohne Auswerte-Recht nur die eigenen Zahlen. minutes ist immer in Minuten, display "
+            + "dieselbe Zahl in der gewählten Einheit.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, openWorldHint = false))
     public Stats choreStats(McpTransportContext context,
                             @McpToolParam(description = "DAY, WEEK, MONTH oder YEAR", required = false) String period,
                             @McpToolParam(description = "Datum im Zeitraum, JJJJ-MM-TT", required = false)
-                            String date) {
+                            String date,
+                            @McpToolParam(description = "Einheit für display: MINUTES, HOURS_MINUTES, HOURS_DECIMAL, "
+                                    + "PERSON_DAYS oder AUTO (Standard MINUTES)", required = false) String unit) {
         return tools.read(context, user -> {
             LocalDate day = Tools.date(date, "date");
             Range range = range(period, day == null ? LocalDate.now(clock) : day);
-            return new Stats(range.from().toString(), range.to().toString(),
+            DurationFormat format = settings.format(durationUnit(unit), range.key());
+            return new Stats(range.from().toString(), range.to().toString(), format.unit().name(),
+                    format.unit() == DurationUnit.PERSON_DAYS ? format.hint() : null,
                     stats.forPeriod(user, range.from(), range.to()).stream()
-                            .map(s -> new MemberStat(s.member().getId(), s.member().getName(), s.minutes(), s.easy(),
-                                    s.medium(), s.hard(), s.overdue())).toList());
+                            .map(s -> new MemberStat(s.member().getId(), s.member().getName(), s.minutes(),
+                                    format.of(s.minutes()), s.easy(), s.medium(), s.hard(), s.overdue())).toList());
         });
+    }
+
+    @McpTool(name = "set_person_day_hours", description = "Stellt ein, wie viele Stunden ein Personentag (PT) hat "
+            + "(Standard 8, höchstens 24); die Auswertung rechnet damit. Braucht das Recht, Hausarbeiten anzulegen.",
+            annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
+                    idempotentHint = true))
+    public String setPersonDayHours(McpTransportContext context,
+                                    @McpToolParam(description = "Stunden pro Personentag, z. B. 7.5") Double hours) {
+        return tools.write(context, user -> {
+            settings.setHoursPerPersonDay(BigDecimal.valueOf(Tools.required(hours, "hours")), user);
+            return "1 PT = " + HouseholdSettings.plain(settings.hoursPerPersonDay()) + " h";
+        });
+    }
+
+    private static DurationUnit durationUnit(String unit) {
+        try {
+            return DurationUnit.parse(unit);
+        } catch (IllegalArgumentException e) {
+            throw new Tools.ToolException(e.getMessage());
+        }
     }
 
     @McpTool(name = "list_chore_credits", description = "Listet die Gutschriften (erledigte Hausarbeiten mit "
@@ -251,18 +283,18 @@ public class HouseholdAccountTools {
         });
     }
 
-    private record Range(LocalDate from, LocalDate to) {
+    private record Range(String key, LocalDate from, LocalDate to) {
     }
 
     private static Range range(String period, LocalDate date) {
         String key = period == null || period.isBlank() ? "WEEK" : period.trim().toUpperCase(java.util.Locale.ROOT);
         return switch (key) {
-            case "DAY" -> new Range(date, date);
-            case "MONTH" -> new Range(date.withDayOfMonth(1), date.withDayOfMonth(1).plusMonths(1).minusDays(1));
-            case "YEAR" -> new Range(date.withDayOfYear(1), date.withDayOfYear(1).plusYears(1).minusDays(1));
+            case "DAY" -> new Range("day", date, date);
+            case "MONTH" -> new Range("month", date.withDayOfMonth(1), date.withDayOfMonth(1).plusMonths(1).minusDays(1));
+            case "YEAR" -> new Range("year", date.withDayOfYear(1), date.withDayOfYear(1).plusYears(1).minusDays(1));
             case "WEEK" -> {
                 LocalDate monday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-                yield new Range(monday, monday.plusDays(6));
+                yield new Range("week", monday, monday.plusDays(6));
             }
             default -> throw new Tools.ToolException("period: erlaubt sind DAY, WEEK, MONTH, YEAR.");
         };

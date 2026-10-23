@@ -3,7 +3,9 @@ package club.badernet.nestwerk.web;
 import club.badernet.nestwerk.household.ChoreConflictException;
 import club.badernet.nestwerk.household.ChoreCredit;
 import club.badernet.nestwerk.household.ChoreStats;
+import club.badernet.nestwerk.household.DurationUnit;
 import club.badernet.nestwerk.household.HouseholdAccess;
+import club.badernet.nestwerk.household.HouseholdSettings;
 import club.badernet.nestwerk.household.Redemption;
 import club.badernet.nestwerk.household.Reward;
 import club.badernet.nestwerk.household.RewardService;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -53,27 +56,33 @@ public class HouseholdAccountController {
     private final HouseholdAccess access;
     private final HouseholdViews views;
     private final CurrentUser currentUser;
+    private final HouseholdSettings settings;
 
     public HouseholdAccountController(ChoreStats stats, RewardService rewards, HouseholdAccess access,
-                                      HouseholdViews views, CurrentUser currentUser) {
+                                      HouseholdViews views, CurrentUser currentUser, HouseholdSettings settings) {
         this.stats = stats;
         this.rewards = rewards;
         this.access = access;
         this.views = views;
         this.currentUser = currentUser;
+        this.settings = settings;
     }
 
     /* --- Auswertung ------------------------------------------------------------ */
 
     @GetMapping("/stats")
     String stats(@RequestParam(defaultValue = "week") String period, @RequestParam(required = false) String date,
-                 Model model) {
+                 @RequestParam(defaultValue = "minutes") String unit, Model model) {
         User viewer = requireModule();
         HouseholdViews.Context ctx = views.context(viewer);
         Period p = period(period, parse(date, ctx.today()));
         List<ChoreStats.MemberStats> rows = stats.forPeriod(viewer, p.from(), p.to());
         int max = rows.stream().mapToInt(ChoreStats.MemberStats::minutes).max().orElse(0);
+        DurationUnit selected = DurationUnit.fromKey(unit);
         model.addAttribute("period", p);
+        model.addAttribute("unit", selected);
+        model.addAttribute("units", DurationUnit.values());
+        model.addAttribute("format", settings.format(selected, p.key()));
         model.addAttribute("today", ctx.today());
         model.addAttribute("rows", rows);
         model.addAttribute("maxMinutes", Math.max(max, 1));
@@ -124,6 +133,29 @@ public class HouseholdAccountController {
                                 + monday.plusDays(6).format(DAY), monday.minusWeeks(1), monday.plusWeeks(1));
             }
         };
+    }
+
+    /* --- Einstellungen --------------------------------------------------------- */
+
+    @GetMapping("/settings")
+    String settings(Model model) {
+        User viewer = requireModule();
+        model.addAttribute("hoursPerPersonDay", settings.hoursPerPersonDay().stripTrailingZeros().toPlainString());
+        model.addAttribute("maxHours", HouseholdSettings.MAX_HOURS_PER_PERSON_DAY);
+        model.addAttribute("canManage", settings.canManage(viewer));
+        model.addAttribute("tab", "settings");
+        return "household/settings";
+    }
+
+    @PostMapping("/settings")
+    String saveSettings(@RequestParam(required = false) BigDecimal hoursPerPersonDay, RedirectAttributes redirect) {
+        try {
+            settings.setHoursPerPersonDay(hoursPerPersonDay, requireModule());
+            redirect.addFlashAttribute("success", "Die Einstellung wurde gespeichert.");
+        } catch (IllegalArgumentException e) {
+            redirect.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/household/settings";
     }
 
     /* --- Belohnungen ----------------------------------------------------------- */
