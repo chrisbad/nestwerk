@@ -110,6 +110,10 @@
                                     </svg>
                                     <span th:text="${c.title}">Bad putzen</span>
                                 </span>
+                                <span class="lanes-handle lanes-handle-start" data-handle="start" aria-hidden="true"
+                                      th:if="${c.movable and !p2.continuesBefore}"></span>
+                                <span class="lanes-handle lanes-handle-end" data-handle="end" aria-hidden="true"
+                                      th:if="${c.movable and !p2.continuesAfter}"></span>
                             </a>
                         </th:block>
                     </div>

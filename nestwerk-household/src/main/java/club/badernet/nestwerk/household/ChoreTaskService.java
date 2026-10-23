@@ -334,10 +334,23 @@ public class ChoreTaskService {
      */
     @Transactional
     public void reschedule(Long taskId, LocalDate day, LocalTime plannedAt, User actor) {
+        reschedule(taskId, day, plannedAt, null, actor);
+    }
+
+    /**
+     * Like {@link #reschedule(Long, LocalDate, LocalTime, User)} and, if {@code minutes} is given, also sets how long
+     * the task takes on that date (resizing in the calendar); the chore itself stays unchanged.
+     */
+    @Transactional
+    public void reschedule(Long taskId, LocalDate day, LocalTime plannedAt, Integer minutes, User actor) {
         ChoreTask task = get(taskId, actor);
         requireOpen(task);
         if (day == null || plannedAt == null) {
             throw new IllegalArgumentException("Bitte Tag und Uhrzeit angeben.");
+        }
+        if (minutes != null && (minutes < ChoreTask.MIN_MINUTES || minutes > ChoreTask.MAX_MINUTES)) {
+            throw new IllegalArgumentException("Die Dauer muss zwischen " + ChoreTask.MIN_MINUTES + " und "
+                    + ChoreTask.MAX_MINUTES + " Minuten liegen.");
         }
         if (day.isBefore(today())) {
             throw new IllegalArgumentException("Eine Hausarbeit lässt sich nicht in die Vergangenheit verschieben.");
@@ -345,8 +358,9 @@ public class ChoreTaskService {
         if (!access.can(actor, "ASSIGN", task)) {
             throw new AccessDeniedException("Keine Berechtigung, diese Hausarbeit zu verschieben");
         }
-        requireNoOverlap(task.getChore(), task.getAssigneeMemberId(), day, plannedAt, task.getId());
-        task.moveManually(day, plannedAt);
+        requireNoOverlap(task.getChore(), task.getAssigneeMemberId(), day, plannedAt, task.getId(),
+                minutes != null ? minutes : task.minutes());
+        task.moveManually(day, plannedAt, minutes);
     }
 
     /**
@@ -355,8 +369,15 @@ public class ChoreTaskService {
      */
     @Transactional
     public void reassignAndReschedule(Long taskId, Long memberId, LocalDate day, LocalTime plannedAt, User actor) {
+        reassignAndReschedule(taskId, memberId, day, plannedAt, null, actor);
+    }
+
+    /** Like the variant without a length; {@code minutes}, if given, also sets the length for that date. */
+    @Transactional
+    public void reassignAndReschedule(Long taskId, Long memberId, LocalDate day, LocalTime plannedAt, Integer minutes,
+                                      User actor) {
         assign(taskId, memberId, actor);
-        reschedule(taskId, day, plannedAt, actor);
+        reschedule(taskId, day, plannedAt, minutes, actor);
     }
 
     /**

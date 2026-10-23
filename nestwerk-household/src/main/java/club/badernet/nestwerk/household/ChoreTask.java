@@ -28,6 +28,8 @@ public class ChoreTask {
 
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
     private static final String AD_HOC = "adhoc-";
+    public static final int MIN_MINUTES = 5;
+    public static final int MAX_MINUTES = 24 * 60;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,6 +58,10 @@ public class ChoreTask {
     /** The time was set by hand (e.g. moved in the calendar); automatic re-planning keeps it. */
     @Column(name = "planned_manually", nullable = false)
     private boolean plannedManually;
+
+    /** Length set for this date by resizing it; {@code null}: the medium effort of the chore. */
+    @Column(name = "planned_minutes")
+    private Integer plannedMinutes;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
@@ -129,10 +135,16 @@ public class ChoreTask {
         this.plannedManually = true;
     }
 
-    /** Moves the open task to another day and time by hand; the slot key keeps the date the plan gave it. */
-    void moveManually(LocalDate day, LocalTime at) {
+    /**
+     * Moves the open task to another day and time by hand; the slot key keeps the date the plan gave it. A given
+     * length replaces the chore's own for this date, {@code null} keeps the current one.
+     */
+    void moveManually(LocalDate day, LocalTime at, Integer minutes) {
         this.dueOn = day;
         planManually(at);
+        if (minutes != null) {
+            this.plannedMinutes = minutes;
+        }
     }
 
     /** Drops the open task for its date; planning keeps it as a placeholder and does not create it again. */
@@ -212,6 +224,11 @@ public class ChoreTask {
     public LocalTime getDueTime() { return dueTime; }
     public Long getAssigneeMemberId() { return assigneeMemberId; }
     public LocalTime getPlannedAt() { return plannedAt; }
+
+    /** How long the task is planned for: the length set for its date, else the chore's medium effort. */
+    public int minutes() {
+        return Math.max(MIN_MINUTES, plannedMinutes != null ? plannedMinutes : chore.getMinutesMedium());
+    }
     public boolean isPlannedManually() { return plannedManually; }
     public ChoreTaskStatus getStatus() { return status; }
     public Instant getCompletedAt() { return completedAt; }

@@ -27,9 +27,6 @@ import java.util.stream.Collectors;
 @Component
 public class ChoreItems implements CalendarItemSource {
 
-    /** Chores shorter than this would be too small to read and to grab in the calendar. */
-    static final int MIN_MINUTES = 5;
-
     private final ChoreTaskService tasks;
     private final HouseholdAccess access;
     private final FamilyMemberRepository members;
@@ -78,7 +75,7 @@ public class ChoreItems implements CalendarItemSource {
     private CalendarItem item(ChoreTask task, Map<Long, FamilyMember> people, User viewer) {
         FamilyMember who = task.getAssigneeMemberId() == null ? null : people.get(task.getAssigneeMemberId());
         boolean planned = task.getPlannedAt() != null && who != null;
-        int minutes = Math.max(MIN_MINUTES, task.getChore().getMinutesMedium());
+        int minutes = task.minutes();
         LocalDateTime start = planned ? task.getDueOn().atTime(task.getPlannedAt()) : task.getDueOn().atStartOfDay();
         LocalDateTime end = planned ? start.plusMinutes(minutes) : task.getDueOn().plusDays(1).atStartOfDay();
         String title = task.getChore().getTitle() + " · " + (who == null ? "offen" : who.getName());

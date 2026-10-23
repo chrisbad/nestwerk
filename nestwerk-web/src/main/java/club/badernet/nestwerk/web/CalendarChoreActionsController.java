@@ -102,21 +102,23 @@ public class CalendarChoreActionsController {
 
     /**
      * Moves the task to another day and time and, if {@code member} is sent, gives it to that member (empty: nobody).
-     * Used by the dialog and by dragging, also into another person's column.
+     * With {@code minutes} it also sets the length for this date (resizing). Used by the dialog and by dragging, also
+     * into another person's column.
      */
     @PostMapping("/{id}/update")
     ActionResult update(@PathVariable Long id,
                         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
                         @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime start,
-                        @RequestParam(required = false) String member) {
+                        @RequestParam(required = false) String member,
+                        @RequestParam(required = false) Integer minutes) {
         User actor = requireModule();
         ChoreTask task = tasks.get(id, actor);
         Long memberId = member == null ? task.getAssigneeMemberId() : parseMember(member);
         if (Objects.equals(memberId, task.getAssigneeMemberId())) {
-            tasks.reschedule(id, date, start, actor);
+            tasks.reschedule(id, date, start, minutes, actor);
             return ActionResult.of("Hausarbeit wurde verschoben.");
         }
-        tasks.reassignAndReschedule(id, memberId, date, start, actor);
+        tasks.reassignAndReschedule(id, memberId, date, start, minutes, actor);
         return ActionResult.of(memberId == null ? "Die Hausarbeit ist jetzt offen zum Nehmen."
                 : "Hausarbeit wurde verschoben und neu zugewiesen.");
     }

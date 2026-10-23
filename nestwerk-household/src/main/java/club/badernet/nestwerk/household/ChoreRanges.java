@@ -41,7 +41,7 @@ public class ChoreRanges implements PlannedRangeSource {
 
     private PlannedRange range(ChoreTask task) {
         Instant start = task.getDueOn().atTime(task.getPlannedAt()).atZone(zone).toInstant();
-        TimeRange range = new TimeRange(start, start.plusSeconds(Availability.minutes(task.getChore()) * 60L));
+        TimeRange range = new TimeRange(start, start.plusSeconds(task.minutes() * 60L));
         return new PlannedRange(task.getAssigneeMemberId(), range, "der Hausarbeit „" + task.getChore().getTitle() + "“",
                 task.getChore().isNoOverlap());
     }

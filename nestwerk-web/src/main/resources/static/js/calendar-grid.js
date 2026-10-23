@@ -422,7 +422,7 @@
         const mode = !item ? (g.cell ? "allday-create" : "create")
             : type === "allday" ? (g.handle ? "allday-resize-" + g.handle.dataset.handle : "allday-move")
                 : type === "todo" ? "todo-move"
-                    : type === "chore" ? "chore-move"
+                    : type === "chore" && !g.handle ? "chore-move"
                         : g.handle ? "resize-" + g.handle.dataset.handle : "move";
         const fromMember = item ? memberOf(item) : memberOf(g.column || g.cell);
         drag = {
@@ -779,12 +779,15 @@
         const root = d.root;
         const target = d.result.allDay ? d.result.first : dateOf(d.result.start);
         const personChanges = d.fromMember !== d.toMember;
-        if (d.mode === "chore-move") {
+        if (d.item?.dataset.gridItem === "chore") {
             const url = `/calendar/actions/chores/${d.item.dataset.choreId}/update`;
+            const resized = d.result.end - d.result.start !== d.origin.end - d.origin.start;
             await run(root, url,
                 { date: dateOf(d.result.start), start: clock(minuteOf(d.result.start)),
+                    ...(resized ? { minutes: d.result.end - d.result.start } : {}),
                     ...(personChanges ? { member: d.toMember } : {}) },
                 { date: dateOf(d.origin.start), start: clock(minuteOf(d.origin.start)),
+                    ...(resized ? { minutes: d.origin.end - d.origin.start } : {}),
                     ...(personChanges ? { member: d.fromMember } : {}) }, target);
             return;
         }

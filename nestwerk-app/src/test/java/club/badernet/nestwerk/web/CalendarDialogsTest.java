@@ -333,6 +333,26 @@ class CalendarDialogsTest {
     }
 
     @Test
+    void choreCanBeResizedForItsDate() throws Exception {
+        ChoreTask task = plannedChore(1);
+
+        mockMvc.perform(post("/calendar/actions/chores/{id}/update", task.getId()).with(csrf()).with(asAdmin())
+                        .param("date", MONDAY.toString()).param("start", "16:30").param("minutes", "50"))
+                .andExpect(status().isOk());
+
+        assertThat(tasks.findById(task.getId()).orElseThrow().minutes()).isEqualTo(50);
+    }
+
+    @Test
+    void choreResizeToATooShortLengthIsRejected() throws Exception {
+        ChoreTask task = plannedChore(1);
+
+        mockMvc.perform(post("/calendar/actions/chores/{id}/update", task.getId()).with(csrf()).with(asAdmin())
+                        .param("date", MONDAY.toString()).param("start", "16:30").param("minutes", "1"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void movingAChoreOntoAnEventThatForbidsOverlapIsRejectedWithTheReason() throws Exception {
         ChoreTask task = plannedChore(1);
         events.create(new EventInput("Operation", null, null, WEDNESDAY, LocalTime.of(10, 0), WEDNESDAY,
