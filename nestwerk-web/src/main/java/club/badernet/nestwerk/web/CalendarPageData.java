@@ -36,9 +36,6 @@ import java.util.stream.Collectors;
 @Component
 public class CalendarPageData {
 
-    /** Chores shorter than this would be too small to read and to grab in the calendar. */
-    private static final int MIN_CHORE_MINUTES = 5;
-
     private final CalendarEventService events;
     private final EventCategoryService categories;
     private final FamilyMemberService members;
@@ -121,7 +118,7 @@ public class CalendarPageData {
                 if (t.getPlannedAt() != null && who != null) {
                     timed.computeIfAbsent(t.getDueOn(), d -> new ArrayList<>()).add(new CalendarChore(t.getId(),
                             t.getChore().getTitle() + " · " + who.getName(), t.getDueOn(), t.getPlannedAt(),
-                            Math.max(MIN_CHORE_MINUTES, t.getChore().getMinutesMedium()), who.getColor(),
+                            t.minutes(), who.getColor(),
                             !t.isSkipped() && householdAccess.can(viewer, "ASSIGN", t), t.getAssigneeMemberId(),
                             t.isSkipped(), t.getChore().isNoOverlap()));
                 } else {

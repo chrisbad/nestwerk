@@ -181,7 +181,7 @@
         const origin = { allDay: false, start: time.parseLocal(item.dataset.start), end: time.parseLocal(item.dataset.end) };
         const fromMember = memberOf(item);
         drag = {
-            mode: isChore ? "chore-move" : g.handle ? "resize-" + g.handle.dataset.handle : "move",
+            mode: isChore && !g.handle ? "chore-move" : g.handle ? "resize-" + g.handle.dataset.handle : "move",
             root, item, id: g.id, touch: g.touch, x0: g.x0, y0: g.y0, x: g.x, y: g.y, moved: false,
             slot: slotMinutes(root), origin, fromMember, toMember: fromMember, lane,
             recurring: item.dataset.recurring === "true",
