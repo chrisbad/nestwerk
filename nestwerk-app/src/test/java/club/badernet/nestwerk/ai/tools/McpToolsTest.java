@@ -359,7 +359,7 @@ class McpToolsTest {
 
         HouseholdTools.ChoreItem onDemand = householdTools.createChore(as(admin), "Staubsaugen", null, null,
                 "ON_DEMAND", null, null, null, null, "OPEN", null, null, null, null, null, null, null, null);
-        assertThat(householdTools.bookChore(as(admin), onDemand.choreId(), kidM.getId(), null, "EASY", null).status())
+        assertThat(householdTools.bookChore(as(admin), onDemand.choreId(), kidM.getId(), null, "EASY", null, null).status())
                 .isNotEqualTo("OPEN");
 
         HouseholdTools.ChoreTaskItem once = householdTools.planChoreTask(as(admin), onDemand.choreId(),
@@ -383,14 +383,14 @@ class McpToolsTest {
                 "ON_DEMAND", null, null, null, null, "OPEN", null, null, null, null, null, null, true, null);
         assertThat(chore.oncePerDay()).isTrue();
 
-        householdTools.bookChore(as(admin), chore.choreId(), kidM.getId(), null, "EASY", null);
+        householdTools.bookChore(as(admin), chore.choreId(), kidM.getId(), null, "EASY", null, null);
 
-        assertThatThrownBy(() -> householdTools.bookChore(as(admin), chore.choreId(), kidM.getId(), null, "EASY", null))
+        assertThatThrownBy(() -> householdTools.bookChore(as(admin), chore.choreId(), kidM.getId(), null, "EASY", null, null))
                 .isInstanceOf(Tools.ToolException.class)
                 .hasMessageContaining("einmal pro Tag");
         assertThat(householdTools.updateChore(as(admin), chore.choreId(), null, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, false, null).oncePerDay()).isFalse();
-        assertThat(householdTools.bookChore(as(admin), chore.choreId(), kidM.getId(), null, "EASY", null).status())
+        assertThat(householdTools.bookChore(as(admin), chore.choreId(), kidM.getId(), null, "EASY", null, null).status())
                 .isNotEqualTo("OPEN");
     }
 

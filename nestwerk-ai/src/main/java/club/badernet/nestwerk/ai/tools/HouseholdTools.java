@@ -377,7 +377,8 @@ public class HouseholdTools {
     }
 
     @McpTool(name = "book_chore", description = "Bucht eine Hausarbeit ohne geplante Aufgabe, z. B. „bei Bedarf“ "
-            + "(Staubsaugen, das gerade erledigt wurde). Ohne doerMemberId hat der Benutzer sie selbst erledigt.",
+            + "(Staubsaugen, das gerade erledigt wurde). Ohne doerMemberId hat der Benutzer sie selbst erledigt, ohne "
+            + "performedAt gerade eben; performedAt bucht rückwirkend.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false))
     public ChoreTaskItem bookChore(McpTransportContext context,
                                    @McpToolParam(description = "ID der Hausarbeit (choreId)") Long choreId,
@@ -388,11 +389,15 @@ public class HouseholdTools {
                                    @McpToolParam(description = "Aufwand: EASY, MEDIUM, HARD", required = false)
                                    String effort,
                                    @McpToolParam(description = "Tatsächliche Minuten", required = false)
-                                   Integer minutes) {
+                                   Integer minutes,
+                                   @McpToolParam(description = "Zeitpunkt der Erledigung, JJJJ-MM-TTTHH:MM "
+                                           + "(Standard jetzt, nicht in der Zukunft)", required = false)
+                                   String performedAt) {
         return tools.write(context, user -> {
             Set<Long> helpers = helperMemberIds == null ? Set.of() : new HashSet<>(helperMemberIds);
             ChoreTask task = tasks.bookAdHoc(Tools.required(choreId, "choreId"), user, doerMemberId, helpers,
-                    new ChoreTaskService.Booking(Tools.enumValue(ChoreEffort.class, effort, "effort"), minutes, null));
+                    new ChoreTaskService.Booking(Tools.enumValue(ChoreEffort.class, effort, "effort"), minutes,
+                            Tools.dateTime(performedAt, "performedAt")));
             return item(tasks.get(task.getId(), user), names());
         });
     }

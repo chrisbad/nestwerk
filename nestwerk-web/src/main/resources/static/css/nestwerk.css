@@ -1938,7 +1938,13 @@ form.inline { display: inline; margin: 0; }
 .stats-table tbody tr + tr th, .stats-table tbody tr + tr td { border-top: 1px solid var(--line); }
 .stats-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .stats-table tbody th { min-width: 10rem; }
-.stats-name { display: block; font-weight: 650; }
+.stats-name { display: block; color: inherit; font-weight: 650; text-decoration: none; }
+a.stats-name:hover { text-decoration: underline; }
+.segmented-wrap { flex-wrap: wrap; border-radius: 1.25rem; }
+.member-filter a[aria-current="page"] { box-shadow: inset 0 -3px 0 var(--member-color, var(--ink-soft)), 0 1px 3px rgb(34 48 42 / 0.15); }
+.quick-book { padding: 0.9rem 1.1rem; }
+.quick-book > summary { cursor: pointer; font-weight: 650; }
+.quick-book-form { display: grid; gap: 0.9rem; margin-top: 0.9rem; }
 .stats-bar { display: block; height: 0.4rem; margin-top: 0.35rem; border-radius: 999px; background: var(--sage); overflow: hidden; }
 .stats-bar i { display: block; height: 100%; background: var(--member-color); border-radius: 999px; }
 .stats-minutes { font-family: var(--font-display); font-size: var(--step-1); font-weight: 650; }
