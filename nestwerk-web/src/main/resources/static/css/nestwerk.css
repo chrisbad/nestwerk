@@ -4072,23 +4072,23 @@ form.is-allday [data-time-field] { display: none; }
     position: absolute;
     top: 6px;
     left: calc(var(--start) * var(--hour-w) / 60);
-    width: max(calc(var(--dur) * var(--hour-w) / 60 - 3px), 7.5rem);
+    width: max(calc(var(--dur) * var(--hour-w) / 60 - 3px), 4.5rem);
     display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 0.05rem;
-    padding: 0.25rem 0.5rem 0.3rem 0.6rem;
-    border-radius: 9px;
+    padding: 0.22rem 0.4rem 0.26rem 0.5rem;
+    border-radius: 8px;
     background: color-mix(in srgb, var(--occ-color) 26%, var(--surface-2));
-    box-shadow: inset 3px 0 0 var(--occ-color), 0 0 0 1px var(--surface);
-    font-size: calc(0.8rem * var(--text-scale));
+    box-shadow: inset 2px 0 0 var(--occ-color), 0 0 0 1px var(--surface);
+    font-size: calc(0.72rem * var(--text-scale));
     line-height: 1.25;
 }
 .lanes-entry.occ-chore { background: color-mix(in srgb, var(--occ-color) 14%, var(--surface-2)); }
-.lanes-entry .occ-time { font-size: calc(0.72rem * var(--text-scale)); font-weight: 600; }
+.lanes-entry .occ-time { font-size: calc(0.65rem * var(--text-scale)); font-weight: 600; }
 .lanes-entry .occ-title { display: flex; align-items: flex-start; font-weight: 650; }
 .lanes-entry .occ-title span { white-space: normal; overflow-wrap: anywhere; hyphens: auto; }
-.lanes-entry .occ-place { color: var(--ink-soft); font-size: calc(0.72rem * var(--text-scale)); overflow-wrap: anywhere; }
+.lanes-entry .occ-place { color: var(--ink-soft); font-size: calc(0.65rem * var(--text-scale)); overflow-wrap: anywhere; }
 .lanes-entry.continues-before { border-top-left-radius: 2px; border-bottom-left-radius: 2px; }
 .lanes-entry.continues-after { border-top-right-radius: 2px; border-bottom-right-radius: 2px; }
 .lanes-now {
@@ -4124,7 +4124,7 @@ form.is-allday [data-time-field] { display: none; }
     z-index: 5;
     pointer-events: none;
     background: color-mix(in srgb, var(--occ-color) 45%, var(--surface-2));
-    box-shadow: var(--shadow-float), inset 3px 0 0 var(--occ-color);
+    box-shadow: var(--shadow-float), inset 2px 0 0 var(--occ-color);
 }
 .lanes-entry.is-blocked { --occ-color: var(--brick); }
 .is-lanes-dragging .lanes-track, .is-lanes-dragging .lanes-entry { cursor: grabbing; }
@@ -4132,6 +4132,9 @@ form.is-allday [data-time-field] { display: none; }
 .lanes-handle { position: absolute; top: 0; bottom: 0; z-index: 2; width: 12px; cursor: ew-resize; touch-action: none; }
 .lanes-handle-start { left: 0; }
 .lanes-handle-end { right: 0; }
+/* the grips sit on the slim edge instead of inside the entry */
+.lanes-handle-start::after { left: 1px; }
+.lanes-handle-end::after { left: auto; right: 1px; transform: translate(50%, -50%); }
 .lanes-handle::after {
     content: "";
     position: absolute;
@@ -4152,6 +4155,9 @@ form.is-allday [data-time-field] { display: none; }
 .lanes-entry.is-selected .lanes-handle-start { left: -22px; }
 .lanes-entry.is-selected .lanes-handle-end { right: -22px; }
 .lanes-entry.is-selected .lanes-handle::after {
+    left: 50%;
+    right: auto;
+    transform: translate(-50%, -50%);
     width: 14px;
     height: 14px;
     border: 2px solid var(--surface);
