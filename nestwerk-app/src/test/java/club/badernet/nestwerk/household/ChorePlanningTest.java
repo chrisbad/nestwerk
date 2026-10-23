@@ -91,6 +91,44 @@ class ChorePlanningTest {
     }
 
     @Test
+    void taskCanBeResizedForItsDateWithoutChangingTheChore() {
+        Chore c = chores.create(input(ChoreKind.RECURRING, "FREQ=DAILY;COUNT=2", null, Distribution.FIXED,
+                lena.getId()), admin);
+        ChoreTask resized = tasksOf(c).getFirst();
+        ChoreTask untouched = tasksOf(c).getLast();
+
+        taskService.reschedule(resized.getId(), resized.getDueOn(), LocalTime.of(18, 0), 45, admin);
+
+        assertThat(resized.minutes()).isEqualTo(45);
+        assertThat(untouched.minutes()).isEqualTo(10);
+        assertThat(c.getMinutesMedium()).isEqualTo(10);
+    }
+
+    @Test
+    void movingATaskKeepsItsResizedLength() {
+        Chore c = chores.create(input(ChoreKind.RECURRING, "FREQ=DAILY;COUNT=1", null, Distribution.FIXED,
+                lena.getId()), admin);
+        ChoreTask task = tasksOf(c).getFirst();
+        taskService.reschedule(task.getId(), task.getDueOn(), LocalTime.of(18, 0), 45, admin);
+
+        taskService.reschedule(task.getId(), task.getDueOn(), LocalTime.of(19, 0), admin);
+
+        assertThat(task.minutes()).isEqualTo(45);
+    }
+
+    @Test
+    void resizingRejectsLengthsOutsideTheAllowedRange() {
+        Chore c = chores.create(input(ChoreKind.RECURRING, "FREQ=DAILY;COUNT=1", null, Distribution.FIXED,
+                lena.getId()), admin);
+        ChoreTask task = tasksOf(c).getFirst();
+
+        assertThatThrownBy(() -> taskService.reschedule(task.getId(), task.getDueOn(), LocalTime.of(9, 0), 1, admin))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> taskService.reschedule(task.getId(), task.getDueOn(), LocalTime.of(9, 0),
+                ChoreTask.MAX_MINUTES + 1, admin)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void rescheduleNeedsATimeAndAnOpenTask() {
         Chore c = chores.create(input(ChoreKind.RECURRING, "FREQ=DAILY;COUNT=1", null, Distribution.FIXED,
                 lena.getId()), admin);

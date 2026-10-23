@@ -325,20 +325,24 @@ public class HouseholdTools {
     }
 
     @McpTool(name = "reschedule_chore_task", description = "Plant eine offene Aufgabe zu einer anderen Uhrzeit und "
-            + "wahlweise an einem anderen Tag ein (wie Verschieben im Kalender). Ohne date bleibt der Tag. Die "
-            + "automatische Planung behält Tag und Uhrzeit, solange die zuständige Person da ist.",
+            + "wahlweise an einem anderen Tag ein (wie Verschieben im Kalender). Ohne date bleibt der Tag, ohne "
+            + "minutes die Dauer. Mit minutes wird die Aufgabe nur an ihrem Termin länger oder kürzer (wie die "
+            + "Griffe im Kalender), die Hausarbeit selbst bleibt unverändert. Die automatische Planung behält Tag "
+            + "und Uhrzeit, solange die zuständige Person da ist.",
             annotations = @McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, openWorldHint = false,
                     idempotentHint = true))
     public ChoreTaskItem rescheduleChoreTask(McpTransportContext context,
                                              @McpToolParam(description = "ID der Aufgabe (taskId)") Long taskId,
                                              @McpToolParam(description = "Neue Uhrzeit HH:MM") String time,
                                              @McpToolParam(description = "Neuer Tag JJJJ-MM-TT, nicht in der "
-                                                     + "Vergangenheit", required = false) String date) {
+                                                     + "Vergangenheit", required = false) String date,
+                                             @McpToolParam(description = "Neue Dauer in Minuten (5 bis 1440) nur "
+                                                     + "für diesen Termin", required = false) Integer minutes) {
         return tools.write(context, user -> {
             Long id = Tools.required(taskId, "taskId");
             LocalDate day = Tools.date(date, "date");
             tasks.reschedule(id, day == null ? tasks.get(id, user).getDueOn() : day,
-                    Tools.required(Tools.time(time, "time"), "time"), user);
+                    Tools.required(Tools.time(time, "time"), "time"), minutes, user);
             return item(tasks.get(id, user), names());
         });
     }
@@ -412,7 +416,7 @@ public class HouseholdTools {
         return new ChoreTaskItem(t.getId(), t.getChore().getTitle(), t.getChore().getArea(), t.getDueOn(),
                 t.getDueTime() == null ? null : t.getDueTime().toString(),
                 t.getAssigneeMemberId() == null ? null : names.getOrDefault(t.getAssigneeMemberId(), "?"),
-                t.getStatus().name(), t.getChore().getPlanMinutes(),
+                t.getStatus().name(), t.minutes(),
                 t.getPlannedAt() == null ? null : t.getPlannedAt().toString());
     }
 

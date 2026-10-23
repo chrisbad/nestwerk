@@ -198,6 +198,10 @@
                                         </svg>
                                         <span th:text="${c.title}">Bad putzen · Lena</span>
                                     </span>
+                                    <span class="tgrid-handle tgrid-handle-start" data-handle="start" aria-hidden="true"
+                                          th:if="${c.movable and !p.continuesBefore}"></span>
+                                    <span class="tgrid-handle tgrid-handle-end" data-handle="end" aria-hidden="true"
+                                          th:if="${c.movable and !p.continuesAfter}"></span>
                                 </a>
                             </th:block>
 

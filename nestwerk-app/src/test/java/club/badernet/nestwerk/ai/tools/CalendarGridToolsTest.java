@@ -165,10 +165,10 @@ class CalendarGridToolsTest {
         entityManager.flush();
         Long taskId = tasks.findAllByChoreId(chore.getId()).getFirst().getId();
 
-        HouseholdTools.ChoreTaskItem item = householdTools.rescheduleChoreTask(as(admin), taskId, "19:45", null);
+        HouseholdTools.ChoreTaskItem item = householdTools.rescheduleChoreTask(as(admin), taskId, "19:45", null, null);
 
         assertThat(item.plannedAt()).isEqualTo("19:45");
-        assertThatThrownBy(() -> householdTools.rescheduleChoreTask(as(admin), taskId, "spät", null))
+        assertThatThrownBy(() -> householdTools.rescheduleChoreTask(as(admin), taskId, "spät", null, null))
                 .isInstanceOf(Tools.ToolException.class);
     }
 
@@ -187,12 +187,24 @@ class CalendarGridToolsTest {
         LocalDate later = LocalDate.now(clock).plusDays(2);
 
         HouseholdTools.ChoreTaskItem item = householdTools.rescheduleChoreTask(as(admin), taskId, "08:15",
-                later.toString());
+                later.toString(), null);
 
         assertThat(item.dueOn()).isEqualTo(later);
         assertThat(item.plannedAt()).isEqualTo("08:15");
         assertThatThrownBy(() -> householdTools.rescheduleChoreTask(as(admin), taskId, "08:15",
-                LocalDate.now(clock).minusDays(1).toString())).isInstanceOf(Tools.ToolException.class);
+                LocalDate.now(clock).minusDays(1).toString(), null)).isInstanceOf(Tools.ToolException.class);
+    }
+
+    @Test
+    void choreTaskCanBeMadeLongerForItsDateOnly() {
+        Long taskId = plannedTask(1);
+
+        HouseholdTools.ChoreTaskItem item = householdTools.rescheduleChoreTask(as(admin), taskId, "08:15", null, 45);
+
+        assertThat(item.plannedMinutes()).isEqualTo(45);
+        assertThat(item.plannedAt()).isEqualTo("08:15");
+        assertThatThrownBy(() -> householdTools.rescheduleChoreTask(as(admin), taskId, "08:15", null, 2))
+                .isInstanceOf(Tools.ToolException.class);
     }
 
     @Test
