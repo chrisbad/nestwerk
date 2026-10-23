@@ -4115,10 +4115,11 @@ form.is-allday [data-time-field] { display: none; }
     line-height: 1.25;
 }
 .lanes-entry.occ-chore { background: color-mix(in srgb, var(--occ-color) 14%, var(--surface-2)); }
+.lanes-entry .occ-time, .lanes-entry .occ-place { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lanes-entry .occ-time { font-size: calc(0.65rem * var(--text-scale)); font-weight: 600; }
-.lanes-entry .occ-title { display: flex; align-items: flex-start; font-weight: 650; }
-.lanes-entry .occ-title span { white-space: normal; overflow-wrap: anywhere; hyphens: auto; }
-.lanes-entry .occ-place { color: var(--ink-soft); font-size: calc(0.65rem * var(--text-scale)); overflow-wrap: anywhere; }
+.lanes-entry .occ-title { display: flex; align-items: center; min-width: 0; font-weight: 650; }
+.lanes-entry .occ-title span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lanes-entry .occ-place { color: var(--ink-soft); font-size: calc(0.65rem * var(--text-scale)); }
 .lanes-entry.continues-before { border-top-left-radius: 2px; border-bottom-left-radius: 2px; }
 .lanes-entry.continues-after { border-top-right-radius: 2px; border-bottom-right-radius: 2px; }
 .lanes-now {
