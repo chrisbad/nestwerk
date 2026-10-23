@@ -10,27 +10,34 @@
     <p hidden data-toast="error" th:if="${error}" th:text="${error}"></p>
 
     <div class="plan-nav">
-        <a class="icon-button" th:href="@{/household/stats(period=${period.key}, date=${period.previous})}" title="Zurück">
+        <a class="icon-button" th:href="@{/household/stats(period=${period.key}, date=${period.previous}, unit=${unit.key()})}" title="Zurück">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>
             <span class="visually-hidden">Vorheriger Zeitraum</span>
         </a>
         <nav class="segmented" aria-label="Zeitraum">
-            <a th:href="@{/household/stats(period='day', date=${period.anchor})}" th:aria-current="${period.key == 'day'} ? 'page'">Tag</a>
-            <a th:href="@{/household/stats(period='week', date=${period.anchor})}" th:aria-current="${period.key == 'week'} ? 'page'">Woche</a>
-            <a th:href="@{/household/stats(period='month', date=${period.anchor})}" th:aria-current="${period.key == 'month'} ? 'page'">Monat</a>
-            <a th:href="@{/household/stats(period='year', date=${period.anchor})}" th:aria-current="${period.key == 'year'} ? 'page'">Jahr</a>
+            <a th:href="@{/household/stats(period='day', date=${period.anchor}, unit=${unit.key()})}" th:aria-current="${period.key == 'day'} ? 'page'">Tag</a>
+            <a th:href="@{/household/stats(period='week', date=${period.anchor}, unit=${unit.key()})}" th:aria-current="${period.key == 'week'} ? 'page'">Woche</a>
+            <a th:href="@{/household/stats(period='month', date=${period.anchor}, unit=${unit.key()})}" th:aria-current="${period.key == 'month'} ? 'page'">Monat</a>
+            <a th:href="@{/household/stats(period='year', date=${period.anchor}, unit=${unit.key()})}" th:aria-current="${period.key == 'year'} ? 'page'">Jahr</a>
         </nav>
-        <a class="icon-button" th:href="@{/household/stats(period=${period.key}, date=${period.next})}" title="Weiter">
+        <a class="icon-button" th:href="@{/household/stats(period=${period.key}, date=${period.next}, unit=${unit.key()})}" title="Weiter">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
             <span class="visually-hidden">Nächster Zeitraum</span>
         </a>
     </div>
+    <nav class="segmented" aria-label="Einheit">
+        <a th:each="u : ${units}" th:href="@{/household/stats(period=${period.key}, date=${period.anchor}, unit=${u.key()})}"
+           th:aria-current="${u == unit} ? 'page'" th:text="${u.label()}">Minuten</a>
+    </nav>
     <nav class="segmented" aria-label="Schnellauswahl">
-        <a th:href="@{/household/stats(period='day', date=${today})}">Heute</a>
-        <a th:href="@{/household/stats(period='week', date=${today})}">Diese Woche</a>
-        <a th:href="@{/household/stats(period='month', date=${today})}">Dieser Monat</a>
+        <a th:href="@{/household/stats(period='day', date=${today}, unit=${unit.key()})}">Heute</a>
+        <a th:href="@{/household/stats(period='week', date=${today}, unit=${unit.key()})}">Diese Woche</a>
+        <a th:href="@{/household/stats(period='month', date=${today}, unit=${unit.key()})}">Dieser Monat</a>
     </nav>
 
+    <p class="hint" th:if="${unit.name() == 'PERSON_DAYS' or unit.name() == 'AUTO'}">
+        <a th:href="@{/household/settings}">Länge eines Personentags einstellen</a>
+    </p>
     <p class="hint" th:unless="${seesAll}">Du siehst hier deine eigenen Werte.</p>
 
     <div class="sheet stats-table-wrap" th:unless="${#lists.isEmpty(rows)}">
@@ -38,7 +45,7 @@
             <thead>
             <tr>
                 <th scope="col">Mitglied</th>
-                <th scope="col" class="num">Minuten</th>
+                <th scope="col" class="num" th:text="${format.columnLabel()}">Minuten</th>
                 <th scope="col" class="num">leicht</th>
                 <th scope="col" class="num">mittel</th>
                 <th scope="col" class="num">schwer</th>
@@ -51,7 +58,7 @@
                     <span class="stats-name" th:text="${r.member().name}">Lena</span>
                     <span class="stats-bar" aria-hidden="true"><i th:style="|width: ${r.minutes() * 100 / maxMinutes}%|"></i></span>
                 </th>
-                <td class="num stats-minutes" th:text="${r.minutes()}">120</td>
+                <td class="num stats-minutes" th:text="${format.of(r.minutes())}" th:title="${format.hint()}">120 Min</td>
                 <td class="num" th:text="${r.easy()}">3</td>
                 <td class="num" th:text="${r.medium()}">2</td>
                 <td class="num" th:text="${r.hard()}">1</td>
@@ -74,14 +81,14 @@
                     <a th:href="@{/household/tasks/{id}(id=${cr.taskId()})}" th:text="${cr.title()}">Bad</a>
                     <span class="member-chip" th:if="${cr.member() != null}" th:style="|--member-color: ${cr.member().color}|"
                           th:text="${cr.member().name}">Lena</span>
-                    <strong class="credit-minutes" th:text="${cr.minutes()} + ' Min'">30 Min</strong>
+                    <strong class="credit-minutes" th:text="${format.of(cr.minutes())}" th:title="${format.hint()}">30 Min</strong>
                 </div>
                 <p class="hint" th:if="${cr.corrected()}"
-                   th:text="'Korrigiert von ' + ${cr.planned()} + ' Min: ' + ${cr.reason()}">Korrigiert</p>
+                   th:text="'Korrigiert von ' + ${format.of(cr.planned())} + ': ' + ${cr.reason()}">Korrigiert</p>
                 <details th:if="${canCorrect}" class="credit-correct">
                     <summary>Korrigieren</summary>
                     <form method="post" th:action="@{/household/credits/{id}/correct(id=${cr.id()})}" class="inline-form">
-                        <input type="hidden" name="back" th:value="@{/household/stats(period=${period.key}, date=${period.anchor})}">
+                        <input type="hidden" name="back" th:value="@{/household/stats(period=${period.key}, date=${period.anchor}, unit=${unit.key()})}">
                         <label class="field">
                             <span>Minuten</span>
                             <input class="input" type="number" name="minutes" min="0" max="600" th:value="${cr.minutes()}" required>
